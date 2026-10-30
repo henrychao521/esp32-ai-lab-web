@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESP32 AI Lab 首燒</title>
+<style>
+:root{--ink:#1b1f24;--muted:#6b7280;--line:#e5e7eb;--ok:#15803d;--bad:#b91c1c;--accent:#0b5fff;--bg:#fafaf7}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif;color:var(--ink);background:var(--bg);line-height:1.6}
+main{max-width:760px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:28px;margin:0 0 4px}.sub{color:var(--muted);margin:0 0 28px}
+section{border-top:2px solid var(--ink);padding:20px 0 24px}
+section h2{font-size:18px;margin:0 0 6px}section h2 span{display:inline-block;width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;text-align:center;line-height:28px;margin-right:10px;font-size:15px}
+p{margin:6px 0}.hint{color:var(--muted);font-size:14px}
+button,.btn{font:inherit;padding:10px 18px;border:1.5px solid var(--ink);background:#fff;border-radius:8px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button:disabled{opacity:.45;cursor:default}
+label{display:block;margin:10px 0 2px;font-size:14px}input,select{font:inherit;padding:8px 10px;border:1.5px solid var(--line);border-radius:6px;width:100%;max-width:360px}
+pre{background:#111;color:#d1fae5;padding:12px;border-radius:8px;font-size:13px;max-height:260px;overflow:auto;white-space:pre-wrap}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px}
+esp-web-install-button{--esp-tools-button-color:var(--accent);--esp-tools-button-text-color:#fff}
+.unsupported{background:#fff7ed;border:1px solid #fdba74;padding:12px;border-radius:8px;margin-top:12px}
+.callout{background:#eef4ff;border:1.5px solid #0b5fff;border-radius:10px;padding:12px 16px;margin:8px 0 12px}.callout ol{margin:6px 0 0 20px;padding:0}.callout li{margin:3px 0}
+</style>
+</head>
+<body><main>
+<h1>ESP32 AI Lab 首燒</h1>
+<p class="sub">只做一次：把 MicroPython 與代理程式裝進板子，之後學生全用 Wi-Fi。需要桌機 Chrome 或 Edge（iPad／Safari 不支援 Web Serial）。</p>
+<div id="unsupported" class="unsupported" hidden>這個瀏覽器沒有 Web Serial。請改用電腦上的 Chrome 或 Edge 開這一頁。</div>
+
+<section>
+<h2><span>1</span>燒入 MicroPython 韌體</h2>
+<div class="callout">
+<strong>先讓板子進下載模式，再按安裝（T-QT Pro 這類原生 USB 的板子一定要做）：</strong>
+<ol>
+<li><b>按住 BOOT 鍵</b>（T-QT Pro 是左邊那顆按鍵）不放。</li>
+<li>按一下 <b>RST</b>（沒有 RST 鍵就<b>拔掉 USB 再插回去</b>）。</li>
+<li>放開 BOOT。螢幕會是黑的，這是正常的。</li>
+<li>按下面「安裝 MicroPython」，在跳出的視窗<b>重新選一次序列埠</b>（名稱可能變了，通常含 usbmodem、ESP32-S3、SLAB 或 wchusb）。</li>
+</ol>
+<p class="hint">為什麼：板子跑 MicroPython 或 Arduino 程式時，USB 由程式自己接管，瀏覽器的自動重置訊號（DTR／RTS）到不了晶片，會出現「Installation failed: Failed to initialize」。手動按 BOOT＋RST 讓 ROM 接管 USB 就能燒。整顆抹除後重燒約 20 秒。</p>
+</div>
+<div class="row">
+<select id="chip"><option value="esp32s3">ESP32-S3（LILYGO T-QT Pro 等）</option><option value="esp32">ESP32 DevKit（經典版）</option></select>
+<esp-web-install-button id="installBtn" manifest="manifest-esp32s3.json"><button slot="activate" class="primary">安裝 MicroPython</button></esp-web-install-button>
+<button id="autoResetBtn" type="button">先試自動重置（選用）</button>
+</div>
+<div id="flashHelp" class="unsupported" hidden>
+<strong>燒錄失敗（Failed to initialize）＝板子還沒進下載模式。</strong>
+照上面四步：按住 BOOT → 按 RST（或重插 USB）→ 放開 BOOT → 再按「安裝 MicroPython」並重新選序列埠。
+若還是失敗，換一條有資料線的 USB 線、不要經過集線器。
+</div>
+<p id="autoResetMsg" class="hint"></p>
+</section>
+
+<section>
+<h2><span>2</span>安裝代理程式並設定 Wi-Fi</h2>
+<p>再選一次序列埠（韌體燒完板子會重新連線）。代理程式會寫進板子，之後開機自動連 Wi-Fi、開 HTTP／WebSocket 服務。</p>
+<label>板子</label><select id="board"><option value="tqt_pro">LILYGO T-QT Pro（有 128×128 螢幕）</option><option value="devkit">ESP32 DevKit（GPIO2 LED）</option><option value="generic">其他</option></select>
+<label>Wi-Fi 名稱（SSID）</label><input id="ssid" autocomplete="off">
+<label>Wi-Fi 密碼</label><input id="pass" type="password">
+<label>教室伺服器（老師 Mac 的位址，可留空）</label><input id="server" placeholder="http://192.168.1.10:8765">
+<p class="hint">留空 Wi-Fi：板子開機會開熱點 ESP32LAB-xxxx（密碼 esp32lab），手機連上後開 http://192.168.4.1 填。</p>
+<div class="row"><button id="agentBtn" class="primary">安裝代理程式</button><span id="agentVer" class="hint"></span></div>
+<pre id="log" hidden></pre>
+</section>
+
+<section>
+<h2><span>3</span>完成</h2>
+<p>板子重開後，螢幕（或序列埠）會顯示名稱 <code>esp32lab-xxxx.local</code> 與 IP。在 App 的「裝置」頁輸入它，或由教室伺服器自動列出。</p>
+<p class="hint">驗證：瀏覽器開 <code>http://esp32lab-xxxx.local/info</code> 應回傳 JSON；<code>/screen.bmp</code> 是目前畫面。</p>
+</section>
+</main>
+<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+<script type="module" src="flash.js"></script>
+</body></html>

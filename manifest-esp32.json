@@ -1,0 +1,2 @@
+{"name":"MicroPython v1.29.0 (ESP32)","version":"1.29.0","new_install_prompt_erase":true,
+ "builds":[{"chipFamily":"ESP32","parts":[{"path":"firmware/micropython-esp32.bin","offset":4096}]}]}
