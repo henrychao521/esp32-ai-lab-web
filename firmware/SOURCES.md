@@ -9,6 +9,9 @@
 | micropython-esp32c3.bin | ESP32-C3（RISC-V；XIAO ESP32C3、SuperMini） | https://micropython.org/resources/firmware/ESP32_GENERIC_C3-20260824-v1.29.0.bin | 0x0 | bf72ed9eb88ad3a8f49d02c3d371f9ea34c90a8a303aeb9e324d8efd4a2a655a |
 | micropython-esp32c6.bin | ESP32-C6（RISC-V，Wi-Fi 6） | https://micropython.org/resources/firmware/ESP32_GENERIC_C6-20260824-v1.29.0.bin | 0x0 | 3688ba4e2c3949e639f5772e99fdb0efa1258b162a496133f78c108434195c89 |
 
+| micropython-esp32cam.bin | ESP32-CAM（AI-Thinker，OV2640，4MB＋PSRAM） | 社群相機建置 cnadler86/micropython-camera-API v0.6.2（2026-01-12）= **MicroPython v1.27.0**＋camera 模組：https://github.com/cnadler86/micropython-camera-API/releases/download/v0.6.2/mpy_cam-v1.27.0-AI_THINKER.zip（zip sha256 133e568e2f9feb0db56fc75f29fe2029919fafa0c445980f026a1934b4f8aada，內含 firmware.bin） | 0x1000 | b26ba45de13549272d888c229c5c3864b75250471ac290478d752b8098ee70ea |
+
+- **ESP32-CAM 用的不是官方 1.29**：官方 MicroPython 沒有相機模組；社群版最新釋出對應 MicroPython 1.27.0（截至 2026-10-31 沒有 1.29 建置）。代理程式只用 asyncio／network／requests，1.27 也有，`micropython tools/unix_check.py` 的靜態檢查涵蓋。相機 API：`from camera import Camera`（cnadler86 版）。
 - 2026-10-31 下載並以 `shasum -a 256` 核對；`tools/verify_firmware.sh` 可重新核對。
 - 1.26 起 `ESP32_GENERIC_S3` 標準版自動偵測 flash 大小（4MB 以上皆可），不再需要 FLASH_4M 變體。
 - 八線 PSRAM 的 S3 板（T-Display S3、XIAO ESP32S3）要用 `-octal` 版，否則 PSRAM 不會啟用（程式仍可跑，但記憶體只有內建 SRAM）。

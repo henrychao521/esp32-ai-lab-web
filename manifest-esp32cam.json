@@ -1,0 +1,2 @@
+{"name":"MicroPython v1.27.0 + camera (ESP32-CAM AI-Thinker)","version":"1.27.0-cam0.6.2","new_install_prompt_erase":true,
+ "builds":[{"chipFamily":"ESP32","parts":[{"path":"firmware/micropython-esp32cam.bin","offset":4096}]}]}

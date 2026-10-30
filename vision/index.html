@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ESP32 AI Lab 視覺</title>
+<style>
+:root{
+  --bg:#f4f1ea;--fg:#1b1b1b;--line:#1b1b1b;--panel:#ffffff;--muted:#5b5b5b;
+  --acc:#0a6b4f;--accfg:#ffffff;--bad:#b3261e;--warn:#8a5a00;--warnbg:#fff3cd;--errbg:#fde7e5;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14161a;--fg:#e8e6df;--line:#6b7078;--panel:#1d2025;--muted:#a0a4ab;
+    --acc:#3ddc97;--accfg:#062a1c;--bad:#ff8a80;--warn:#ffd36b;--warnbg:#3a2f10;--errbg:#3d1c19;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-size:16px;line-height:1.5}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;border-bottom:2px solid var(--line)}
+h1{font-size:20px;margin:0;letter-spacing:.08em}
+.conn{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;min-width:0}
+#conn-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);background:#888;flex:none}
+.dot.ok{background:#1fd17a}
+.dot.bad{background:#e5483b}
+.dot.wait{background:#f0b429}
+main{max-width:664px;margin:0 auto;padding:0 12px 16px}
+.stage{position:relative;width:100%;max-width:640px;background:#000;border:2px solid var(--line);min-height:170px;margin-top:12px;overflow:hidden}
+.stage video,.stage img{display:block;width:100%;height:auto;background:#000}
+.stage canvas{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+.stage.mirror video,.stage.mirror canvas{transform:scaleX(-1)}
+#placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:15px;text-align:center;padding:12px}
+.readout{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border:2px solid var(--line);border-top:0;max-width:640px;padding:6px 10px;background:var(--panel)}
+#result{font-family:var(--mono);font-size:clamp(22px,7vw,34px);font-weight:700;line-height:1.2;min-height:1.2em;word-break:break-all}
+#result.dim{color:var(--muted);font-weight:400}
+#fps{font-family:var(--mono);font-size:14px;color:var(--muted);white-space:nowrap}
+.notice{max-width:640px;margin-top:10px;padding:8px 10px;border:2px solid var(--line);border-radius:3px;font-size:14px}
+#warn{background:var(--warnbg);color:var(--warn)}
+#msg{background:var(--errbg);color:var(--bad)}
+.panel{max-width:640px;margin-top:12px;border-top:2px solid var(--line);padding-top:4px}
+.panel h2{font-size:14px;letter-spacing:.1em;margin:6px 0 0;color:var(--muted);font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.row>label{flex:0 0 72px;font-size:14px;color:var(--muted)}
+.row>.f{flex:1 1 160px;min-width:0}
+select,input[type=text],input[type=url],input[type=file]{width:100%;min-height:44px;font:inherit;font-size:16px;padding:6px 8px;border:2px solid var(--line);border-radius:3px;background:var(--panel);color:var(--fg)}
+input[type=text],input[type=url]{font-family:var(--mono);font-size:15px}
+input[type=file]{padding:8px}
+button{min-height:44px;min-width:44px;padding:0 16px;font:inherit;font-weight:600;border:2px solid var(--line);border-radius:3px;background:var(--panel);color:var(--fg);cursor:pointer;touch-action:manipulation}
+button:active{transform:translateY(1px)}
+button.primary{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns button{flex:1 1 90px}
+#console{max-width:640px;height:170px;overflow-y:auto;border:2px solid var(--line);border-radius:3px;background:var(--panel);font-family:var(--mono);font-size:12.5px;padding:6px 8px;margin-top:6px;line-height:1.45}
+#console div{white-space:pre-wrap;word-break:break-all}
+#console .e{color:var(--bad)}
+#console .s{color:var(--muted)}
+footer{max-width:640px;font-size:12px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>視覺</h1>
+  <div class="conn"><span id="status-dot" class="dot" role="img" aria-label="未連線"></span><span id="conn-text">板子未連線</span></div>
+</header>
+
+<main>
+  <div id="stage" class="stage">
+    <video id="video" playsinline muted autoplay></video>
+    <img id="stream-img" alt="相機板串流畫面" hidden>
+    <canvas id="overlay"></canvas>
+    <div id="placeholder">按下「開始」啟動辨識</div>
+  </div>
+  <div class="readout">
+    <div id="result" class="dim" aria-live="polite">—</div>
+    <div id="fps">0.0 FPS</div>
+  </div>
+
+  <div id="warn" class="notice" role="note" hidden></div>
+  <div id="msg" class="notice" role="alert" hidden></div>
+
+  <section class="panel">
+    <h2>影像與模式</h2>
+    <div class="row">
+      <label for="source">影像來源</label>
+      <div class="f">
+        <select id="source">
+          <option value="cam">瀏覽器鏡頭</option>
+          <option value="stream">相機板串流網址</option>
+        </select>
+      </div>
+    </div>
+    <div class="row row-cam">
+      <label for="cam">鏡頭</label>
+      <div class="f"><select id="cam"><option value="">自動（依前後鏡頭）</option></select></div>
+      <button type="button" id="btn-flip">切換前後鏡頭</button>
+    </div>
+    <div class="row row-stream" hidden>
+      <label for="stream-url">串流網址</label>
+      <div class="f"><input type="url" id="stream-url" placeholder="http://192.168.50.166/stream" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    </div>
+    <div class="row">
+      <label for="mode">辨識模式</label>
+      <div class="f">
+        <select id="mode">
+          <option value="gesture">手勢（GestureRecognizer）</option>
+          <option value="face">人臉（FaceDetector）</option>
+          <option value="object">物件（ObjectDetector）</option>
+          <option value="pose">姿勢（PoseLandmarker）</option>
+          <option value="tm">Teachable Machine</option>
+        </select>
+      </div>
+    </div>
+    <div class="row row-tm" hidden>
+      <label for="tm-url">模型網址</label>
+      <div class="f"><input type="url" id="tm-url" placeholder="https://teachablemachine.withgoogle.com/models/xxxxx/" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    </div>
+    <div class="row row-tm" hidden>
+      <label for="tm-files">或選檔案</label>
+      <div class="f"><input type="file" id="tm-files" multiple></div>
+      <div style="flex:1 1 100%;font-size:12px;color:var(--muted)">一次選 model.json、metadata.json、weights.bin 三個檔案（有選檔案時優先使用檔案）。</div>
+    </div>
+    <div class="btns">
+      <button type="button" id="btn-start" class="primary">開始</button>
+      <button type="button" id="btn-stop" disabled>停止</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>板子連線</h2>
+    <div class="row">
+      <label for="board">板子位址</label>
+      <div class="f"><input type="text" id="board" placeholder="ws://192.168.50.3/ws 或 192.168.50.3" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <button type="button" id="btn-connect">連線</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>主控台</h2>
+    <div id="console" role="log" aria-live="off"></div>
+  </section>
+  <footer>辨識結果每秒最多送 10 次到板子；沒偵測到時每秒送 1 次 none。</footer>
+</main>
+
+<script>
+(function () {
+"use strict";
+
+var MP_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21";
+var MP_WASM = MP_URL + "/wasm";
+var MODELS = {
+  gesture: "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task",
+  face: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+  object: "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite",
+  pose: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
+};
+var TF_URL = "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js";
+var TM_URL = "https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js";
+
+var SECURE_MSG = "Safari 只允許 https 或 localhost 開鏡頭；請從教室伺服器的 https 連接埠或 GitHub Pages 開這一頁";
+var MIXED_MSG = "https 頁面不能載入 http 串流，請改用瀏覽器鏡頭，或從 http 版（教室伺服器 http 連接埠）開這一頁";
+
+var COLOR = "#00e5a0";
+var COLOR2 = "#ff5a3c";
+
+function $(id) { return document.getElementById(id); }
+
+var el = {
+  stage: $("stage"), video: $("video"), img: $("stream-img"), overlay: $("overlay"),
+  placeholder: $("placeholder"), result: $("result"), fps: $("fps"),
+  warn: $("warn"), msg: $("msg"), source: $("source"), cam: $("cam"), mode: $("mode"),
+  streamUrl: $("stream-url"), tmUrl: $("tm-url"), tmFiles: $("tm-files"),
+  board: $("board"), btnConnect: $("btn-connect"), btnStart: $("btn-start"),
+  btnStop: $("btn-stop"), btnFlip: $("btn-flip"), dot: $("status-dot"),
+  connText: $("conn-text"), cons: $("console")
+};
+var ctx = el.overlay.getContext("2d");
+var frameCanvas = document.createElement("canvas");
+var frameCtx = frameCanvas.getContext("2d");
+
+var S = {
+  active: false, running: false, starting: false, busy: false,
+  source: "cam", mode: "gesture", facing: "environment", mirror: false,
+  stream: null, streamTimer: 0, noCors: false,
+  mp: null, fileset: null, du: null,
+  model: null, modelMode: null, tok: 0, lastTs: 0, lastVT: -1, lastInfer: 0,
+  frames: 0, fpsT: performance.now(),
+  ws: null, wantWs: false, wsUrl: "", rt: 0, pingT: 0, lastSend: 0, lastNone: 0,
+  lastErr: "", scriptCache: {}
+};
+
+/* ---------- 訊息顯示 ---------- */
+function pad(n) { return n < 10 ? "0" + n : "" + n; }
+function log(text, cls) {
+  var d = document.createElement("div");
+  var t = new Date();
+  d.textContent = "[" + pad(t.getHours()) + ":" + pad(t.getMinutes()) + ":" + pad(t.getSeconds()) + "] " + text;
+  if (cls) d.className = cls;
+  el.cons.appendChild(d);
+  while (el.cons.childNodes.length > 100) el.cons.removeChild(el.cons.firstChild);
+  el.cons.scrollTop = el.cons.scrollHeight;
+}
+function showError(text) {
+  el.msg.textContent = text;
+  el.msg.hidden = false;
+  if (text !== S.lastErr) { S.lastErr = text; log("錯誤：" + text, "e"); }
+}
+function clearError() { el.msg.hidden = true; el.msg.textContent = ""; S.lastErr = ""; }
+function errText(e) {
+  if (!e) return "未知錯誤";
+  if (e.name === "NotAllowedError" || (e.name === "SecurityError" && S.source === "cam")) return "鏡頭權限被拒（或這個瀏覽器環境封鎖鏡頭）：請在瀏覽器的網站設定允許相機後重試；iPad 要從 https 或教室伺服器的 https 連接埠開。";
+  if (e.name === "SecurityError" && S.source === "stream") return "相機板沒有提供 CORS 標頭（Access-Control-Allow-Origin），瀏覽器不允許讀取這張畫面做辨識；代理程式的 /camera.jpg 與 AMB82 代理已有此標頭，其他串流請改用瀏覽器鏡頭。";
+  if (e.name === "NotFoundError" || e.name === "OverconstrainedError") return "找不到可用的鏡頭（或指定的鏡頭不存在）。";
+  if (e.name === "NotReadableError") return "鏡頭被別的程式占用。";
+  var n = e.name || "", m = e.message || String(e);
+  if (S.noCors && /tainted|security|cross-origin|origin/i.test(n + " " + m)) {
+    return "相機板沒有提供 CORS 標頭，瀏覽器不允許讀取這張畫面做辨識；請改用瀏覽器鏡頭，或讓板子回應 Access-Control-Allow-Origin: *。（" + m + "）";
+  }
+  return m;
+}
+function setResult(text, dim) {
+  el.result.textContent = text;
+  el.result.className = dim ? "dim" : "";
+}
+function updateWarn() {
+  var list = [];
+  var src = el.source.value;
+  if (src === "cam" && !window.isSecureContext) list.push(SECURE_MSG);
+  if (src === "stream" && httpsMixed(el.streamUrl.value)) list.push(MIXED_MSG);
+  var b = normBoard(el.board.value);
+  if (location.protocol === "https:" && /^ws:\/\//i.test(b)) {
+    list.push("https 頁面連 ws:// 會被瀏覽器擋下，請改用 wss://（例如教室伺服器的 wss://老師IP:8767/relay?target=板子IP），或從 http 版開這一頁。");
+  }
+  el.warn.textContent = list.join("\n");
+  el.warn.style.whiteSpace = "pre-line";
+  el.warn.hidden = list.length === 0;
+}
+function httpsMixed(u) {
+  return location.protocol === "https:" && /^http:\/\//i.test((u || "").trim());
+}
+
+/* ---------- 板子 WebSocket ---------- */
+function normBoard(s) {
+  s = (s || "").trim();
+  if (!s) return "";
+  if (/^wss?:\/\//i.test(s)) return s;
+  s = s.replace(/^https?:\/\//i, "");
+  if (s.indexOf("/") >= 0) return "ws://" + s;
+  return "ws://" + s + "/ws";
+}
+function setDot(cls, text) {
+  el.dot.className = "dot " + cls;
+  el.dot.setAttribute("aria-label", text);
+  el.connText.textContent = text;
+  el.connText.title = text;
+}
+function stopWsTimers() {
+  clearTimeout(S.rt); S.rt = 0;
+  clearInterval(S.pingT); S.pingT = 0;
+}
+function closeWs() {
+  stopWsTimers();
+  var ws = S.ws;
+  S.ws = null;
+  if (ws) {
+    ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null;
+    try { ws.close(); } catch (e) { /* 忽略 */ }
+  }
+}
+function openWs(url) {
+  try {
+    setDot("wait", "連線中…");
+    var ws = new WebSocket(url);
+    S.ws = ws;
+    ws.onopen = function () {
+      setDot("ok", "已連線 " + url);
+      log("板子已連線：" + url, "s");
+      try { ws.send(JSON.stringify({ t: "ping" })); } catch (e) { showError(errText(e)); }
+      clearInterval(S.pingT);
+      S.pingT = setInterval(function () {
+        try { if (ws.readyState === 1) ws.send(JSON.stringify({ t: "ping" })); } catch (e) { showError(errText(e)); }
+      }, 15000);
+    };
+    ws.onmessage = function (ev) {
+      try {
+        var m = JSON.parse(ev.data);
+        if (m && m.t === "out") {
+          var txt = m.d !== undefined ? m.d : m.text !== undefined ? m.text : m.line !== undefined ? m.line : m.msg !== undefined ? m.msg : JSON.stringify(m);
+          log("板子：" + (typeof txt === "string" ? txt : JSON.stringify(txt)));
+        }
+      } catch (e) { /* 非 JSON 訊息略過 */ }
+    };
+    ws.onerror = function () { log("WebSocket 發生錯誤（請確認位址、同一個網路，以及 ws/wss 是否符合頁面協定）", "e"); };
+    ws.onclose = function () {
+      clearInterval(S.pingT); S.pingT = 0;
+      S.ws = null;
+      if (S.wantWs) {
+        setDot("bad", "斷線，3 秒後重連…");
+        clearTimeout(S.rt);
+        S.rt = setTimeout(function () { if (S.wantWs) openWs(url); }, 3000);
+      } else {
+        setDot("", "板子未連線");
+      }
+    };
+  } catch (e) {
+    S.ws = null;
+    S.wantWs = false;
+    el.btnConnect.textContent = "連線";
+    setDot("bad", "連線失敗");
+    showError("無法建立 WebSocket：" + errText(e) + "（若頁面是 https，只能連 wss://）");
+  }
+}
+function connect() {
+  try {
+    var url = normBoard(el.board.value);
+    if (!url) { showError("請先輸入板子位址，例如 192.168.50.3"); return; }
+    el.board.value = url;
+    S.wsUrl = url;
+    closeWs();
+    S.wantWs = true;
+    el.btnConnect.textContent = "斷線";
+    openWs(url);
+  } catch (e) { showError(errText(e)); }
+}
+function disconnect() {
+  S.wantWs = false;
+  closeWs();
+  el.btnConnect.textContent = "連線";
+  setDot("", "板子未連線");
+  log("已手動斷線", "s");
+}
+function sendVision(mode, label, score, box, extra) {
+  var ws = S.ws;
+  if (!ws || ws.readyState !== 1) return;
+  var now = performance.now();
+  if (label === "none") {
+    if (now - S.lastNone < 1000) return;
+    S.lastNone = now;
+  } else {
+    if (now - S.lastSend < 100) return;
+    S.lastSend = now;
+  }
+  var o = {
+    t: "cmd", op: "vision", mode: mode, label: label,
+    score: +(+score).toFixed(2),
+    box: box ? box.map(function (v) { return +v.toFixed(3); }) : null
+  };
+  if (extra) { for (var k in extra) o[k] = extra[k]; }
+  try { ws.send(JSON.stringify(o)); } catch (e) { showError(errText(e)); }
+}
+
+/* ---------- 工具 ---------- */
+function loadScript(src) {
+  if (S.scriptCache[src]) return S.scriptCache[src];
+  S.scriptCache[src] = new Promise(function (res, rej) {
+    var s = document.createElement("script");
+    s.src = src; s.async = true;
+    s.onload = function () { res(); };
+    s.onerror = function () { delete S.scriptCache[src]; rej(new Error("載入失敗：" + src)); };
+    document.head.appendChild(s);
+  });
+  return S.scriptCache[src];
+}
+function waitIdle() {
+  return new Promise(function (res) {
+    (function chk() { if (!S.busy) res(); else setTimeout(chk, 20); })();
+  });
+}
+function closeModel(m) {
+  if (!m) return;
+  try {
+    if (typeof m.close === "function") m.close();
+    else if (typeof m.dispose === "function") m.dispose();
+  } catch (e) { /* 忽略 */ }
+}
+function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+function bboxFromLm(lm) {
+  var x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+  for (var i = 0; i < lm.length; i++) {
+    var p = lm[i];
+    if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+    if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+  }
+  x0 = clamp01(x0); y0 = clamp01(y0); x1 = clamp01(x1); y1 = clamp01(y1);
+  return [x0, y0, x1 - x0, y1 - y0];
+}
+function pxBoxToNorm(b, W, H) {
+  var x = clamp01(b.originX / W), y = clamp01(b.originY / H);
+  var w = Math.min(b.width / W, 1 - x), h = Math.min(b.height / H, 1 - y);
+  return [x, y, w, h];
+}
+
+/* ---------- 繪圖 ---------- */
+function fontSize() { return Math.max(14, Math.round(el.overlay.width / 28)); }
+function drawText(text, ax, y, color) {
+  var fs = fontSize();
+  ctx.font = "bold " + fs + "px ui-monospace,Menlo,monospace";
+  var tw = ctx.measureText(text).width + 8;
+  y = Math.max(fs + 6, y);
+  ctx.save();
+  ctx.translate(ax, y);
+  if (S.mirror) ctx.scale(-1, 1);
+  ctx.fillStyle = color;
+  ctx.fillRect(0, -fs - 4, tw, fs + 6);
+  ctx.fillStyle = "#000";
+  ctx.fillText(text, 4, -3);
+  ctx.restore();
+}
+function drawBoxNorm(b, text, color) {
+  var W = el.overlay.width, H = el.overlay.height;
+  var x = b[0] * W, y = b[1] * H, w = b[2] * W, h = b[3] * H;
+  ctx.lineWidth = Math.max(2, W / 200);
+  ctx.strokeStyle = color;
+  ctx.strokeRect(x, y, w, h);
+  if (text) drawText(text, S.mirror ? x + w : x, y, color);
+}
+function clearOverlay() { ctx.clearRect(0, 0, el.overlay.width, el.overlay.height); }
+
+/* ---------- 模型 ---------- */
+async function ensureMP() {
+  if (!S.mp) {
+    setResult("載入 MediaPipe 中…", true);
+    S.mp = await import(MP_URL);
+  }
+  if (!S.fileset) S.fileset = await S.mp.FilesetResolver.forVisionTasks(MP_WASM);
+  S.du = new S.mp.DrawingUtils(ctx);
+}
+async function createMP(mode) {
+  var mp = S.mp, Cls, extra;
+  if (mode === "gesture") { Cls = mp.GestureRecognizer; extra = { numHands: 2 }; }
+  else if (mode === "face") { Cls = mp.FaceDetector; extra = { minDetectionConfidence: 0.5 }; }
+  else if (mode === "object") { Cls = mp.ObjectDetector; extra = { scoreThreshold: 0.5, maxResults: 5 }; }
+  else if (mode === "pose") { Cls = mp.PoseLandmarker; extra = { numPoses: 1 }; }
+  else throw new Error("未知模式：" + mode);
+  function mk(delegate) {
+    var opt = { baseOptions: { modelAssetPath: MODELS[mode], delegate: delegate }, runningMode: "VIDEO" };
+    for (var k in extra) opt[k] = extra[k];
+    return Cls.createFromOptions(S.fileset, opt);
+  }
+  try { return await mk("GPU"); }
+  catch (e) {
+    log("GPU 無法使用，改用 CPU（會比較慢）：" + (e && e.message || e), "s");
+    return await mk("CPU");
+  }
+}
+async function loadTM() {
+  setResult("載入 TensorFlow.js…", true);
+  await loadScript(TF_URL);
+  await loadScript(TM_URL);
+  if (!window.tmImage) throw new Error("Teachable Machine 函式庫載入後無法使用");
+  setResult("載入 Teachable Machine 模型中…", true);
+  var files = el.tmFiles.files;
+  if (files && files.length) {
+    var mj = null, md = null, wb = null;
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i], n = f.name.toLowerCase();
+      if (/\.bin$/.test(n)) wb = f;
+      else if (/\.json$/.test(n) && n.indexOf("metadata") >= 0) md = f;
+      else if (/\.json$/.test(n)) mj = f;
+    }
+    if (!mj || !md || !wb) throw new Error("請同時選取 model.json、metadata.json、weights.bin 三個檔案");
+    return await window.tmImage.loadFromFiles(mj, wb, md);
+  }
+  var u = el.tmUrl.value.trim();
+  if (!u) throw new Error("請輸入 Teachable Machine 模型網址，或選擇 model.json／metadata.json／weights.bin 檔案");
+  u = u.replace(/model\.json\s*$/i, "").replace(/metadata\.json\s*$/i, "");
+  if (u.charAt(u.length - 1) !== "/") u += "/";
+  return await window.tmImage.load(u + "model.json", u + "metadata.json");
+}
+async function loadModel() {
+  var tok = ++S.tok, mode = S.mode, m;
+  if (mode === "tm") m = await loadTM();
+  else { await ensureMP(); setResult("載入模型中…", true); m = await createMP(mode); }
+  if (tok !== S.tok) { closeModel(m); return; }
+  S.model = m; S.modelMode = mode; S.lastTs = 0; S.lastVT = -1;
+  setResult("等待偵測…", true);
+  log("模型已就緒：" + mode, "s");
+}
+async function reloadModel() {
+  if (!S.running) return;
+  try {
+    S.running = false;
+    await waitIdle();
+    var old = S.model; S.model = null; closeModel(old);
+    S.mode = el.mode.value;
+    clearOverlay();
+    setResult("載入模型中…", true);
+    await loadModel();
+    S.running = true;
+    loop();
+  } catch (e) {
+    setResult("模型載入失敗", true);
+    showError("模型載入失敗：" + errText(e));
+    S.running = true; // 保持來源運作，使用者可改選其他模式
+    loop();
+  }
+}
+
+/* ---------- 辨識 ---------- */
+function nextTs() {
+  var t = performance.now();
+  if (t <= S.lastTs) t = S.lastTs + 1;
+  S.lastTs = t;
+  return t;
+}
+function getFrame() {
+  if (S.source === "cam") {
+    var v = el.video;
+    if (v.readyState < 2 || !v.videoWidth) return null;
+    if (v.currentTime === S.lastVT) return null;
+    S.lastVT = v.currentTime;
+    return { src: v, W: v.videoWidth, H: v.videoHeight };
+  }
+  var im = el.img;
+  if (!im.complete || !im.naturalWidth) return null;
+  if (frameCanvas.width !== im.naturalWidth || frameCanvas.height !== im.naturalHeight) {
+    frameCanvas.width = im.naturalWidth; frameCanvas.height = im.naturalHeight;
+  }
+  frameCtx.drawImage(im, 0, 0);
+  return { src: frameCanvas, W: frameCanvas.width, H: frameCanvas.height };
+}
+function runGesture(m, f) {
+  var r = m.recognizeForVideo(f.src, nextTs());
+  clearOverlay();
+  var best = null, lm = r.landmarks || [];
+  for (var i = 0; i < lm.length; i++) {
+    S.du.drawConnectors(lm[i], S.mp.GestureRecognizer.HAND_CONNECTIONS, { color: COLOR, lineWidth: Math.max(2, f.W / 200) });
+    S.du.drawLandmarks(lm[i], { color: COLOR2, radius: Math.max(2, f.W / 200) });
+    var g = r.gestures && r.gestures[i] && r.gestures[i][0];
+    var box = bboxFromLm(lm[i]);
+    if (g) {
+      drawBoxNorm(box, g.categoryName + " " + g.score.toFixed(2), COLOR);
+      if (!best || g.score > best.score) best = { label: g.categoryName, score: g.score, box: box };
+    }
+  }
+  return best;
+}
+function runFace(m, f) {
+  var r = m.detectForVideo(f.src, nextTs());
+  clearOverlay();
+  var ds = r.detections || [];
+  if (!ds.length) return null;
+  var first = null;
+  for (var i = 0; i < ds.length; i++) {
+    var d = ds[i], c = d.categories && d.categories[0], sc = c ? c.score : 0;
+    var box = pxBoxToNorm(d.boundingBox, f.W, f.H);
+    drawBoxNorm(box, sc.toFixed(2), COLOR);
+    if (!first) first = { label: "face", score: sc, box: box, extra: { count: ds.length }, text: "人臉 ×" + ds.length };
+  }
+  return first;
+}
+function runObject(m, f) {
+  var r = m.detectForVideo(f.src, nextTs());
+  clearOverlay();
+  var ds = r.detections || [], best = null;
+  for (var i = 0; i < ds.length; i++) {
+    var d = ds[i], c = d.categories && d.categories[0];
+    if (!c || c.score < 0.5) continue;
+    var box = pxBoxToNorm(d.boundingBox, f.W, f.H);
+    drawBoxNorm(box, c.categoryName + " " + c.score.toFixed(2), COLOR);
+    if (!best || c.score > best.score) best = { label: c.categoryName, score: c.score, box: box };
+  }
+  return best;
+}
+function runPose(m, f) {
+  var r = m.detectForVideo(f.src, nextTs());
+  clearOverlay();
+  var lm = r.landmarks && r.landmarks[0];
+  if (!lm) return null;
+  S.du.drawConnectors(lm, S.mp.PoseLandmarker.POSE_CONNECTIONS, { color: COLOR, lineWidth: Math.max(2, f.W / 200) });
+  S.du.drawLandmarks(lm, { color: COLOR2, radius: Math.max(2, f.W / 200) });
+  function vis(i) { return lm[i].visibility === undefined ? 1 : lm[i].visibility; }
+  var leftUp = vis(11) > 0.5 && vis(15) > 0.5 && lm[15].y < lm[11].y;
+  var rightUp = vis(12) > 0.5 && vis(16) > 0.5 && lm[16].y < lm[12].y;
+  var label, score;
+  if (leftUp && rightUp) { label = "雙手舉高"; score = (vis(11) + vis(12) + vis(15) + vis(16)) / 4; }
+  else if (leftUp) { label = "抬左手"; score = (vis(11) + vis(15)) / 2; }
+  else if (rightUp) { label = "抬右手"; score = (vis(12) + vis(16)) / 2; }
+  else { label = "站立"; score = (vis(11) + vis(12)) / 2; }
+  var box = bboxFromLm(lm);
+  drawBoxNorm(box, label, COLOR);
+  return { label: label, score: score, box: box };
+}
+async function runTM(m, f) {
+  var preds = await m.predict(f.src);
+  clearOverlay();
+  var best = null;
+  for (var i = 0; i < preds.length; i++) {
+    if (!best || preds[i].probability > best.score) best = { label: preds[i].className, score: preds[i].probability, box: null };
+  }
+  if (best) drawText(best.label + " " + best.score.toFixed(2), S.mirror ? el.overlay.width : 0, fontSize() + 6, COLOR);
+  return best;
+}
+function report(res) {
+  var mode = S.modelMode;
+  if (!res) {
+    setResult("— 沒有偵測到", true);
+    sendVision(mode, "none", 0, null);
+    return;
+  }
+  setResult((res.text || res.label) + "  " + res.score.toFixed(2), false);
+  sendVision(mode, res.label, res.score, res.box, res.extra);
+}
+async function tick() {
+  var m = S.model;
+  if (!m) return;
+  var f = getFrame();
+  if (!f) return;
+  if (el.overlay.width !== f.W || el.overlay.height !== f.H) { el.overlay.width = f.W; el.overlay.height = f.H; }
+  var res;
+  switch (S.modelMode) {
+    case "gesture": res = runGesture(m, f); break;
+    case "face": res = runFace(m, f); break;
+    case "object": res = runObject(m, f); break;
+    case "pose": res = runPose(m, f); break;
+    case "tm": res = await runTM(m, f); break;
+    default: return;
+  }
+  S.frames++;
+  S.lastInfer = performance.now();
+  report(res);
+}
+function loop() {
+  if (!S.running || S.busy) return;
+  (function step() {
+    if (!S.running) return;
+    var now = performance.now();
+    if (now - S.fpsT >= 500) {
+      el.fps.textContent = (S.frames * 1000 / (now - S.fpsT)).toFixed(1) + " FPS";
+      S.frames = 0; S.fpsT = now;
+    }
+    var minGap = S.source === "stream" ? 120 : 0;
+    if (!S.busy && now - S.lastInfer >= minGap) {
+      S.busy = true;
+      tick().catch(function (e) {
+        showError("辨識發生錯誤：" + errText(e));
+      }).then(function () {
+        S.busy = false;
+        requestAnimationFrame(step);
+      });
+    } else {
+      requestAnimationFrame(step);
+    }
+  })();
+}
+
+/* ---------- 影像來源 ---------- */
+async function populateCams(currentId) {
+  try {
+    var devs = await navigator.mediaDevices.enumerateDevices();
+    var keep = el.cam.value;
+    el.cam.innerHTML = "";
+    var o0 = document.createElement("option");
+    o0.value = ""; o0.textContent = "自動（依前後鏡頭）";
+    el.cam.appendChild(o0);
+    var n = 0;
+    devs.forEach(function (d) {
+      if (d.kind !== "videoinput") return;
+      n++;
+      var o = document.createElement("option");
+      o.value = d.deviceId; o.textContent = d.label || ("鏡頭 " + n);
+      el.cam.appendChild(o);
+    });
+    var want = keep || "";
+    for (var i = 0; i < el.cam.options.length; i++) {
+      if (el.cam.options[i].value === want) { el.cam.value = want; break; }
+    }
+  } catch (e) { log("無法列出鏡頭：" + errText(e), "e"); }
+}
+async function startCam() {
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new Error(SECURE_MSG);
+  }
+  var id = el.cam.value;
+  var vc = id ? { deviceId: { exact: id } } : { facingMode: { ideal: S.facing } };
+  vc.width = { ideal: 640 }; vc.height = { ideal: 480 };
+  var stream = await navigator.mediaDevices.getUserMedia({ video: vc, audio: false });
+  S.stream = stream;
+  el.video.srcObject = stream;
+  try { await el.video.play(); } catch (e) { /* autoplay 可能在 iOS 拋出，metadata 載入後仍會播放 */ }
+  var tr = stream.getVideoTracks()[0];
+  var st = tr && tr.getSettings ? tr.getSettings() : {};
+  S.mirror = st.facingMode !== "environment";
+  el.stage.classList.toggle("mirror", S.mirror);
+  await populateCams();
+  if (st.deviceId) {
+    for (var i = 0; i < el.cam.options.length; i++) {
+      if (el.cam.options[i].value === st.deviceId && id) { el.cam.value = st.deviceId; }
+    }
+  }
+}
+function streamLoad() {
+  if (!S.active || S.source !== "stream") return;
+  var u = el.streamUrl.value.trim();
+  var sep = u.indexOf("?") >= 0 ? "&" : "?";
+  el.img.src = u + sep + "_t=" + Date.now();
+}
+function startStream() {
+  var u = el.streamUrl.value.trim();
+  if (!u) throw new Error("請先輸入相機板串流網址，例如 http://192.168.50.166/stream");
+  if (httpsMixed(u)) throw new Error(MIXED_MSG);
+  if (!/^https?:\/\//i.test(u)) throw new Error("串流網址要以 http:// 或 https:// 開頭");
+  S.mirror = false; S.noCors = false;
+  el.stage.classList.remove("mirror");
+  el.video.hidden = true; el.img.hidden = false;
+  el.img.crossOrigin = "anonymous";
+  el.img.onload = function () {
+    clearTimeout(S.streamTimer);
+    S.streamTimer = setTimeout(streamLoad, 200);
+  };
+  el.img.onerror = function () {
+    clearTimeout(S.streamTimer);
+    if (!S.active) return;
+    if (el.img.crossOrigin) {
+      el.img.removeAttribute("crossorigin");
+      S.noCors = true;
+      log("以 CORS 模式載入失敗，改用一般模式（可顯示，但可能無法辨識）", "s");
+      S.streamTimer = setTimeout(streamLoad, 300);
+    } else {
+      showError("無法載入相機板串流，請確認網址、板子電源，以及平板與板子在同一個網路：" + u);
+      S.streamTimer = setTimeout(streamLoad, 1500);
+    }
+  };
+  streamLoad();
+}
+function stopSource() {
+  clearTimeout(S.streamTimer);
+  el.img.onload = el.img.onerror = null;
+  el.img.removeAttribute("src");
+  if (S.stream) {
+    S.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) { /* 忽略 */ } });
+    S.stream = null;
+  }
+  el.video.srcObject = null;
+}
+async function start() {
+  if (S.active || S.starting) return;
+  S.starting = true;
+  clearError();
+  el.btnStart.disabled = true;
+  try {
+    S.source = el.source.value;
+    S.mode = el.mode.value;
+    S.active = true;
+    el.placeholder.hidden = true;
+    if (S.source === "cam") {
+      el.video.hidden = false; el.img.hidden = true;
+      await startCam();
+    } else {
+      startStream();
+    }
+    el.btnStop.disabled = false;
+    setResult("載入模型中…", true);
+    await loadModel();
+    S.running = true;
+    S.frames = 0; S.fpsT = performance.now();
+    loop();
+  } catch (e) {
+    showError(errText(e));
+    await stop(true);
+  } finally {
+    S.starting = false;
+    el.btnStart.disabled = S.active;
+  }
+}
+async function stop(keepError) {
+  try {
+    S.running = false;
+    S.active = false;
+    S.tok++;
+    await waitIdle();
+    stopSource();
+    clearOverlay();
+    el.placeholder.hidden = false;
+    el.stage.classList.remove("mirror");
+    setResult("—", true);
+    el.fps.textContent = "0.0 FPS";
+    el.btnStart.disabled = false;
+    el.btnStop.disabled = true;
+    if (!keepError) clearError();
+  } catch (e) { showError(errText(e)); }
+}
+async function restart() {
+  if (!S.active) return;
+  await stop();
+  await start();
+}
+
+/* ---------- UI ---------- */
+function updateUI() {
+  var src = el.source.value, mode = el.mode.value;
+  Array.prototype.forEach.call(document.querySelectorAll(".row-cam"), function (n) { n.hidden = src !== "cam"; });
+  Array.prototype.forEach.call(document.querySelectorAll(".row-stream"), function (n) { n.hidden = src !== "stream"; });
+  Array.prototype.forEach.call(document.querySelectorAll(".row-tm"), function (n) { n.hidden = mode !== "tm"; });
+  updateWarn();
+}
+function guard(fn) {
+  return function () {
+    try {
+      var r = fn.apply(this, arguments);
+      if (r && r.catch) r.catch(function (e) { showError(errText(e)); });
+    } catch (e) { showError(errText(e)); }
+  };
+}
+
+el.source.addEventListener("change", guard(function () { updateUI(); return restart(); }));
+el.mode.addEventListener("change", guard(function () { S.mode = el.mode.value; updateUI(); return reloadModel(); }));
+el.tmUrl.addEventListener("change", guard(function () { if (el.mode.value === "tm") return reloadModel(); }));
+el.tmFiles.addEventListener("change", guard(function () { if (el.mode.value === "tm") return reloadModel(); }));
+el.cam.addEventListener("change", guard(function () { return restart(); }));
+el.btnFlip.addEventListener("click", guard(function () {
+  S.facing = S.facing === "environment" ? "user" : "environment";
+  el.cam.value = "";
+  log("切換鏡頭：" + (S.facing === "user" ? "前鏡頭" : "後鏡頭"), "s");
+  return restart();
+}));
+el.streamUrl.addEventListener("input", guard(updateWarn));
+el.board.addEventListener("input", guard(updateWarn));
+el.btnStart.addEventListener("click", guard(start));
+el.btnStop.addEventListener("click", guard(function () { return stop(); }));
+el.btnConnect.addEventListener("click", guard(function () { if (S.wantWs) disconnect(); else connect(); }));
+el.board.addEventListener("keydown", function (ev) { if (ev.key === "Enter") guard(connect)(); });
+
+window.addEventListener("error", function (ev) { showError("頁面錯誤：" + (ev.message || "未知")); });
+window.addEventListener("unhandledrejection", function (ev) { showError("未處理的錯誤：" + errText(ev.reason)); });
+
+/* ---------- 初始化 ---------- */
+try {
+  var qs = new URLSearchParams(location.search);
+  var b = qs.get("board");
+  if (b) { el.board.value = normBoard(b); }
+  var sv = qs.get("stream");
+  if (sv) { el.streamUrl.value = sv; el.source.value = "stream"; }
+  updateUI();
+  setDot("", "板子未連線");
+  log("視覺頁就緒。請按「開始」啟動辨識" + (window.isSecureContext ? "" : "（目前不是安全來源，鏡頭可能無法使用）"), "s");
+  if (b) connect();
+} catch (e) { showError(errText(e)); }
+
+})();
+</script>
+</body>
+</html>

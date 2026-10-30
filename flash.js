@@ -3,7 +3,7 @@ const $ = (id) => document.getElementById(id);
 const log = (s, cls) => { const el = $("log"); el.hidden = false; const line = document.createElement("div"); if (cls) line.className = cls; line.textContent = s; el.appendChild(line); el.scrollTop = el.scrollHeight; };
 
 if (!("serial" in navigator)) { $("unsupported").hidden = false; $("agentBtn").disabled = true; }
-$("chip").addEventListener("change", (e) => { $("installBtn").setAttribute("manifest", `manifest-${e.target.value}.json`); $("uartHint").hidden = e.target.value !== "esp32"; });
+$("chip").addEventListener("change", (e) => { $("installBtn").setAttribute("manifest", `manifest-${e.target.value}.json`); $("uartHint").hidden = e.target.value !== "esp32"; $("ttlHint").hidden = e.target.value !== "esp32cam"; });
 
 // ESP Web Tools 的狀態事件：失敗時在對話框外面補中文說明（對話框在 shadow DOM 裡改不到）
 $("installBtn").addEventListener("state-changed", (ev) => {
@@ -46,10 +46,14 @@ fetch("boards.json").then((r) => r.json()).then((list) => {
 $("board").addEventListener("change", () => {
   const b = boards.find((x) => x.id === $("board").value);
   if (!b) return;
+  $("installBtn").style.display = b.firmware ? "" : "none";
+  $("agentBtn").disabled = !b.firmware;
+  if (!b.firmware) { $("boardHint").textContent = "這塊板子不是 ESP32 系列，這個網站不能幫它燒錄：請看專案 docs/Ameba評估.md（Realtek 要用官方工具燒）。"; $("uartHint").hidden = true; $("ttlHint").hidden = true; return; }
   $("chip").value = b.firmware;
   $("installBtn").setAttribute("manifest", `manifest-${b.firmware}.json`);
-  $("uartHint").hidden = b.boot_button;
-  $("boardHint").textContent = (b.boot_button ? "原生 USB：首燒前先按住 BOOT 再按 RST／重插 USB。" : "UART 晶片：瀏覽器可自動重置，不必按 BOOT。")
+  $("uartHint").hidden = b.boot_button || b.ttl;
+  $("ttlHint").hidden = !b.ttl;
+  $("boardHint").textContent = (b.ttl ? "沒有 USB：接 USB-TTL，IO0 接地後上電再燒。" : b.boot_button ? "原生 USB：首燒前先按住 BOOT 再按 RST／重插 USB。" : "UART 晶片：瀏覽器可自動重置，不必按 BOOT。")
     + (b.display ? " 有螢幕，lab.display 可畫圖。" : " 沒有螢幕，lab.display.text() 會顯示在主控台。") + "（選板子會自動選對應韌體）";
 });
 fetch("agent_bundle.json").then((r) => r.json()).then((b) => { bundle = b; $("agentVer").textContent = `代理程式 v${b.version}，${Object.keys(b.files).length} 個檔案`; });

@@ -4,7 +4,11 @@
   "name": "LILYGO T-QT Pro（ESP32-S3，128×128 GC9107）",
   "chip": "esp32s3",
   "firmware": "esp32s3",
+  "python": true,
+  "transport": "ws",
   "boot_button": true,
+  "ttl": false,
+  "camera": false,
   "display": true
  },
  {
@@ -12,7 +16,11 @@
   "name": "ESP32 DevKit（WROOM-32）",
   "chip": "esp32",
   "firmware": "esp32",
+  "python": true,
+  "transport": "ws",
   "boot_button": false,
+  "ttl": false,
+  "camera": false,
   "display": false
  },
  {
@@ -20,7 +28,11 @@
   "name": "LILYGO T-Display v1.1（ESP32，135×240 ST7789，16MB）",
   "chip": "esp32",
   "firmware": "esp32",
+  "python": true,
+  "transport": "ws",
   "boot_button": false,
+  "ttl": false,
+  "camera": false,
   "display": false
  },
  {
@@ -28,7 +40,11 @@
   "name": "ESP32-S2（Saola／DevKitM，無 BLE）",
   "chip": "esp32s2",
   "firmware": "esp32s2",
+  "python": true,
+  "transport": "ws",
   "boot_button": true,
+  "ttl": false,
+  "camera": false,
   "display": false
  },
  {
@@ -36,7 +52,11 @@
   "name": "ESP32-S3 DevKitC-1",
   "chip": "esp32s3",
   "firmware": "esp32s3",
+  "python": true,
+  "transport": "ws",
   "boot_button": true,
+  "ttl": false,
+  "camera": false,
   "display": false
  },
  {
@@ -44,7 +64,11 @@
   "name": "LILYGO T-Display S3（ESP32-S3，170×320 ST7789 並列 8 位元，16MB＋8MB PSRAM）",
   "chip": "esp32s3",
   "firmware": "esp32s3-octal",
+  "python": true,
+  "transport": "ws",
   "boot_button": true,
+  "ttl": false,
+  "camera": false,
   "display": false
  },
  {
@@ -52,7 +76,11 @@
   "name": "Seeed XIAO ESP32S3／Sense（8MB＋8MB PSRAM）",
   "chip": "esp32s3",
   "firmware": "esp32s3-octal",
+  "python": true,
+  "transport": "ws",
   "boot_button": true,
+  "ttl": false,
+  "camera": false,
   "display": false
  },
  {
@@ -60,7 +88,11 @@
   "name": "Seeed XIAO ESP32C3（RISC-V，4MB）",
   "chip": "esp32c3",
   "firmware": "esp32c3",
+  "python": true,
+  "transport": "ws",
   "boot_button": true,
+  "ttl": false,
+  "camera": false,
   "display": false
  },
  {
@@ -68,7 +100,11 @@
   "name": "ESP32-C3 SuperMini（RISC-V，4MB）",
   "chip": "esp32c3",
   "firmware": "esp32c3",
+  "python": true,
+  "transport": "ws",
   "boot_button": true,
+  "ttl": false,
+  "camera": false,
   "display": false
  },
  {
@@ -76,7 +112,47 @@
   "name": "ESP32-C6 DevKitC-1（RISC-V，Wi-Fi 6）",
   "chip": "esp32c6",
   "firmware": "esp32c6",
+  "python": true,
+  "transport": "ws",
   "boot_button": true,
+  "ttl": false,
+  "camera": false,
+  "display": false
+ },
+ {
+  "id": "esp32cam",
+  "name": "ESP32-CAM（AI-Thinker，OV2640 鏡頭，無 USB）",
+  "chip": "esp32",
+  "firmware": "esp32cam",
+  "python": true,
+  "transport": "ws",
+  "boot_button": false,
+  "ttl": true,
+  "camera": true,
+  "display": false
+ },
+ {
+  "id": "amb82_mini",
+  "name": "Realtek AMB82-MINI（Arduino C 代理子集，不能執行 Python）",
+  "chip": "rtl8735b",
+  "firmware": null,
+  "python": false,
+  "transport": "http",
+  "boot_button": false,
+  "ttl": false,
+  "camera": true,
+  "display": false
+ },
+ {
+  "id": "ameba_rtl8722dm",
+  "name": "Realtek RTL8722DM／BW16（AmebaD MicroPython，未驗證）",
+  "chip": "rtl8722dm",
+  "firmware": null,
+  "python": true,
+  "transport": "ws",
+  "boot_button": false,
+  "ttl": false,
+  "camera": false,
   "display": false
  },
  {
@@ -84,7 +160,11 @@
   "name": "其他 ESP32 系列板",
   "chip": "any",
   "firmware": "esp32s3",
+  "python": true,
+  "transport": "ws",
   "boot_button": true,
+  "ttl": false,
+  "camera": false,
   "display": false
  }
 ]

@@ -37,6 +37,7 @@ esp-web-install-button{--esp-tools-button-color:var(--accent);--esp-tools-button
 <li>放開 BOOT。螢幕會是黑的，這是正常的。</li>
 <li>按下面「安裝 MicroPython」，在跳出的視窗<b>重新選一次序列埠</b>（名稱可能變了，通常含 usbmodem、ESP32-S3、SLAB 或 wchusb）。</li>
 </ol>
+<div id="ttlHint" class="unsupported" hidden><strong>ESP32-CAM 沒有 USB 孔</strong>：要接一條 USB-TTL（3.3V 邏輯）：TTL TX→板子 U0R、TTL RX→板子 U0T、GND→GND、5V→5V；<b>首燒前把 IO0 用杜邦線接到 GND</b>，再按一下 RST（或重新上電），選 USB-TTL 的序列埠燒；燒完拔掉 IO0 的線再重新上電。相機版韌體是社群建置（MicroPython 1.27＋camera 模組，見 firmware/SOURCES.md）。鏡頭需要 PSRAM，請用 AI-Thinker 原版（有 PSRAM）。</div>
 <p id="uartHint" class="hint" hidden>這塊板子用 UART 晶片（CP2104／CH9102），瀏覽器能自動進下載模式，<b>不必按 BOOT</b>；若仍失敗再照上面四步。</p>
 <p class="hint">為什麼：板子跑 MicroPython 或 Arduino 程式時，USB 由程式自己接管，瀏覽器的自動重置訊號（DTR／RTS）到不了晶片，會出現「Installation failed: Failed to initialize」。手動按 BOOT＋RST 讓 ROM 接管 USB 就能燒。整顆抹除後重燒約 20 秒。</p>
 </div>
@@ -48,6 +49,7 @@ esp-web-install-button{--esp-tools-button-color:var(--accent);--esp-tools-button
 <option value="esp32s2">ESP32-S2</option>
 <option value="esp32c3">ESP32-C3（XIAO ESP32C3、SuperMini）</option>
 <option value="esp32c6">ESP32-C6</option>
+<option value="esp32cam">ESP32-CAM（AI-Thinker，相機版 MicroPython 1.27）</option>
 </select>
 <esp-web-install-button id="installBtn" manifest="manifest-esp32s3.json"><button slot="activate" class="primary">安裝 MicroPython</button></esp-web-install-button>
 <button id="autoResetBtn" type="button">先試自動重置（選用）</button>
