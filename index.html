@@ -65,9 +65,12 @@ esp-web-install-button{--esp-tools-button-color:var(--accent);--esp-tools-button
 </section>
 
 <section>
-<h2><span>3</span>完成</h2>
-<p>板子重開後，螢幕（或序列埠）會顯示名稱 <code>esp32lab-xxxx.local</code> 與 IP。在 App 的「裝置」頁輸入它，或由教室伺服器自動列出。</p>
-<p class="hint">驗證：瀏覽器開 <code>http://esp32lab-xxxx.local/info</code> 應回傳 JSON；<code>/screen.bmp</code> 是目前畫面。</p>
+<h2><span>3</span>完成：打開板子上的網頁版 IDE</h2>
+<p>板子重開後，螢幕（或序列埠）會顯示名稱 <code>esp32lab-xxxx.local</code> 與 IP。之後都不必再接 USB：
+同一個 Wi-Fi 的 iPad／手機／電腦用瀏覽器打開板子，就能寫程式、貼上 AI 的程式、看主控台、遙控。</p>
+<p><a id="openIde" class="btn" href="#" hidden target="_blank">打開 http://esp32lab-xxxx.local</a></p>
+<p class="hint">網址在步驟 2 完成後會自動填上；也可以手動輸入 <code>http://esp32lab-xxxx.local</code>（mDNS 不通時改用 IP）。驗證：<code>/info</code> 應回傳 JSON；<code>/screen.bmp</code> 是目前畫面。
+教室伺服器（老師電腦）的 <code>http://老師IP:8765</code> 提供同一份 IDE 當備援，並有老師頁可一鍵更新全班板子。</p>
 </section>
 </main>
 <script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>

@@ -120,10 +120,11 @@ $("agentBtn").addEventListener("click", async () => {
     }
     const host = await repl.exec("import machine,ubinascii\nprint('esp32lab-'+ubinascii.hexlify(machine.unique_id()).decode()[-4:])");
     log(`完成。板子名稱：${host.trim()}.local`, "ok");
+    const a = $("openIde"); a.href = `http://${host.trim()}.local/`; a.textContent = `打開 http://${host.trim()}.local`; a.hidden = false;
     log("重開板子…");
     await repl.write("\x02"); await new Promise((r) => setTimeout(r, 200));
     repl.buf = ""; await repl.write("\x04");              // 軟重開，跑 main.py
-    try { await repl.waitFor("esp32-ai-lab ", 30000); const line = await repl.waitFor("\n", 2000); const m = line.match(/mode=(\w+) ip=([\d.]+)/); log(m && m[1] === "sta" ? `已連上 Wi-Fi，IP ${m[2]}` : `板子開了熱點（${line.trim()}）`, m && m[1] === "sta" ? "ok" : ""); }
+    try { await repl.waitFor("esp32-ai-lab ", 30000); const line = await repl.waitFor("\n", 2000); const m = line.match(/mode=(\w+) ip=([\d.]+)/); log(m && m[1] === "sta" ? `已連上 Wi-Fi，IP ${m[2]}` : `板子開了熱點（${line.trim()}）`, m && m[1] === "sta" ? "ok" : ""); if (m && m[1] === "sta") { const a = $("openIde"); a.href = `http://${m[2]}/`; a.textContent = `打開 http://${m[2]}（${host.trim()}.local）`; } }
     catch (e) { log("25 秒內沒看到連線訊息；看板子螢幕或稍後用 http://" + host.trim() + ".local/info 確認"); }
   } catch (e) {
     log("失敗：" + e.message, "bad");
