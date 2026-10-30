@@ -3,7 +3,7 @@ const $ = (id) => document.getElementById(id);
 const log = (s, cls) => { const el = $("log"); el.hidden = false; const line = document.createElement("div"); if (cls) line.className = cls; line.textContent = s; el.appendChild(line); el.scrollTop = el.scrollHeight; };
 
 if (!("serial" in navigator)) { $("unsupported").hidden = false; $("agentBtn").disabled = true; }
-$("chip").addEventListener("change", (e) => { $("installBtn").setAttribute("manifest", `manifest-${e.target.value}.json`); });
+$("chip").addEventListener("change", (e) => { $("installBtn").setAttribute("manifest", `manifest-${e.target.value}.json`); $("uartHint").hidden = e.target.value !== "esp32"; });
 
 // ESP Web Tools 的狀態事件：失敗時在對話框外面補中文說明（對話框在 shadow DOM 裡改不到）
 $("installBtn").addEventListener("state-changed", (ev) => {
@@ -35,7 +35,23 @@ $("autoResetBtn").addEventListener("click", async () => {
   }
 });
 
-let bundle = null;
+let bundle = null, boards = [];
+fetch("boards.json").then((r) => r.json()).then((list) => {
+  boards = list;
+  const sel = $("board");
+  list.forEach((b) => { const o = document.createElement("option"); o.value = b.id; o.textContent = b.name; sel.appendChild(o); });
+  sel.value = "tqt_pro";
+  sel.dispatchEvent(new Event("change"));
+});
+$("board").addEventListener("change", () => {
+  const b = boards.find((x) => x.id === $("board").value);
+  if (!b) return;
+  $("chip").value = b.firmware;
+  $("installBtn").setAttribute("manifest", `manifest-${b.firmware}.json`);
+  $("uartHint").hidden = b.boot_button;
+  $("boardHint").textContent = (b.boot_button ? "原生 USB：首燒前先按住 BOOT 再按 RST／重插 USB。" : "UART 晶片：瀏覽器可自動重置，不必按 BOOT。")
+    + (b.display ? " 有螢幕，lab.display 可畫圖。" : " 沒有螢幕，lab.display.text() 會顯示在主控台。") + "（選板子會自動選對應韌體）";
+});
 fetch("agent_bundle.json").then((r) => r.json()).then((b) => { bundle = b; $("agentVer").textContent = `代理程式 v${b.version}，${Object.keys(b.files).length} 個檔案`; });
 
 class Repl {

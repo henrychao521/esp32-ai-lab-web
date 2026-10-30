@@ -1,0 +1,90 @@
+[
+ {
+  "id": "tqt_pro",
+  "name": "LILYGO T-QT Pro（ESP32-S3，128×128 GC9107）",
+  "chip": "esp32s3",
+  "firmware": "esp32s3",
+  "boot_button": true,
+  "display": true
+ },
+ {
+  "id": "devkit",
+  "name": "ESP32 DevKit（WROOM-32）",
+  "chip": "esp32",
+  "firmware": "esp32",
+  "boot_button": false,
+  "display": false
+ },
+ {
+  "id": "tdisplay",
+  "name": "LILYGO T-Display v1.1（ESP32，135×240 ST7789，16MB）",
+  "chip": "esp32",
+  "firmware": "esp32",
+  "boot_button": false,
+  "display": false
+ },
+ {
+  "id": "esp32s2",
+  "name": "ESP32-S2（Saola／DevKitM，無 BLE）",
+  "chip": "esp32s2",
+  "firmware": "esp32s2",
+  "boot_button": true,
+  "display": false
+ },
+ {
+  "id": "esp32s3_devkitc",
+  "name": "ESP32-S3 DevKitC-1",
+  "chip": "esp32s3",
+  "firmware": "esp32s3",
+  "boot_button": true,
+  "display": false
+ },
+ {
+  "id": "tdisplay_s3",
+  "name": "LILYGO T-Display S3（ESP32-S3，170×320 ST7789 並列 8 位元，16MB＋8MB PSRAM）",
+  "chip": "esp32s3",
+  "firmware": "esp32s3-octal",
+  "boot_button": true,
+  "display": false
+ },
+ {
+  "id": "xiao_esp32s3",
+  "name": "Seeed XIAO ESP32S3／Sense（8MB＋8MB PSRAM）",
+  "chip": "esp32s3",
+  "firmware": "esp32s3-octal",
+  "boot_button": true,
+  "display": false
+ },
+ {
+  "id": "xiao_esp32c3",
+  "name": "Seeed XIAO ESP32C3（RISC-V，4MB）",
+  "chip": "esp32c3",
+  "firmware": "esp32c3",
+  "boot_button": true,
+  "display": false
+ },
+ {
+  "id": "esp32c3_supermini",
+  "name": "ESP32-C3 SuperMini（RISC-V，4MB）",
+  "chip": "esp32c3",
+  "firmware": "esp32c3",
+  "boot_button": true,
+  "display": false
+ },
+ {
+  "id": "esp32c6",
+  "name": "ESP32-C6 DevKitC-1（RISC-V，Wi-Fi 6）",
+  "chip": "esp32c6",
+  "firmware": "esp32c6",
+  "boot_button": true,
+  "display": false
+ },
+ {
+  "id": "generic",
+  "name": "其他 ESP32 系列板",
+  "chip": "any",
+  "firmware": "esp32s3",
+  "boot_button": true,
+  "display": false
+ }
+]
