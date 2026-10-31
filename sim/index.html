@@ -115,7 +115,8 @@ svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;
 kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 5px;background:var(--bg)}
 #btn-pal{display:none}
 @media (max-width:900px){
- body{grid-template-rows:auto minmax(0,1fr) var(--bottom-m,42vh);grid-template-columns:1fr;grid-template-areas:"top" "canvas" "bottom"}
+ body{grid-template-rows:auto minmax(0,1fr) var(--bottom-m,42vh);grid-template-columns:minmax(0,1fr);grid-template-areas:"top" "canvas" "bottom";width:100vw;overflow:hidden}
+ header,.bottom,.bottom .pane,#editor,#cm,.pane-col{min-width:0;max-width:100vw}
  body.big-bottom{--bottom-m:66vh}
  header{flex-wrap:wrap;height:auto;padding:4px 8px;row-gap:4px;overflow:visible;white-space:normal;padding-top:calc(4px + env(safe-area-inset-top))}
  header>b,header .sep,#engine-load{display:none!important}
