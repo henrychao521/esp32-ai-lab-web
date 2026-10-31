@@ -38,7 +38,7 @@ export async function createEngine(kind = "micropython-wasm", opts = {}) {
 
 /** 串流下載多個檔案並回報總進度；回傳 {key: blobURL}。已抓過的（同頁）直接重用。 */
 const preloadCache = {};
-async function preloadAll(files, onProgress) {
+export async function preloadAll(files, onProgress) {
   const keys = Object.keys(files), sizes = {}, done = {}, out = {};
   const report = (label) => { if (!onProgress) return; const t = keys.reduce((a, k) => a + (sizes[k] || 0), 0), d = keys.reduce((a, k) => a + (done[k] || 0), 0); onProgress(d, t, label); };
   await Promise.all(keys.map(async (k) => {

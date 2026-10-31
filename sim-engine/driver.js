@@ -129,7 +129,7 @@ export class LabDriver {
   async writeDriversFor(program) {
     this.driversWritten = this.driversWritten || new Set();
     for (const [file, d] of Object.entries(DRIVER_FILES)) {
-      if (this.driversWritten.has(file) || !d.modules.some((m) => new RegExp('(^|\\n)\\s*(import|from)\\s+' + m + '\\b').test(program))) continue;
+      if (this.driversWritten.has(file) || !d.modules.some((m) => new RegExp('(^|\\n)[ \\t]*(import[^\\n]*\\b' + m + '\\b|from[ \\t]+' + m + '\\b)').test(program))) continue;
       const want = enc.encode(d.src).length;
       const r = await this.rawCommand(`import os\nf=open(${pyLiteral(file)},'w')\nf.write(${pyLiteral(d.src)})\nf.close()\nprint(os.stat(${pyLiteral(file)})[6])\n`);
       const got = Number((r.out.trim().split('\n').pop() || '').trim());
