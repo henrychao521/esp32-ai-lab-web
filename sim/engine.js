@@ -1,80 +1,97 @@
-// engine.js — 模擬器的「執行引擎」可插拔介面。
-// 畫布與電路解法只透過這個介面跟執行端講話，所以之後可以換成 esp32sim（跑未修改的韌體映像，Web Worker）而不動畫布。
-//
-//   const engine = await createEngine("micropython-wasm", { board: "tqt_pro" });
-//   engine.onPinChange((pin, state) => ...)     // state = { mode: "in"|"out"|"pwm"|"adc", level: 0|1, pull: 0|1, pwm: {freq, duty16}|null }
-//   engine.onConsole((msg) => ...)               // msg 與板子 /ws 事件同形：out／err／start／done／sensor／display
-//   await engine.boot(program, name)             // 載入並開始執行（像 /run）
-//   await engine.stop(); await engine.reset(); await engine.check(code)
-//   engine.setPin(pin, level)                    // 外部電路把輸入腳拉到 0／1
-//   engine.setAnalog(pin, volts)                 // 外部電路給 ADC 腳的電壓（0～3.3 V）
-//   engine.pwmState(pin) → {freq, duty16}|null
-//   engine.pins() → { [pin]: state }             // 目前所有已被程式碰過的腳位
-//   engine.pressButton(pin, down)                // 板載按鍵
-//   engine.cmd(obj)                              // 遙控／視覺指令（op:"joy"…）給 @lab.on_cmd
-//   engine.screenRGBA() / engine.takeScreenDirty()   // T-QT 螢幕（沒有就 null）
-//   engine.info() / engine.running / engine.kind / engine.capabilities
-//
-// 第一個實作：MicroPython WebAssembly（vboard/vboard.js）。第二個（之後）：esp32sim worker。
-// 規則：machine 替身不再加深；I2C／SPI 周邊的協定解碼放元件層（例如 SSD1306 解碼器吃 engine 送出的位元組事件），兩個引擎共用。
-
+// engine.js — 模擬器執行引擎的共用介面（規格：docs/sim-engine-api.md v1）。
+// 畫布只透過這裡取得引擎；引擎 A（MicroPython wasm）在這個檔；引擎 B（esp32sim）由 sim-engine/engine-esp32sim.js 提供，畫布不碰那個目錄。
+export const API_VERSION = 1;
 export const ENGINES = {
-  "micropython-wasm": { label: "MicroPython WebAssembly（秒開，lab 替身）", module: "../vboard/vboard.js" },
-  // "esp32sim": { label: "esp32sim（未修改韌體映像，Web Worker）", module: "./engine-esp32sim.js" },   // 待主對話定案
+  "micropython-wasm": { label: "快速（MicroPython wasm）", note: "秒開；lab 模組直接對應；沒有精確時序、單步與 Arduino", module: null },
+  "esp32sim": { label: "真韌體（esp32sim）", note: "跑未修改的 ESP32-S3 韌體，時序精確，可單步，可 Arduino C；開機較慢", module: "../sim-engine/engine-esp32sim.js" },
 };
 
 export async function createEngine(kind = "micropython-wasm", opts = {}) {
   if (kind === "micropython-wasm") return createWasmEngine(opts);
+  if (kind === "esp32sim") {
+    const mod = await import(new URL(ENGINES.esp32sim.module, import.meta.url).href);
+    const e = await mod.createEsp32simEngine(opts);
+    if (e.apiVersion !== API_VERSION) throw new Error("引擎 B 的 apiVersion 不符：" + e.apiVersion);
+    return e;
+  }
   throw new Error("未知的引擎：" + kind);
 }
 
+/** 小型事件匯流排 */
+function makeEmitter() {
+  const subs = {};
+  return {
+    on(name, cb) { (subs[name] = subs[name] || []).push(cb); return () => { const a = subs[name] || []; const i = a.indexOf(cb); if (i >= 0) a.splice(i, 1); }; },
+    emit(name, ...args) { for (const cb of subs[name] || []) { try { cb(...args); } catch (e) { console.error("engine listener", name, e); } } },
+  };
+}
+
+// ---------- 引擎 A：MicroPython WebAssembly（vboard/vboard.js） ----------
 async function createWasmEngine(opts) {
   const mod = await import(new URL("../vboard/vboard.js", import.meta.url).href);
-  const pinCbs = [], conCbs = [];
-  let prev = {};
+  const em = makeEmitter();
+  const board = opts.board || "tqt_pro";
+  let prev = {}, t0 = performance.now(), status = "idle";
   const vb = await mod.createVirtualBoard({
-    board: opts.board || "tqt_pro",
-    onEvent: (m) => { for (const cb of conCbs) { try { cb(m); } catch (e) {} } },
-    onState: () => diffPins(),
+    board,
+    onEvent: (m) => {
+      if (m.t === "start") { status = "running"; em.emit("state", status); }
+      if (m.t === "done") { status = "idle"; em.emit("state", status); }
+      em.emit("console", m);
+    },
+    onState: () => diff(),
   });
-  function snapshotPins() {
+  const nowUs = () => Math.round((performance.now() - t0) * 1000);
+  function snapshot() {
     const st = vb.state, out = {};
     const all = new Set([...Object.keys(st.pins), ...Object.keys(st.pinModes), ...Object.keys(st.pwm)]);
     for (const p of all) {
       const mode = st.pinModes[p] || (st.pins[p] !== undefined ? "out" : "in");
-      out[p] = { mode, level: mode === "out" ? (st.pins[p] ?? 0) : (st.inputs[p] ?? 0), pull: st.pinPulls?.[p] ?? 0, pwm: st.pwm[p] ? { ...st.pwm[p] } : null };
+      const pw = st.pwm[p] && st.pwm[p].freq > 0 ? { hz: st.pwm[p].freq, duty: st.pwm[p].duty16 / 65535 } : null;
+      out[p] = { mode, level: mode === "out" || mode === "pwm" ? (st.pins[p] ?? 0) : (st.inputs[p] ?? 0), pull: st.pinPulls?.[p] ?? 0, pwm: pw };
     }
     return out;
   }
-  function diffPins() {
-    const cur = snapshotPins();
+  function diff() {
+    const cur = snapshot(), t = nowUs();
     for (const [p, s] of Object.entries(cur)) {
-      const o = prev[p];
-      if (!o || o.mode !== s.mode || o.level !== s.level || o.pull !== s.pull || JSON.stringify(o.pwm) !== JSON.stringify(s.pwm)) for (const cb of pinCbs) { try { cb(Number(p), s); } catch (e) {} }
+      const o = prev[p], g = Number(p);
+      if (!o || o.mode !== s.mode || o.pull !== s.pull) em.emit("pinmode", g, s.mode, s.pull);
+      if (!o || o.level !== s.level) em.emit("pin", g, s.level, t);
+      if (JSON.stringify(o?.pwm || null) !== JSON.stringify(s.pwm)) em.emit("pwm", g, s.pwm ? s.pwm.hz : 0, s.pwm ? s.pwm.duty : 0);
     }
+    if (board === "tqt_pro" && vb.takeScreenDirty()) { screenDirty = true; em.emit("screen"); }
     prev = cur;
   }
+  let screenDirty = false;
+  const held = {};
   return {
-    kind: "micropython-wasm",
-    capabilities: { screen: (opts.board || "tqt_pro") === "tqt_pro", i2c: false, spi: false, uart: false, cycleAccurate: false },
-    get running() { return vb.state.status === "running"; },
-    get board() { return vb.board; },
-    onPinChange(cb) { pinCbs.push(cb); return () => { const i = pinCbs.indexOf(cb); if (i >= 0) pinCbs.splice(i, 1); }; },
-    onConsole(cb) { conCbs.push(cb); return () => { const i = conCbs.indexOf(cb); if (i >= 0) conCbs.splice(i, 1); }; },
-    async boot(program, name = "main.py") { const r = await vb.run(program, name); diffPins(); return r; },
+    apiVersion: API_VERSION, kind: "micropython-wasm", board,
+    capabilities: { screen: board === "tqt_pro", i2c: false, spi: false, uart: false, rmt: false, step: false, cycleAccurate: false, arduino: false },
+    get running() { return status === "running"; },
+    on: em.on,
+    async boot({ program, name } = {}) { t0 = performance.now(); prev = {}; const r = await vb.run(program || "", name || "main.py"); diff(); return r; },
+    run() {},
+    pause() { return vb.stop(); },
+    step() { return false; },
+    async reset() { await vb.reset(); prev = {}; status = "idle"; em.emit("state", status); diff(); },
     stop: () => vb.stop(),
-    async reset() { await vb.reset(); prev = {}; diffPins(); },
-    check: (code) => vb.check(code),
-    setPin(pin, level) { vb.setInput(pin, level ? 1 : 0); },
-    setAnalog(pin, volts) { vb.setAdc(pin, Math.round(Math.max(0, Math.min(3.3, volts)) / 3.3 * 4095)); },
-    pwmState(pin) { const p = vb.state.pwm[pin]; return p ? { ...p } : null; },
-    pins: snapshotPins,
-    pressButton: (pin, down) => vb.pressButton(pin, down),
-    cmd: (c) => vb.cmd(c),
-    screenRGBA: () => (vb.board === "tqt_pro" ? vb.screenRGBA() : null),
-    takeScreenDirty: () => vb.takeScreenDirty(),
+    check: (program) => vb.check(program),
+    time: nowUs,
+    setSpeed() {},
+    schedule(tUs, fn) { setTimeout(fn, Math.max(0, (tUs - nowUs()) / 1000)); },
     info: () => vb.info(),
-    /** 給舊程式碼的逃生門（App 的 VirtualBoardHost 等仍直接用 vboard）；畫布不要用。 */
+    pins: snapshot,
+    setPin(gpio, level) { vb.setInput(gpio, level ? 1 : 0); },
+    setAnalog(gpio, volts) { vb.setAdc(gpio, Math.round(Math.max(0, Math.min(3.3, volts)) / 3.3 * 4095)); },
+    pressButton(g, ms) { const gpio = typeof g === "number" ? g : ({ boot: 0, left: 0, key: board === "tdisplay_s3" ? 14 : 47, right: board === "tdisplay_s3" ? 14 : 47 })[String(g).toLowerCase()] ?? 0; vb.pressButton(gpio, true); if (ms) { clearTimeout(held[gpio]); held[gpio] = setTimeout(() => vb.pressButton(gpio, false), ms); } },
+    releaseButton(g) { const gpio = typeof g === "number" ? g : 0; clearTimeout(held[gpio]); vb.pressButton(gpio, false); },
+    cmd: (c) => vb.cmd(c),
+    uartWrite() {},
+    i2cReply() {},
+    screenRGBA: () => (board === "tqt_pro" ? vb.screenRGBA() : null),
+    takeScreenDirty() { const d = screenDirty; screenDirty = false; return d; },
+    sensorValue() { return null; },
     _vb: vb,
   };
 }

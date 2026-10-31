@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "note": "執行前保護檢查的規則單一來源：tools/build_rules.py 產生 IDE 的 guard 規則表與 iOS 的 GuardRules.swift。re 是 JavaScript／ICU 共用的正規表示式（不用 lookbehind）。",
+  "rules": [
+    {"id": "wifi", "re": "\\bnetwork\\.WLAN\\b|\\bWLAN\\s*\\(|\\.connect\\s*\\(\\s*(WIFI|SSID|ssid|wifi|\"|')",
+     "reason": "程式自己連 Wi-Fi，會把板子切到別的網路而失聯（Wi-Fi 由代理程式管理，已經連好）",
+     "fix": "刪掉 import network、WLAN、connect 這幾行，直接用網路"},
+    {"id": "while_true", "re": "\\bwhile\\s+(True|1)\\s*:",
+     "reason": "while True 停止鍵按了也停不下來", "fix": "改成 while lab.running():"},
+    {"id": "time_sleep", "re": "\\b(time|utime)\\.sleep(_ms|_us)?\\s*\\(|\\bfrom\\s+(time|utime)\\s+import\\s+[^\\n]*\\bsleep",
+     "reason": "time.sleep 期間不會檢查停止鍵", "fix": "改用 lab.sleep(秒)（例如 time.sleep_ms(500) → lab.sleep(0.5)）"},
+    {"id": "display_driver", "re": "\\bmachine\\.SPI\\b|\\bSPI\\s*\\(|\\bclass\\s+(GC9107|ST7789|ST7735|ILI9341|SSD1306)\\b|\\bframebuf\\.FrameBuffer\\s*\\(",
+     "reason": "自己初始化 SPI／螢幕驅動會跟代理程式的螢幕打架（畫面黑掉或背光反相）",
+     "fix": "螢幕已經準備好：用 lab.display（framebuf API：fill、text、rect…，最後 lab.display.show()）"},
+    {"id": "forbidden", "re": "\\bmachine\\.(reset|soft_reset|deepsleep|lightsleep)\\s*\\(|\\bimport\\s+webrepl\\b|\\bwebrepl\\.start\\b|\\bos\\.remove\\s*\\(\\s*['\"](main|boot)\\.py",
+     "reason": "重開、睡眠、WebREPL 或刪掉開機檔會讓代理程式停擺", "fix": "把這行拿掉；要重開板子用主控台的「重開板子」按鈕"},
+    {"id": "thread", "re": "\\bimport\\s+_thread\\b|\\b_thread\\.start_new_thread\\b",
+     "reason": "另開執行緒的程式停止鍵管不到，也容易把記憶體吃光", "fix": "把工作放進 while lab.running(): 迴圈裡輪流做"}
+  ],
+  "pin_re": "\\bPin\\s*\\(\\s*(\\d+)|\\b(?:sck|mosi|miso|cs|dc|rst|bl|pin)\\s*=\\s*Pin\\s*\\(\\s*(\\d+)|\\b(?:ADC|PWM)\\s*\\(\\s*Pin\\s*\\(\\s*(\\d+)",
+  "pin_allow_re": "可當輸入|lab\\.led",
+  "reserved_reason": "GPIO{n} 是{why}，被程式搶走板子會失聯或壞掉",
+  "reserved_fix": "換成可用腳位：{usable}"
+}

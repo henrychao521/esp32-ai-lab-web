@@ -94,7 +94,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
   const pins = io.pins || {}, modes = io.modes || {}, pulls = io.pulls || {}, pwm = io.pwm || {}, ui = io.ui || {};
   const burned = new Set(io.burned || []);
   const warnings = [];
-  const warn = (code, part, brief, detail) => { if (!warnings.some((w) => w.code === code && w.part === part)) warnings.push({ code, part, brief, detail }); };
+  const warn = (code, part, brief, why, fix, extra = {}) => { if (!warnings.some((w) => w.code === code && w.part === part)) warnings.push({ code, part, brief, why, fix, detail: why + " " + fix, severity: /BURN|SHORT|OVERCURRENT|SUPPLY_MIX/.test(code) ? "error" : "warning", ...extra }); };
 
   // 節點編號：GND 網路＝參考（0）。沒有任何東西接 GND 時全部浮接。
   const gndRoot = N.find("board:GND");
@@ -184,15 +184,30 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     st.leds[L.key] = { on, i, vA, vC, burned: burned.has(L.key) };
     if (i > LED_I_MAX && !burned.has(L.key)) {
       burned.add(L.key); st.leds[L.key].burned = true; st.leds[L.key].on = false;
-      warn("LED_BURN", L.part, `${L.part} 燒毀了（${(i * 1000).toFixed(0)} mA）`, "LED 沒有串聯限流電阻（或電阻太小），電流超過 30 mA。拆掉後換一顆，並串 220Ω～1kΩ 電阻。");
+      warn("LED_BURN", L.part, `${L.part} 燒毀了（${(i * 1000).toFixed(0)} mA）`, "為什麼：LED 一導通電壓就被夾在順向壓降（紅約 1.8 V），沒有電阻分壓的話電流只受腳位內阻限制，會超過 LED 的上限 30 mA，發熱燒斷。", "怎麼改：刪掉這顆 LED 重放一顆，在 LED 的長腳（A）和 GPIO 之間串 220 Ω～1 kΩ 電阻（3.3 V 時 220 Ω 約 7 mA，剛好亮）。");
     }
-    if (!on && vC - vA > vf) warn("LED_REVERSE", L.part, `${L.part} 接反了`, "LED 有方向：長腳（A，＋）接高電位、短腳（C，−）接 GND。接反不會亮，不會壞。");
+    if (!on && vC - vA > vf) warn("LED_REVERSE", L.part, `${L.part} 接反了`, "為什麼：LED 是二極體，只讓電流從長腳（A，陽極）流向短腳（C，陰極）；反向時不導通，所以不亮（也不會壞）。", "怎麼改：把 LED 轉 180°，長腳那一側接 GPIO 或電阻、短腳接 GND。");
   }
   for (const e of elems) {
     if (e.type !== "V") continue;
     const i = (e.v - (V(e.a) - V(e.b))) * e.g;   // 流出源的電流
-    if (e.tag.startsWith("supply:") && i > SHORT_I) warn("SHORT", "board", `${e.tag.slice(7)} 短路（${i.toFixed(1)} A）`, "電源正極和 GND 之間沒有任何元件，或 LED／按鍵把它們直接接通。真板子會重開或燒毀保護元件。");
-    if (e.tag.startsWith("gpio:") && Math.abs(i) > GPIO_I_MAX) warn("GPIO_OVERCURRENT", "board", `GPIO${e.tag.slice(5)} 電流 ${(Math.abs(i) * 1000).toFixed(0)} mA 超過 40 mA`, "ESP32 單一腳位最多 40 mA。中間要有電阻（LED 串 220Ω），大電流負載用電晶體或繼電器。");
+    if (e.tag.startsWith("supply:") && i > SHORT_I) warn("SHORT", "board", `${e.tag.slice(7)} 短路（${i.toFixed(1)} A）`, "為什麼：電源正極和 GND 之間沒有任何元件擋著（或按鍵按下、LED 導通後變成直通），電流只受電源內阻限制，真板子會重開、發燙或燒掉保護元件。", "怎麼改：找出畫紅的那幾條線，電源和 GND 之間一定要有負載（LED＋電阻、蜂鳴器…），不要直接連。模擬已暫停，修好再執行。", { net: N.find("board:" + e.tag.slice(7)) });
+    if (e.tag.startsWith("gpio:") && Math.abs(i) > GPIO_I_MAX) warn("GPIO_OVERCURRENT", "board", `GPIO${e.tag.slice(5)} 電流 ${(Math.abs(i) * 1000).toFixed(0)} mA 超過 40 mA`, "為什麼：ESP32 每支腳位最多只能供／吸 40 mA，直接驅動低阻抗負載（蜂鳴器、馬達、沒電阻的 LED）會超過，久了腳位會壞。", "怎麼改：LED 串 220 Ω 以上電阻；蜂鳴器、馬達、繼電器用電晶體（或 MOSFET）當開關，由 GPIO 控制電晶體。");
+  }
+  // 3V3 與 5V 接在一起（或 VIN）：兩個電源互灌
+  const supplies = Object.keys(B.power).filter((k) => B.power[k] > 0);
+  for (let i = 0; i < supplies.length; i++) for (let j = i + 1; j < supplies.length; j++) {
+    if (N.same("board:" + supplies[i], "board:" + supplies[j])) warn("SUPPLY_MIX", "board", `${supplies[i]} 和 ${supplies[j]} 接在一起`, "為什麼：3.3 V 和 5 V 是兩個不同的電源，直接相連會讓 5 V 灌進 3.3 V 穩壓器與晶片，ESP32 的腳位只能承受 3.3 V。", "怎麼改：同一條線路只用一種電源；需要 5 V 的元件（伺服）接 5V 與 GND，訊號線仍用 3.3 V 的 GPIO。", { net: N.find("board:" + supplies[i]) });
+  }
+  // 按鍵浮接：一側接 GPIO、另一側沒接 GND／3V3，且 GPIO 沒開上拉
+  for (const [id, p] of Object.entries(circuit.parts)) if (p.type === "pushbutton") {
+    const sides = [["1.l"], ["2.l"]].map((pins) => N.nets[N.find(id + ":" + pins[0])] || []);
+    const gp = (members) => members.filter((m) => m.startsWith("board:") && !isNaN(Number(m.slice(6)))).map((m) => Number(m.slice(6)));
+    const toPower = (members) => members.some((m) => m === "board:GND" || m === "board:3V3");
+    for (let k = 0; k < 2; k++) {
+      const g = gp(sides[k]); const other = sides[1 - k];
+      if (g.length && !toPower(other) && !gp(other).length && !pulls[g[0]]) warn("BTN_FLOAT", id, `${id} 讀值會亂跳（浮接）`, "為什麼：按鍵沒按下時 GPIO 哪裡都沒接，電位不定（浮接），程式讀到的 0／1 會隨機變化。", "怎麼改：按鍵另一側接 GND，程式用 Pin(n, Pin.IN, Pin.PULL_UP)（內部上拉：沒按＝1、按下＝0）；或另一側接 3V3 並外加 10 kΩ 下拉電阻到 GND。");
+    }
   }
   // 浮接／未共地：元件有腳位所在網路只有自己一個端點
   for (const [id, p] of Object.entries(circuit.parts)) {
@@ -202,12 +217,12 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       if (p.type === "slide-switch" && (pin === "1" || pin === "3")) continue;
       const members = N.nets[N.find(id + ":" + pin)] || [];
       const others = members.filter((m) => !m.startsWith(id + ":") && !m.startsWith("bb:"));
-      if (others.length === 0) warn("OPEN", id, `${id} 的 ${pin} 沒接到東西`, "每隻腳都要接線（或插在和別的腳同一排的麵包板孔）。");
+      if (others.length === 0) warn("OPEN", id, `${id} 的 ${pin} 沒接到東西`, "為什麼：電流要有完整回路，一隻腳懸空等於斷路，整個元件不會動作。", "怎麼改：把這隻腳接線到板子腳位或其他元件（插麵包板時，同一欄的 5 個孔是相通的）。");
     }
   }
   if (Object.keys(N.nets[gndRoot] || {}).length <= 1 && Object.keys(circuit.parts).length) {
     const gndMembers = (N.nets[gndRoot] || []).filter((m) => !m.startsWith("bb:"));
-    if (gndMembers.length <= 1) warn("NO_GND", "board", "沒有任何東西接到 GND", "電路要有回路：負極那一側要回到板子的 GND，否則什麼都不會動。");
+    if (gndMembers.length <= 1) warn("NO_GND", "board", "沒有任何東西接到 GND", "為什麼：所有電壓都是相對 GND 量的，電流也要從 GND 回到板子；沒共地就沒有回路，元件不會動、讀值會亂跳。", "怎麼改：把電路的負極那一側（LED 短腳、按鍵另一側、感測器 GND）接到板子的 GND 腳。");
   }
 
   // 元件輸出狀態（給畫面）
@@ -226,7 +241,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
           const ms = (pwm[g].duty16 / 65535) * (1000 / pwm[g].freq); angle = Math.max(0, Math.min(180, Math.round((ms - 0.5) / 2.0 * 180)));
         }
         st.powered = powered; st.angle = powered && angle !== null ? angle : (st.angle ?? 90);
-        if (!powered && angle !== null) warn("SERVO_NO_POWER", id, `${id} 沒有供電`, "伺服馬達 V+ 接 5V（或 3V3，力量較小）、GND 接 GND，PWM 線才有作用。");
+        if (!powered && angle !== null) warn("SERVO_NO_POWER", id, `${id} 沒有供電`, "為什麼：PWM 訊號只是「叫它轉到幾度」的指令，馬達本身要另外從 V+／GND 吃電才能動。", "怎麼改：V+ 接板子 5V（3V3 也能動但沒力），GND 接 GND，PWM 線接 GPIO。");
         break;
       }
       case "led-bar-graph": st.values = Array.from({ length: 10 }, (_, i) => (st.leds?.[id + ":" + (i + 1)]?.on ? 1 : 0)); break;

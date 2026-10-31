@@ -1,89 +1,108 @@
-// sim.js — 電路模擬器畫布與執行整合（像 Tinkercad／Wokwi）：拖放元件、拉線、麵包板、平移縮放、復原；
-// 執行時同一份 MicroPython 程式在 wasm 裡跑，Pin／PWM／ADC 狀態接到電路模型（circuit.js），元件畫面跟著動。
+// sim.js — 電路模擬器畫布與執行整合（像 Tinkercad／Wokwi）。
+// 畫布：拖放元件、腳位拉線（可加轉折點、選色、標籤）、麵包板吸附與導通提示、格線吸附、平移縮放（滾輪／兩指）、多選、對齊、復原重做。
+// 執行：透過 engine.js 的共用介面（docs/sim-engine-api.md），腳位事件 → 電路解法（circuit.js）→ 元件畫面與回灌輸入。
 import { CATALOG, PIN_TABLE, DEVKIT_PINMAP, DEVKIT_PINS, BOARD_ART } from "./catalog.js";
 import { solve, BOARDS, PARTS } from "./circuit.js";
 import { BREADBOARD, holeAt } from "./breadboard.js";
 import { toWokwiDiagram, fromWokwiDiagram } from "./diagram.js";
 import { createEngine } from "./engine.js";
 
-const $ = (id) => document.getElementById(id);
 const SVGNS = "http://www.w3.org/2000/svg";
-const WIRE_COLORS = ["#d33", "#111", "#2a7", "#27d", "#e90", "#a3c", "#999"];
+export const WIRE_COLORS = ["#d33", "#111", "#2a7", "#27d", "#e90", "#a3c", "#999", "#fff"];
+const GRID = 8;
 
 export function createSimulator(opts) {
-  const root = opts.root;                 // 容器（含 viewport、world）
+  const root = opts.root;
   const onEvent = opts.onEvent || (() => {});
   const onWarnings = opts.onWarnings || (() => {});
   const onStatus = opts.onStatus || (() => {});
+  const onHover = opts.onHover || (() => {});
 
   // ---------- 狀態 ----------
-  const doc = { board: opts.board || "tqt_pro", parts: {}, wires: [], boardPos: { x: 60, y: 40 }, breadboard: null };   // breadboard: {x,y}|null
+  const doc = { board: opts.board || "tqt_pro", parts: {}, wires: [], boardPos: { x: 60, y: 40 }, breadboard: null };
   const view = { x: 20, y: 20, z: 1 };
-  const ui = {};                           // 互動元件狀態 {partId: {pressed,value,light}}
-  let burned = new Set(), lastResult = null, selected = null, nextIds = {};
-  const undo = [], redo = [];
-  let engine = null, running = false, pinState = {};   // pinState：engine.pins() 的快照 {pin: {mode, level, pull, pwm}}
+  const ui = {};
+  let burned = new Set(), lastResult = null, nextIds = {};
+  let selection = new Set();       // "partId" | "wire:3" | "board" | "bb"
+  const undoStack = [], redoStack = [];
+  let engine = null, running = false, pinState = {}, gridSnap = true, shortNets = [];
+  let cards = null;                 // part_cards.json（說明小卡與腳位說明）
 
   // ---------- DOM ----------
   const viewport = root.querySelector(".sim-viewport");
   const world = root.querySelector(".sim-world");
   const partsLayer = world.querySelector(".sim-parts");
   const svg = world.querySelector("svg.sim-wires");
-  const pinLayer = svg.querySelector(".pins");
-  const wireLayer = svg.querySelector(".wires");
-  const tempWire = svg.querySelector(".temp");
+  const pinLayer = svg.querySelector(".pins"), wireLayer = svg.querySelector(".wires"), tempWire = svg.querySelector(".temp"), hiLayer = svg.querySelector(".hi");
 
-  function applyView() { world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.z})`; }
+  function applyView() { world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.z})`; onStatus({ view: { ...view } }); }
   function toWorld(cx, cy) { const r = viewport.getBoundingClientRect(); return [(cx - r.left - view.x) / view.z, (cy - r.top - view.y) / view.z]; }
+  const snap = (v) => (gridSnap ? Math.round(v / GRID) * GRID : Math.round(v));
 
-  // ---------- 腳位座標 ----------
-  function rot(x, y, w, h, deg) {
-    if (!deg) return [x, y];
-    const cx = w / 2, cy = h / 2, a = deg * Math.PI / 180, dx = x - cx, dy = y - cy;
-    return [cx + dx * Math.cos(a) - dy * Math.sin(a), cy + dx * Math.sin(a) + dy * Math.cos(a)];
-  }
+  // ---------- 腳位 ----------
+  function rot(x, y, w, h, deg) { if (!deg) return [x, y]; const cx = w / 2, cy = h / 2, a = deg * Math.PI / 180, dx = x - cx, dy = y - cy; return [cx + dx * Math.cos(a) - dy * Math.sin(a), cy + dx * Math.sin(a) + dy * Math.cos(a)]; }
+  const splitRef = (ref) => { const i = ref.indexOf(":"); return [ref.slice(0, i), ref.slice(i + 1)]; };
   function pinPos(ref) {
     const [id, pin] = splitRef(ref);
     if (id === "board") return boardPinPos(pin);
     if (id === "bb") { const h = BREADBOARD.holes.find((x) => x.id === pin); return h && doc.breadboard ? [doc.breadboard.x + h.x, doc.breadboard.y + h.y] : null; }
     const p = doc.parts[id]; if (!p) return null;
-    const c = CATALOG[p.type]; const t = PIN_TABLE[p.type][pin]; if (!t) return null;
-    const [x, y] = rot(t[0], t[1], c.w, c.h, p.rot || 0);
-    return [p.x + x, p.y + y];
+    const c = CATALOG[p.type], t = PIN_TABLE[p.type][pin]; if (!t) return null;
+    const [x, y] = rot(t[0], t[1], c.w, c.h, p.rot || 0); return [p.x + x, p.y + y];
   }
   function boardPinPos(name) {
     const bp = doc.boardPos;
     if (doc.board === "devkit") { const e = DEVKIT_PINS.find((q) => q[0] === name); return e ? [bp.x + e[1], bp.y + e[2]] : null; }
-    const art = BOARD_ART[doc.board]; const e = art.pins.find((q) => q[0] === name); return e ? [bp.x + e[1], bp.y + e[2]] : null;
+    const e = BOARD_ART[doc.board].pins.find((q) => q[0] === name); return e ? [bp.x + e[1], bp.y + e[2]] : null;
   }
-  const splitRef = (ref) => { const i = ref.indexOf(":"); return [ref.slice(0, i), ref.slice(i + 1)]; };
-  /** 板子腳位名 → 電路模型的 ref（board:16／board:GND） */
   function boardRefOf(name) {
     if (doc.board === "devkit") { const m = DEVKIT_PINMAP[name]; return m === null || m === undefined ? null : "board:" + m; }
     const e = BOARD_ART[doc.board].pins.find((q) => q[0] === name); return e ? "board:" + e[3] : null;
   }
+  function boardPinNames() { return doc.board === "devkit" ? DEVKIT_PINS.map((q) => q[0]) : BOARD_ART[doc.board].pins.map((q) => q[0]); }
   function allPinRefs() {
-    const out = [];
-    if (doc.board === "devkit") for (const q of DEVKIT_PINS) out.push("board:" + q[0]); else for (const q of BOARD_ART[doc.board].pins) out.push("board:" + q[0]);
+    const out = boardPinNames().map((n) => "board:" + n);
     for (const id of Object.keys(doc.parts)) for (const pin of CATALOG[doc.parts[id].type].pins) out.push(id + ":" + pin);
     if (doc.breadboard) for (const h of BREADBOARD.holes) out.push("bb:" + h.id);
     return out;
+  }
+  /** 腳位說明（給懸停與屬性面板）：名稱、功能、目前電壓 */
+  function pinInfo(ref) {
+    const [id, pin] = splitRef(ref);
+    const B = BOARDS[doc.board];
+    let title = ref, desc = "", gpio = null, reserved = null, volt = nodeVoltage(ref);
+    if (id === "board") {
+      const bref = boardRefOf(pin); const m = bref ? bref.slice(6) : null; gpio = m !== null && !isNaN(Number(m)) ? Number(m) : null;
+      title = pin;
+      if (gpio !== null) {
+        const bc = cards?.boards?.[doc.board]?.pins?.[gpio];
+        const caps = [B.adc.includes(gpio) ? "ADC" : null, !B.input_only.includes(gpio) ? "PWM" : "只能輸入"].filter(Boolean);
+        desc = `GPIO${gpio}（${caps.join("、")}）${bc ? "：" + bc.desc : ""}`;
+        if (B.reserved[gpio]) reserved = B.reserved[gpio];
+      } else if (m) desc = cards?.boards?.[doc.board]?.power?.[m] || ({ "3V3": "3.3 V 電源輸出", "5V": "USB 5 V", VIN: "USB 5 V（VIN）", GND: "接地（負極）" }[m] || m);
+      else desc = "不可接（" + pin + "）";
+    } else if (id === "bb") { title = "麵包板 " + pin; const h = BREADBOARD.holes.find((x) => x.id === pin); desc = h ? (h.strip.startsWith("top") || h.strip.startsWith("bot") ? "電源軌，整列相通" : "同一欄 5 孔相通") : ""; }
+    else { const p = doc.parts[id]; title = id + " 的 " + pin; const pc = cards?.parts?.[p.type]?.pins; desc = pc ? (pc[pin] || (p.type === "led-bar-graph" ? pc[pin[0] + "1"] : "") || "") : ""; }
+    return { ref, title, desc, gpio, reserved, volt };
+  }
+  function nodeVoltage(ref) {
+    if (!lastResult) return null;
+    const [id, pin] = splitRef(ref);
+    const r = id === "board" ? boardRefOf(pin) : ref; if (!r) return null;
+    const root = lastResult.nets.find(r); const v = lastResult.nodeV[root]; return v === undefined ? null : v;
   }
 
   // ---------- 繪製 ----------
   const partEls = {};
   function render() {
-    // 板子
     let boardEl = partsLayer.querySelector(".sim-board");
     if (!boardEl || boardEl.dataset.kind !== doc.board) { if (boardEl) boardEl.remove(); boardEl = makeBoardEl(); partsLayer.appendChild(boardEl); }
-    boardEl.style.left = doc.boardPos.x + "px"; boardEl.style.top = doc.boardPos.y + "px";
-    // 麵包板
+    boardEl.style.left = doc.boardPos.x + "px"; boardEl.style.top = doc.boardPos.y + "px"; boardEl.classList.toggle("selected", selection.has("board"));
     let bbEl = partsLayer.querySelector(".sim-bb");
     if (doc.breadboard) {
       if (!bbEl) { bbEl = document.createElement("div"); bbEl.className = "sim-bb sim-item"; bbEl.dataset.id = "bb"; bbEl.innerHTML = `<svg xmlns="${SVGNS}" width="${BREADBOARD.width}" height="${BREADBOARD.height}" viewBox="0 0 ${BREADBOARD.width} ${BREADBOARD.height}">${BREADBOARD.svg}</svg>`; partsLayer.insertBefore(bbEl, partsLayer.firstChild); }
-      bbEl.style.left = doc.breadboard.x + "px"; bbEl.style.top = doc.breadboard.y + "px";
+      bbEl.style.left = doc.breadboard.x + "px"; bbEl.style.top = doc.breadboard.y + "px"; bbEl.classList.toggle("selected", selection.has("bb"));
     } else if (bbEl) bbEl.remove();
-    // 元件
     for (const id of Object.keys(partEls)) if (!doc.parts[id]) { partEls[id].remove(); delete partEls[id]; }
     for (const [id, p] of Object.entries(doc.parts)) {
       let el = partEls[id];
@@ -95,11 +114,11 @@ export function createSimulator(opts) {
       }
       el.style.left = p.x + "px"; el.style.top = p.y + "px"; el.style.transform = `rotate(${p.rot || 0}deg)`;
       el.style.width = CATALOG[p.type].w + "px"; el.style.height = CATALOG[p.type].h + "px";
-      el.classList.toggle("selected", selected === id);
+      el.classList.toggle("selected", selection.has(id));
       const w = el.firstChild; for (const [k, v] of Object.entries(p.attrs || {})) if (w.getAttribute(k) !== String(v)) w.setAttribute(k, v);
-      el.querySelector(".sim-label").textContent = id + (p.attrs?.value ? " " + p.attrs.value + "Ω" : "");
+      el.querySelector(".sim-label").textContent = p.label || (id + (p.attrs?.value ? " " + p.attrs.value + "Ω" : ""));
     }
-    renderPins(); renderWires(); applyState();
+    renderPins(); renderWires(); applyState(); onStatus({ bounds: bounds() });
   }
   function makeBoardEl() {
     const el = document.createElement("div"); el.className = "sim-board sim-item"; el.dataset.id = "board"; el.dataset.kind = doc.board;
@@ -111,10 +130,9 @@ export function createSimulator(opts) {
       for (const b of a.buttons) s += `<rect class="bbtn" data-gpio="${b.gpio}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="2" fill="#333" stroke="#888"/><text x="${b.x + b.w / 2}" y="${b.y + b.h + 8}" fill="#bbb" font-size="6" text-anchor="middle" font-family="sans-serif">${b.label}</text>`;
       if (a.led) s += `<circle class="bled" cx="${a.led.x}" cy="${a.led.y}" r="4" fill="#553" stroke="#776"/>`;
       for (const [name, x, y] of a.pins) {
-        const bottomRow = y > a.h - 30; const left = x < a.w / 2;
+        const bottomRow = y > a.h - 30, left = x < a.w / 2;
         s += `<circle cx="${x}" cy="${y}" r="3.2" fill="#111" stroke="#d4af37" stroke-width="1.2"/>`;
-        s += bottomRow ? `<text x="${x}" y="${y - 6}" fill="#ddd" font-size="6.5" text-anchor="middle" font-family="sans-serif">${name}</text>`
-                       : `<text x="${x + (left ? 6 : -6)}" y="${y + 2.5}" fill="#ddd" font-size="6.5" text-anchor="${left ? "start" : "end"}" font-family="sans-serif">${name}</text>`;
+        s += bottomRow ? `<text x="${x}" y="${y - 6}" fill="#ddd" font-size="6.5" text-anchor="middle" font-family="sans-serif">${name}</text>` : `<text x="${x + (left ? 6 : -6)}" y="${y + 2.5}" fill="#ddd" font-size="6.5" text-anchor="${left ? "start" : "end"}" font-family="sans-serif">${name}</text>`;
       }
       s += `</svg>`; el.innerHTML = s;
       if (a.screen) { const cv = document.createElement("canvas"); cv.className = "sim-screen"; cv.width = 128; cv.height = 128; cv.style.cssText = `position:absolute;left:${a.screen.x}px;top:${a.screen.y}px;width:${a.screen.w}px;height:${a.screen.h}px;background:#000;image-rendering:pixelated;border-radius:3px`; el.appendChild(cv); }
@@ -123,56 +141,59 @@ export function createSimulator(opts) {
   }
   function renderPins() {
     pinLayer.innerHTML = "";
+    const B = BOARDS[doc.board];
     for (const ref of allPinRefs()) {
       const p = pinPos(ref); if (!p) continue;
       const c = document.createElementNS(SVGNS, "circle"); c.setAttribute("cx", p[0]); c.setAttribute("cy", p[1]);
       c.setAttribute("r", ref.startsWith("bb:") ? 3.4 : 4.5); c.setAttribute("class", "pin" + (ref.startsWith("bb:") ? " hole" : "")); c.dataset.ref = ref;
-      const bref = ref.startsWith("board:") ? boardRefOf(ref.slice(6)) : null;
-      if (ref.startsWith("board:") && bref) { const g = Number(bref.slice(6)); const B = BOARDS[doc.board]; if (!isNaN(g) && B.reserved[g]) c.classList.add("reserved"); }
+      if (ref.startsWith("board:")) { const bref = boardRefOf(ref.slice(6)); const g = bref ? Number(bref.slice(6)) : NaN; if (!bref) c.classList.add("na"); else if (!isNaN(g) && B.reserved[g]) c.classList.add("reserved"); }
       pinLayer.appendChild(c);
     }
+  }
+  function wirePath(w) {
+    const a = pinPos(w.a), b = pinPos(w.b); if (!a || !b) return null;
+    const pts = [a, ...(w.pts || []), b];
+    if (pts.length === 2) { const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, bend = Math.min(40, L * 0.25); return `M${a[0]},${a[1]} Q${(a[0] + b[0]) / 2 - dy / L * bend},${(a[1] + b[1]) / 2 + dx / L * bend} ${b[0]},${b[1]}`; }
+    return "M" + pts.map((p) => p[0] + "," + p[1]).join(" L");
   }
   function renderWires() {
     wireLayer.innerHTML = "";
     doc.wires.forEach((w, i) => {
-      const a = pinPos(w.a), b = pinPos(w.b); if (!a || !b) return;
-      const path = document.createElementNS(SVGNS, "path");
-      const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dx = b[0] - a[0], dy = b[1] - a[1], bend = Math.min(40, Math.hypot(dx, dy) * 0.25);
-      const nx = -dy / (Math.hypot(dx, dy) || 1), ny = dx / (Math.hypot(dx, dy) || 1);
-      path.setAttribute("d", `M${a[0]},${a[1]} Q${mx + nx * bend},${my + ny * bend} ${b[0]},${b[1]}`);
-      path.setAttribute("stroke", w.color); path.setAttribute("class", "wire" + (selected === "wire:" + i ? " selected" : "")); path.dataset.index = i;
-      wireLayer.appendChild(path);
+      const d = wirePath(w); if (!d) return;
+      const sel = selection.has("wire:" + i), isShort = shortNets.length && [w.a, w.b].some((r) => shortNets.includes(netOf(r)));
+      const path = document.createElementNS(SVGNS, "path"); path.setAttribute("d", d); path.setAttribute("stroke", isShort ? "#f00" : w.color);
+      path.setAttribute("class", "wire" + (sel ? " selected" : "") + (isShort ? " short" : "")); path.dataset.index = i; wireLayer.appendChild(path);
+      if (w.label) { const m = midpoint(w); const t = document.createElementNS(SVGNS, "text"); t.setAttribute("x", m[0]); t.setAttribute("y", m[1] - 6); t.setAttribute("class", "wire-label"); t.textContent = w.label; wireLayer.appendChild(t); }
+      if (sel) for (const [k, pt] of (w.pts || []).entries()) { const h = document.createElementNS(SVGNS, "circle"); h.setAttribute("cx", pt[0]); h.setAttribute("cy", pt[1]); h.setAttribute("r", 5); h.setAttribute("class", "wp"); h.dataset.wire = i; h.dataset.pt = k; wireLayer.appendChild(h); }
     });
   }
+  function midpoint(w) { const a = pinPos(w.a), b = pinPos(w.b); const pts = [a, ...(w.pts || []), b]; const m = pts[Math.floor((pts.length - 1) / 2)], n = pts[Math.ceil((pts.length - 1) / 2)]; return [(m[0] + n[0]) / 2, (m[1] + n[1]) / 2]; }
+  function netOf(ref) { if (!lastResult) return null; const [id, pin] = splitRef(ref); const r = id === "board" ? boardRefOf(pin) : ref; return r ? lastResult.nets.find(r) : null; }
+  function highlightStrip(holeId) {
+    hiLayer.innerHTML = "";
+    if (!holeId || !doc.breadboard) return;
+    const h = BREADBOARD.holes.find((x) => x.id === holeId); if (!h) return;
+    for (const id of BREADBOARD.strips[h.strip] || []) { const q = BREADBOARD.holes.find((x) => x.id === id); const c = document.createElementNS(SVGNS, "circle"); c.setAttribute("cx", doc.breadboard.x + q.x); c.setAttribute("cy", doc.breadboard.y + q.y); c.setAttribute("r", 4.2); c.setAttribute("class", "strip-hi"); hiLayer.appendChild(c); }
+  }
 
-  // ---------- 麵包板導通與吸附 ----------
+  // ---------- 麵包板 ----------
   function breadboardLinks() {
-    const links = [];
-    if (!doc.breadboard) return links;
+    const links = []; if (!doc.breadboard) return links;
     for (const ids of Object.values(BREADBOARD.strips)) for (let i = 1; i < ids.length; i++) links.push(["bb:" + ids[0], "bb:" + ids[i]]);
     for (const [id, p] of Object.entries(doc.parts)) for (const [pin, hole] of Object.entries(p.snaps || {})) links.push([id + ":" + pin, "bb:" + hole]);
     return links;
   }
   function snapPart(id) {
-    const p = doc.parts[id]; p.snaps = {};
-    if (!doc.breadboard) return;
-    for (const pin of CATALOG[p.type].pins) {
-      const pos = pinPos(id + ":" + pin); if (!pos) continue;
-      const h = holeAt(pos[0] - doc.breadboard.x, pos[1] - doc.breadboard.y, 5);
-      if (h) p.snaps[pin] = h.id;
-    }
-    // 吸附後把元件微移，讓第一個對到的腳正好在孔中心
+    const p = doc.parts[id]; p.snaps = {}; if (!doc.breadboard) return;
+    for (const pin of CATALOG[p.type].pins) { const pos = pinPos(id + ":" + pin); if (!pos) continue; const h = holeAt(pos[0] - doc.breadboard.x, pos[1] - doc.breadboard.y, 5); if (h) p.snaps[pin] = h.id; }
     const first = Object.keys(p.snaps)[0];
     if (first) { const h = BREADBOARD.holes.find((x) => x.id === p.snaps[first]); const pos = pinPos(id + ":" + first); p.x += doc.breadboard.x + h.x - pos[0]; p.y += doc.breadboard.y + h.y - pos[1]; for (const pin of Object.keys(p.snaps)) { const q = pinPos(id + ":" + pin); const hh = holeAt(q[0] - doc.breadboard.x, q[1] - doc.breadboard.y, 3); if (!hh) delete p.snaps[pin]; else p.snaps[pin] = hh.id; } }
   }
 
-  // ---------- 電路 → 模型 ----------
+  // ---------- 電路 ↔ 引擎 ----------
   function circuitForSolver() {
     const wires = [];
-    for (const w of doc.wires) {
-      const a = w.a.startsWith("board:") ? boardRefOf(w.a.slice(6)) : w.a, b = w.b.startsWith("board:") ? boardRefOf(w.b.slice(6)) : w.b;
-      if (a && b) wires.push([a, b]);
-    }
+    for (const w of doc.wires) { const a = w.a.startsWith("board:") ? boardRefOf(w.a.slice(6)) : w.a, b = w.b.startsWith("board:") ? boardRefOf(w.b.slice(6)) : w.b; if (a && b) wires.push([a, b]); }
     const parts = {}; for (const [id, p] of Object.entries(doc.parts)) parts[id] = { type: p.type, attrs: p.attrs || {} };
     return { board: doc.board, parts, wires };
   }
@@ -182,15 +203,18 @@ export function createSimulator(opts) {
     return { pins, modes, pulls, pwm, ui, burned };
   }
   const boardButtons = () => (doc.board === "tqt_pro" ? [0, 47] : doc.board === "tdisplay_s3" ? [0, 14] : [0]);
+  let stoppedForShort = false;
   function tick() {
     const r = solve(circuitForSolver(), io(), breadboardLinks());
     lastResult = r; burned = new Set(r.burned);
+    shortNets = r.warnings.filter((w) => (w.code === "SHORT" || w.code === "SUPPLY_MIX") && w.net).map((w) => w.net);
     if (engine) {
-      // 電路算出的腳位電位回灌引擎（板載按鍵的腳位由按鍵自己管）
-      for (const [g, lv] of Object.entries(r.inputs)) if (!boardButtons().includes(Number(g)) && pinState[g] && pinState[g].mode === "in" && pinState[g].level !== lv) engine.setPin(Number(g), lv);
+      for (const [g, lv] of Object.entries(r.inputs)) if (!boardButtons().includes(Number(g)) && pinState[g] && pinState[g].mode === "in" && pinState[g].level !== lv) { pinState[g].level = lv; engine.setPin(Number(g), lv); }
       for (const [g, raw] of Object.entries(r.adc)) if (pinState[g] && pinState[g].mode === "adc") { const v = raw / 4095 * 3.3; if (Math.abs((pinState[g].analog ?? -1) - v) > 0.002) { pinState[g].analog = v; engine.setAnalog(Number(g), v); } }
+      if (shortNets.length && running && !stoppedForShort) { stoppedForShort = true; engine.stop(); onEvent({ t: "err", s: "⚠ 短路：模擬已暫停，畫紅的線就是直通的路徑。修好接線再按執行。\n" }); }
+      if (!shortNets.length) stoppedForShort = false;
     }
-    applyState(); onWarnings(r.warnings);
+    applyState(); renderWires(); onWarnings(r.warnings);
     return r;
   }
   function applyState() {
@@ -199,7 +223,7 @@ export function createSimulator(opts) {
       const el = partEls[id]?.firstChild; const s = r.parts[id] || {}; if (!el) continue;
       switch (p.type) {
         case "led": el.value = !!s.on; el.brightness = s.burned ? 0 : (s.brightness ?? 1); partEls[id].classList.toggle("burned", !!s.burned); break;
-        case "buzzer": el.hasSignal = !!s.on; break;
+        case "buzzer": el.hasSignal = !!s.on; partEls[id].classList.toggle("buzzing", !!s.on); break;
         case "servo": el.angle = s.angle ?? 90; break;
         case "led-bar-graph": el.values = s.values || []; break;
         case "rgb-led": el.ledRed = s.r || 0; el.ledGreen = s.g || 0; el.ledBlue = s.b || 0; break;
@@ -209,7 +233,6 @@ export function createSimulator(opts) {
         case "photoresistor-sensor": el.ledPower = !!s.powered; break;
       }
     }
-    // 板子：板載 LED、按鍵、螢幕
     const boardEl = partsLayer.querySelector(".sim-board"); if (!boardEl || !engine) return;
     const level = (g) => (pinState[g] && (pinState[g].mode === "out" || pinState[g].mode === "pwm") ? pinState[g].level : null);
     if (doc.board === "devkit") { boardEl.firstChild.led1 = level(2) === 1; boardEl.firstChild.ledPower = true; }
@@ -223,54 +246,59 @@ export function createSimulator(opts) {
   }
 
   // ---------- 互動 ----------
-  let drag = null;   // {kind:"part"|"pan"|"wire"|"board"|"bb", ...}
-  const pressedButtons = new Set();
-  const pointers = new Map();
+  let drag = null; const pointers = new Map(); const pressedButtons = new Set();
+  let wireMode = false;
   viewport.addEventListener("pointerdown", (ev) => {
     pointers.set(ev.pointerId, [ev.clientX, ev.clientY]);
     if (pointers.size === 2) { drag = { kind: "pinch", z0: view.z, d0: pinchDist(), c0: pinchCenter(), v0: { ...view } }; return; }
     const t = ev.target;
+    const wp = t.closest && t.closest("circle.wp");
+    if (wp) { ev.preventDefault(); viewport.setPointerCapture(ev.pointerId); drag = { kind: "wp", wire: Number(wp.dataset.wire), pt: Number(wp.dataset.pt) }; return; }
     const pinEl = t.closest && t.closest("circle.pin");
-    if (pinEl) { ev.preventDefault(); viewport.setPointerCapture(ev.pointerId); drag = { kind: "wire", from: pinEl.dataset.ref }; const p = pinPos(drag.from); tempWire.setAttribute("d", `M${p[0]},${p[1]} L${p[0]},${p[1]}`); tempWire.style.display = "block"; return; }
+    if (pinEl) {
+      const ref = pinEl.dataset.ref;
+      if (ref.startsWith("board:") && !boardRefOf(ref.slice(6))) { toast("這支腳（" + ref.slice(6) + "）不能接線"); return; }
+      ev.preventDefault(); viewport.setPointerCapture(ev.pointerId); drag = { kind: "wire", from: ref }; const p = pinPos(ref); tempWire.setAttribute("d", `M${p[0]},${p[1]} L${p[0]},${p[1]}`); tempWire.style.display = "block"; return;
+    }
     const wireEl = t.closest && t.closest("path.wire");
-    if (wireEl) { select("wire:" + wireEl.dataset.index); return; }
+    if (wireEl) { select("wire:" + wireEl.dataset.index, ev.shiftKey); return; }
     const item = t.closest && t.closest(".sim-item");
     if (item) {
       const id = item.dataset.id;
       if (id !== "board" && id !== "bb") {
         const p = doc.parts[id], c = CATALOG[p.type];
-        if (running && c.interact) { interactStart(id, ev); select(id); return; }   // 執行中：操作元件
-        select(id);
-      }
-      if (ev.target.closest && ev.target.closest(".bbtn")) { const g = Number(ev.target.closest(".bbtn").dataset.gpio); pressedButtons.add(g); if (engine) engine.pressButton(g, true); applyState(); drag = { kind: "bbtn", gpio: g }; viewport.setPointerCapture(ev.pointerId); return; }
+        if (running && c.interact && !wireMode) { interactStart(id, ev); select(id); return; }
+        select(id, ev.shiftKey);
+      } else select(id, ev.shiftKey);
+      if (t.closest && t.closest(".bbtn")) { const g = Number(t.closest(".bbtn").dataset.gpio); pressedButtons.add(g); if (engine) engine.pressButton(g); applyState(); drag = { kind: "bbtn", gpio: g }; viewport.setPointerCapture(ev.pointerId); return; }
       if (running && id !== "board" && id !== "bb") return;
       ev.preventDefault(); viewport.setPointerCapture(ev.pointerId);
       const [wx, wy] = toWorld(ev.clientX, ev.clientY);
-      const pos = id === "board" ? doc.boardPos : id === "bb" ? doc.breadboard : doc.parts[id];
-      drag = { kind: "item", id, ox: wx - pos.x, oy: wy - pos.y, moved: false };
+      const ids = selection.has(id) ? [...selection].filter((s) => !s.startsWith("wire:")) : [id];
+      drag = { kind: "items", ids, start: [wx, wy], orig: Object.fromEntries(ids.map((s) => [s, { ...posOf(s) }])), moved: false };
       return;
     }
     select(null);
-    drag = { kind: "pan", sx: ev.clientX, sy: ev.clientY, vx: view.x, vy: view.y };
-    viewport.setPointerCapture(ev.pointerId);
+    drag = { kind: "pan", sx: ev.clientX, sy: ev.clientY, vx: view.x, vy: view.y }; viewport.setPointerCapture(ev.pointerId);
   });
+  const posOf = (id) => (id === "board" ? doc.boardPos : id === "bb" ? doc.breadboard : doc.parts[id]);
   viewport.addEventListener("pointermove", (ev) => {
     if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, [ev.clientX, ev.clientY]);
-    if (!drag) return;
+    const [wx, wy] = toWorld(ev.clientX, ev.clientY);
+    if (!drag) { hover(ev.target); return; }
     if (drag.kind === "pinch" && pointers.size === 2) {
-      const d = pinchDist(), c = pinchCenter(); const z = Math.max(0.3, Math.min(4, drag.z0 * d / drag.d0));
-      const r = viewport.getBoundingClientRect(); const wx = (drag.c0[0] - r.left - drag.v0.x) / drag.z0, wy = (drag.c0[1] - r.top - drag.v0.y) / drag.z0;
-      view.z = z; view.x = c[0] - r.left - wx * z; view.y = c[1] - r.top - wy * z; applyView(); return;
+      const d = pinchDist(), c = pinchCenter(); const z = Math.max(0.25, Math.min(4, drag.z0 * d / drag.d0));
+      const r = viewport.getBoundingClientRect(); const ox = (drag.c0[0] - r.left - drag.v0.x) / drag.z0, oy = (drag.c0[1] - r.top - drag.v0.y) / drag.z0;
+      view.z = z; view.x = c[0] - r.left - ox * z; view.y = c[1] - r.top - oy * z; applyView(); return;
     }
     if (drag.kind === "pan") { view.x = drag.vx + ev.clientX - drag.sx; view.y = drag.vy + ev.clientY - drag.sy; applyView(); return; }
-    const [wx, wy] = toWorld(ev.clientX, ev.clientY);
-    if (drag.kind === "item") {
-      const pos = drag.id === "board" ? doc.boardPos : drag.id === "bb" ? doc.breadboard : doc.parts[drag.id];
-      pos.x = Math.round(wx - drag.ox); pos.y = Math.round(wy - drag.oy); drag.moved = true;
-      if (drag.id !== "board" && drag.id !== "bb") snapPart(drag.id);
-      render(); return;
+    if (drag.kind === "items") {
+      const dx = wx - drag.start[0], dy = wy - drag.start[1];
+      for (const id of drag.ids) { const o = drag.orig[id], pos = posOf(id); if (!pos || !o) continue; pos.x = snap(o.x + dx); pos.y = snap(o.y + dy); if (id !== "board" && id !== "bb") snapPart(id); }
+      drag.moved = true; render(); return;
     }
-    if (drag.kind === "wire") { const p = pinPos(drag.from); const near = nearestPin(wx, wy, 10); const q = near ? pinPos(near) : [wx, wy]; tempWire.setAttribute("d", `M${p[0]},${p[1]} L${q[0]},${q[1]}`); return; }
+    if (drag.kind === "wp") { const w = doc.wires[drag.wire]; w.pts[drag.pt] = [snap(wx), snap(wy)]; renderWires(); return; }
+    if (drag.kind === "wire") { const p = pinPos(drag.from); const near = nearestPin(wx, wy, 10); const q = near ? pinPos(near) : [wx, wy]; tempWire.setAttribute("d", `M${p[0]},${p[1]} L${q[0]},${q[1]}`); highlightStrip(near && near.startsWith("bb:") ? near.slice(3) : null); return; }
     if (drag.kind === "interact") interactMove(drag, ev);
   });
   const endPointer = (ev) => {
@@ -278,94 +306,159 @@ export function createSimulator(opts) {
     if (!drag) return;
     if (drag.kind === "wire") {
       const [wx, wy] = toWorld(ev.clientX, ev.clientY); const to = nearestPin(wx, wy, 12);
-      tempWire.style.display = "none";
-      if (to && to !== drag.from) { pushUndo(); doc.wires.push({ a: drag.from, b: to, color: WIRE_COLORS[$("sim-wire-color") ? Number($("sim-wire-color").value) : 0] }); select("wire:" + (doc.wires.length - 1)); render(); tick(); }
-    } else if (drag.kind === "item") { if (drag.moved) { pushUndo(true); tick(); } }
-    else if (drag.kind === "bbtn") { pressedButtons.delete(drag.gpio); if (engine) engine.pressButton(drag.gpio, false); applyState(); }
+      tempWire.style.display = "none"; highlightStrip(null);
+      if (to && to !== drag.from) {
+        if (to.startsWith("board:") && !boardRefOf(to.slice(6))) { toast("這支腳（" + to.slice(6) + "）不能接線"); }
+        else {
+          pushUndo(); doc.wires.push({ a: drag.from, b: to, color: WIRE_COLORS[api.wireColor] || WIRE_COLORS[0], pts: [] }); select("wire:" + (doc.wires.length - 1)); render(); tick();
+          for (const ref of [drag.from, to]) { const inf = pinInfo(ref); if (inf.reserved) toast(`注意：${inf.title} 是保留腳位（${inf.reserved}）`, "warn"); }
+        }
+      }
+    } else if (drag.kind === "items") { if (drag.moved) { pushUndo(); tick(); } }
+    else if (drag.kind === "wp") { pushUndo(); }
+    else if (drag.kind === "bbtn") { pressedButtons.delete(drag.gpio); if (engine) engine.releaseButton(drag.gpio); applyState(); }
     else if (drag.kind === "interact") interactEnd(drag);
     drag = pointers.size === 2 ? drag : null;
   };
   viewport.addEventListener("pointerup", endPointer); viewport.addEventListener("pointercancel", endPointer);
-  viewport.addEventListener("wheel", (ev) => { ev.preventDefault(); const r = viewport.getBoundingClientRect(); const mx = ev.clientX - r.left, my = ev.clientY - r.top; const z = Math.max(0.3, Math.min(4, view.z * (ev.deltaY < 0 ? 1.1 : 0.9))); view.x = mx - (mx - view.x) * z / view.z; view.y = my - (my - view.y) * z / view.z; view.z = z; applyView(); }, { passive: false });
+  viewport.addEventListener("dblclick", (ev) => {
+    const wireEl = ev.target.closest && ev.target.closest("path.wire");
+    if (wireEl) { const i = Number(wireEl.dataset.index), w = doc.wires[i]; const [wx, wy] = toWorld(ev.clientX, ev.clientY); pushUndo(); w.pts = w.pts || []; w.pts.splice(nearestSegment(w, wx, wy), 0, [snap(wx), snap(wy)]); select("wire:" + i); render(); }
+  });
+  viewport.addEventListener("wheel", (ev) => { ev.preventDefault(); zoomAt(ev.clientX, ev.clientY, ev.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
+  viewport.addEventListener("pointerleave", () => { lastHover = null; onHover(null); });
+  function zoomAt(cx, cy, f) { const r = viewport.getBoundingClientRect(); const mx = cx - r.left, my = cy - r.top; const z = Math.max(0.25, Math.min(4, view.z * f)); view.x = mx - (mx - view.x) * z / view.z; view.y = my - (my - view.y) * z / view.z; view.z = z; applyView(); }
   const pinchDist = () => { const v = [...pointers.values()]; return Math.hypot(v[0][0] - v[1][0], v[0][1] - v[1][1]) || 1; };
   const pinchCenter = () => { const v = [...pointers.values()]; return [(v[0][0] + v[1][0]) / 2, (v[0][1] + v[1][1]) / 2]; };
-  function nearestPin(wx, wy, tol) {
-    let best = null, bd = tol;
-    for (const ref of allPinRefs()) { const p = pinPos(ref); if (!p) continue; const d = Math.hypot(p[0] - wx, p[1] - wy); if (d < bd) { bd = d; best = ref; } }
-    return best;
+  function nearestPin(wx, wy, tol) { let best = null, bd = tol; for (const ref of allPinRefs()) { const p = pinPos(ref); if (!p) continue; const d = Math.hypot(p[0] - wx, p[1] - wy); if (d < bd) { bd = d; best = ref; } } return best; }
+  function nearestSegment(w, x, y) { const pts = [pinPos(w.a), ...(w.pts || []), pinPos(w.b)]; let best = 0, bd = 1e9; for (let i = 0; i < pts.length - 1; i++) { const d = distSeg(x, y, pts[i], pts[i + 1]); if (d < bd) { bd = d; best = i; } } return best; }
+  function distSeg(x, y, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1; const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)); return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); }
+  let lastHover = null;
+  function hover(target) {
+    const pinEl = target.closest && target.closest("circle.pin");
+    const ref = pinEl ? pinEl.dataset.ref : null;
+    if (ref !== lastHover) { lastHover = ref; onHover(ref ? pinInfo(ref) : null); highlightStrip(ref && ref.startsWith("bb:") ? ref.slice(3) : null); }
   }
+  function toast(text, kind) { onStatus({ toast: { text, kind: kind || "info" } }); }
 
-  // 執行中的元件互動
   function interactStart(id, ev) {
-    const p = doc.parts[id], kind = CATALOG[p.type].interact;
-    ui[id] = ui[id] || {};
+    const p = doc.parts[id], kind = CATALOG[p.type].interact; ui[id] = ui[id] || {};
     if (kind === "press") { ui[id].pressed = true; drag = { kind: "interact", id, mode: "press" }; viewport.setPointerCapture(ev.pointerId); tick(); }
     else if (kind === "toggle") { ui[id].value = ui[id].value ? 0 : 1; tick(); }
-    else if (kind === "knob" || kind === "light") { drag = { kind: "interact", id, mode: kind, sy: ev.clientY, v0: ui[id].value ?? (kind === "light" ? (ui[id].light ?? 0.5) : 0.5) }; viewport.setPointerCapture(ev.pointerId); }
+    else if (kind === "knob" || kind === "light") { drag = { kind: "interact", id, mode: kind, sy: ev.clientY, v0: kind === "light" ? (ui[id].light ?? 0.5) : (ui[id].value ?? 0.5) }; viewport.setPointerCapture(ev.pointerId); }
   }
-  function interactMove(d, ev) {
-    if (d.mode === "knob" || d.mode === "light") { const v = Math.max(0, Math.min(1, d.v0 + (d.sy - ev.clientY) / 150)); if (d.mode === "knob") ui[d.id].value = v; else ui[d.id].light = v; tick(); showHint(d.id, (d.mode === "knob" ? "轉到 " : "光線 ") + Math.round(v * 100) + "%"); }
+  function interactMove(d, ev) { if (d.mode === "knob" || d.mode === "light") { const v = Math.max(0, Math.min(1, d.v0 + (d.sy - ev.clientY) / 150)); if (d.mode === "knob") ui[d.id].value = v; else ui[d.id].light = v; tick(); const el = partEls[d.id]; if (el) el.querySelector(".sim-label").textContent = (d.mode === "knob" ? "轉到 " : "光線 ") + Math.round(v * 100) + "%"; } }
+  function interactEnd(d) { if (d.mode === "press") { ui[d.id].pressed = false; tick(); } render(); }
+
+  function select(id, add) {
+    if (!id) selection = new Set(); else if (add) { if (selection.has(id)) selection.delete(id); else selection.add(id); } else selection = new Set([id]);
+    render();
+    const one = selection.size === 1 ? [...selection][0] : null;
+    onStatus({ selected: one, selection: [...selection], part: one && doc.parts[one] ? doc.parts[one] : null, wire: one && one.startsWith("wire:") ? doc.wires[Number(one.slice(5))] : null, wireIndex: one && one.startsWith("wire:") ? Number(one.slice(5)) : null, isBoard: one === "board", isBB: one === "bb" });
   }
-  function interactEnd(d) { if (d.mode === "press") { ui[d.id].pressed = false; tick(); } hideHint(); }
-  function showHint(id, text) { const el = partEls[id]; if (!el) return; el.querySelector(".sim-label").textContent = text; }
-  function hideHint() { render(); }
 
-  function select(id) { selected = id; render(); onStatus({ selected: id, part: id && !id.startsWith("wire:") ? doc.parts[id] : null, wire: id && id.startsWith("wire:") ? doc.wires[Number(id.slice(5))] : null }); }
-
-  // ---------- 編輯動作 ----------
+  // ---------- 編輯 ----------
   function snapshot() { return JSON.stringify({ board: doc.board, parts: doc.parts, wires: doc.wires, boardPos: doc.boardPos, breadboard: doc.breadboard }); }
   let lastSnap = snapshot();
-  function pushUndo(coalesceMove) { const s = snapshot(); if (s === lastSnap) return; undo.push(lastSnap); if (undo.length > 100) undo.shift(); redo.length = 0; lastSnap = s; onStatus({ undo: undo.length, redo: redo.length }); }
-  function restore(s) { const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; lastSnap = s; selected = null; render(); tick(); onStatus({ undo: undo.length, redo: redo.length, board: doc.board }); }
+  function pushUndo() { const s = snapshot(); if (s === lastSnap) return; undoStack.push(lastSnap); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; lastSnap = s; onStatus({ undo: undoStack.length, redo: redoStack.length }); }
+  function restore(s) { const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] }); }
+  function bounds() {
+    let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9; const add = (x, y, w, h) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h); };
+    const bw = doc.board === "devkit" ? [106.6, 204.3] : [BOARD_ART[doc.board].w, BOARD_ART[doc.board].h]; add(doc.boardPos.x, doc.boardPos.y, bw[0], bw[1]);
+    if (doc.breadboard) add(doc.breadboard.x, doc.breadboard.y, BREADBOARD.width, BREADBOARD.height);
+    for (const p of Object.values(doc.parts)) add(p.x, p.y, CATALOG[p.type].w, CATALOG[p.type].h);
+    const items = Object.entries(doc.parts).map(([id, p]) => ({ id, x: p.x, y: p.y, w: CATALOG[p.type].w, h: CATALOG[p.type].h }));
+    items.push({ id: "board", x: doc.boardPos.x, y: doc.boardPos.y, w: bw[0], h: bw[1] }); if (doc.breadboard) items.push({ id: "bb", x: doc.breadboard.x, y: doc.breadboard.y, w: BREADBOARD.width, h: BREADBOARD.height });
+    return { minX, minY, maxX, maxY, items };
+  }
+
   const api = {
-    doc, view, get running() { return running; }, get result() { return lastResult; },
+    doc, view, get running() { return running; }, get result() { return lastResult; }, get selected() { return selection.size === 1 ? [...selection][0] : null; }, get selection() { return [...selection]; },
+    wireColor: 0, get gridSnap() { return gridSnap; }, set gridSnap(v) { gridSnap = !!v; }, get wireMode() { return wireMode; }, set wireMode(v) { wireMode = !!v; },
+    pinInfo, nodeVoltage, bounds, tick, render, select, toast,
+    setCards(c) { cards = c; }, get cards() { return cards; },
     addPart(type, x, y) {
       pushUndo(); const base = { led: "led", resistor: "r", pushbutton: "btn", "slide-switch": "sw", potentiometer: "pot", "photoresistor-sensor": "ldr", buzzer: "bz", servo: "servo", "led-bar-graph": "bar", "rgb-led": "rgb" }[type] || type;
       nextIds[base] = (nextIds[base] || 0) + 1; let id = base + nextIds[base]; while (doc.parts[id]) { nextIds[base]++; id = base + nextIds[base]; }
-      const c = CATALOG[type];
-      doc.parts[id] = { type, x: Math.round((x ?? 200) - c.w / 2), y: Math.round((y ?? 200) - c.h / 2), rot: 0, attrs: { ...c.attrs }, snaps: {} };
+      const c = CATALOG[type]; doc.parts[id] = { type, x: snap((x ?? 200) - c.w / 2), y: snap((y ?? 200) - c.h / 2), rot: 0, attrs: { ...c.attrs }, snaps: {} };
       snapPart(id); pushUndo(); select(id); tick(); return id;
     },
-    addBreadboard() { if (doc.breadboard) return; pushUndo(); doc.breadboard = { x: 40, y: 320 }; pushUndo(); render(); tick(); },
+    addBreadboard(x, y) { if (doc.breadboard) { select("bb"); return; } pushUndo(); doc.breadboard = { x: snap(x ?? 40), y: snap(y ?? 320) }; pushUndo(); render(); tick(); select("bb"); },
     deleteSelected() {
-      if (!selected) return; pushUndo();
-      if (selected.startsWith("wire:")) doc.wires.splice(Number(selected.slice(5)), 1);
-      else if (selected === "bb") { doc.breadboard = null; doc.wires = doc.wires.filter((w) => !w.a.startsWith("bb:") && !w.b.startsWith("bb:")); }
-      else { delete doc.parts[selected]; doc.wires = doc.wires.filter((w) => !w.a.startsWith(selected + ":") && !w.b.startsWith(selected + ":")); }
-      selected = null; pushUndo(); render(); tick();
+      if (!selection.size) return; pushUndo();
+      const wireIdx = [...selection].filter((s) => s.startsWith("wire:")).map((s) => Number(s.slice(5))).sort((a, b) => b - a);
+      for (const i of wireIdx) doc.wires.splice(i, 1);
+      for (const s of selection) {
+        if (s === "bb") { doc.breadboard = null; doc.wires = doc.wires.filter((w) => !w.a.startsWith("bb:") && !w.b.startsWith("bb:")); for (const p of Object.values(doc.parts)) p.snaps = {}; }
+        else if (doc.parts[s]) { delete doc.parts[s]; doc.wires = doc.wires.filter((w) => !w.a.startsWith(s + ":") && !w.b.startsWith(s + ":")); }
+      }
+      selection = new Set(); pushUndo(); render(); tick(); select(null);
     },
-    rotateSelected() { if (!selected || selected.startsWith("wire:") || !doc.parts[selected]) return; pushUndo(); doc.parts[selected].rot = ((doc.parts[selected].rot || 0) + 90) % 360; snapPart(selected); pushUndo(); render(); tick(); },
+    rotateSelected() { let any = false; for (const s of selection) if (doc.parts[s]) { if (!any) pushUndo(); any = true; doc.parts[s].rot = ((doc.parts[s].rot || 0) + 90) % 360; snapPart(s); } if (any) { pushUndo(); render(); tick(); } },
     setAttr(id, k, v) { if (!doc.parts[id]) return; pushUndo(); doc.parts[id].attrs[k] = v; pushUndo(); render(); tick(); },
+    setLabel(id, text) { if (!doc.parts[id]) return; pushUndo(); doc.parts[id].label = text || ""; pushUndo(); render(); },
     setWireColor(i, color) { if (!doc.wires[i]) return; pushUndo(); doc.wires[i].color = color; pushUndo(); render(); },
-    undo() { if (!undo.length) return; redo.push(lastSnap); restore(undo.pop()); },
-    redo() { if (!redo.length) return; undo.push(lastSnap); restore(redo.pop()); },
-    clear() { pushUndo(); doc.parts = {}; doc.wires = []; doc.breadboard = null; burned = new Set(); pushUndo(); render(); tick(); },
-    async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); pushUndo(); render(); if (engine) await api.attach(kind); tick(); },
-    load(d) { restore(JSON.stringify({ board: d.board || "tqt_pro", parts: d.parts || {}, wires: d.wires || [], boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null })); burned = new Set(); undo.length = 0; redo.length = 0; },
+    setWireLabel(i, text) { if (!doc.wires[i]) return; pushUndo(); doc.wires[i].label = text || ""; pushUndo(); render(); },
+    clearWaypoints(i) { if (!doc.wires[i]) return; pushUndo(); doc.wires[i].pts = []; pushUndo(); render(); },
+    selectAll() { selection = new Set([...Object.keys(doc.parts), ...doc.wires.map((_, i) => "wire:" + i)]); render(); onStatus({ selected: null, selection: [...selection] }); },
+    align(how) {
+      const ids = [...selection].filter((s) => doc.parts[s]); if (ids.length < 2) return; pushUndo();
+      const vals = ids.map((s) => (how === "left" ? doc.parts[s].x : how === "top" ? doc.parts[s].y : how === "hcenter" ? doc.parts[s].x + CATALOG[doc.parts[s].type].w / 2 : doc.parts[s].y + CATALOG[doc.parts[s].type].h / 2));
+      const target = how === "left" || how === "top" ? Math.min(...vals) : vals.reduce((a, b) => a + b, 0) / vals.length;
+      for (const s of ids) { const p = doc.parts[s], c = CATALOG[p.type]; if (how === "left") p.x = target; else if (how === "top") p.y = target; else if (how === "hcenter") p.x = snap(target - c.w / 2); else p.y = snap(target - c.h / 2); snapPart(s); }
+      pushUndo(); render(); tick();
+    },
+    undo() { if (!undoStack.length) return; redoStack.push(lastSnap); restore(undoStack.pop()); },
+    redo() { if (!redoStack.length) return; undoStack.push(lastSnap); restore(redoStack.pop()); },
+    clear() { pushUndo(); doc.parts = {}; doc.wires = []; doc.breadboard = null; burned = new Set(); pushUndo(); render(); tick(); select(null); },
+    async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); pushUndo(); render(); if (engine) await api.attach(kind); tick(); onStatus({ board: kind }); },
+    load(d) { restore(JSON.stringify({ board: d.board || "tqt_pro", parts: d.parts || {}, wires: (d.wires || []).map((w) => ({ pts: [], ...w })), boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null })); burned = new Set(); undoStack.length = 0; redoStack.length = 0; for (const k of Object.keys(ui)) delete ui[k]; },
     save() { return JSON.parse(snapshot()); },
     exportWokwi() { return toWokwiDiagram(api.save()); },
     importWokwi(json) { api.load(fromWokwiDiagram(json)); },
-    fit() { const r = viewport.getBoundingClientRect(); let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9; const add = (x, y, w, h) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h); };
-      add(doc.boardPos.x, doc.boardPos.y, 150, 200); if (doc.breadboard) add(doc.breadboard.x, doc.breadboard.y, BREADBOARD.width, BREADBOARD.height); for (const p of Object.values(doc.parts)) add(p.x, p.y, CATALOG[p.type].w, CATALOG[p.type].h);
-      const z = Math.max(0.3, Math.min(2, Math.min((r.width - 40) / (maxX - minX), (r.height - 40) / (maxY - minY)))); view.z = z; view.x = (r.width - (maxX - minX) * z) / 2 - minX * z; view.y = (r.height - (maxY - minY) * z) / 2 - minY * z; applyView(); },
-    tick, render, select, get selected() { return selected; },
+    fit() { const r = viewport.getBoundingClientRect(); const b = bounds(); const z = Math.max(0.25, Math.min(2, Math.min((r.width - 40) / (b.maxX - b.minX), (r.height - 40) / (b.maxY - b.minY)))); view.z = z; view.x = (r.width - (b.maxX - b.minX) * z) / 2 - b.minX * z; view.y = (r.height - (b.maxY - b.minY) * z) / 2 - b.minY * z; applyView(); },
+    zoom(f) { const r = viewport.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, f); },
+    panTo(wx, wy) { const r = viewport.getBoundingClientRect(); view.x = r.width / 2 - wx * view.z; view.y = r.height / 2 - wy * view.z; applyView(); },
     resetBurned() { burned = new Set(); tick(); },
+    focusPart(id) { if (id === "board") { api.panTo(doc.boardPos.x + 60, doc.boardPos.y + 60); select("board"); return; } const p = doc.parts[id]; if (!p) return; api.panTo(p.x + CATALOG[p.type].w / 2, p.y + CATALOG[p.type].h / 2); select(id); },
+    /** 匯出 PNG：把麵包板、板子、Wokwi 元素（shadow DOM 裡的 SVG）、線路組成一張 SVG 再畫到 canvas */
+    async exportPNG(scale = 2) {
+      const b = bounds(); const pad = 20, W = b.maxX - b.minX + pad * 2, H = b.maxY - b.minY + pad * 2;
+      let s = `<svg xmlns="${SVGNS}" width="${W * scale}" height="${H * scale}" viewBox="${b.minX - pad} ${b.minY - pad} ${W} ${H}"><rect x="${b.minX - pad}" y="${b.minY - pad}" width="${W}" height="${H}" fill="#f4f4f5"/>`;
+      if (doc.breadboard) s += `<g transform="translate(${doc.breadboard.x},${doc.breadboard.y})">${BREADBOARD.svg}</g>`;
+      const inner = (el) => { const sr = el.shadowRoot; const svgEl = sr ? sr.querySelector("svg") : el.querySelector("svg"); return svgEl ? svgEl.outerHTML.replace(/<style[\s\S]*?<\/style>/g, "") : ""; };
+      const boardEl = partsLayer.querySelector(".sim-board"); if (boardEl) s += `<g transform="translate(${doc.boardPos.x},${doc.boardPos.y})">${inner(boardEl.firstChild)}</g>`;
+      for (const [id, p] of Object.entries(doc.parts)) { const c = CATALOG[p.type]; s += `<g transform="translate(${p.x},${p.y}) rotate(${p.rot || 0} ${c.w / 2} ${c.h / 2})">${inner(partEls[id].firstChild)}</g>`; }
+      for (const w of doc.wires) { const d = wirePath(w); if (d) s += `<path d="${d}" fill="none" stroke="${w.color}" stroke-width="3" stroke-linecap="round"/>`; }
+      s += `</svg>`;
+      const img = new Image(); const url = URL.createObjectURL(new Blob([s], { type: "image/svg+xml" }));
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+      const cv = document.createElement("canvas"); cv.width = W * scale; cv.height = H * scale; cv.getContext("2d").drawImage(img, 0, 0); URL.revokeObjectURL(url);
+      return cv.toDataURL("image/png");
+    },
 
-    // ---------- 執行（透過可插拔引擎介面 engine.js） ----------
+    // ---------- 執行 ----------
+    get engine() { return engine; }, get vb() { return engine && engine._vb; },
     async attach(kind, engineKind) {
       if (engine) { try { await engine.stop(); } catch (e) {} }
       engine = await createEngine(engineKind || opts.engine || "micropython-wasm", { board: kind || doc.board });
       pinState = engine.pins();
-      engine.onPinChange((pin, st) => { pinState[pin] = { ...(pinState[pin] || {}), ...st }; tick(); });
-      engine.onConsole((m) => { if (m.t === "done") { running = false; onStatus({ running }); } if (m.t === "start") { running = true; onStatus({ running }); } onEvent(m); });
-      tick(); return engine;
+      const touch = (g) => (pinState[g] = pinState[g] || { mode: "in", level: 0, pull: 0, pwm: null });
+      engine.on("pinmode", (g, mode, pull) => { const s = touch(g); s.mode = mode; s.pull = pull; tick(); });
+      engine.on("pin", (g, level) => { touch(g).level = level; tick(); });
+      engine.on("pwm", (g, hz, duty) => { touch(g).pwm = hz > 0 ? { freq: hz, duty16: Math.round(duty * 65535) } : null; tick(); });
+      engine.on("state", (st) => { running = st === "running"; onStatus({ running, engineState: st }); });
+      engine.on("console", (m) => onEvent(m));
+      engine.on("screen", () => applyState());
+      onStatus({ engine: engine.kind, capabilities: engine.capabilities }); tick(); return engine;
     },
-    async run(code, name) { if (!engine) await api.attach(); burned = new Set(); const r = await engine.boot(code, name || "main.py"); if (r.ok) { running = true; onStatus({ running }); } return r; },
+    async run(code, name) { if (!engine) await api.attach(); if (shortNets.length) { toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } burned = new Set(); stoppedForShort = false; const r = await engine.boot({ program: code, name: name || "main.py", board: doc.board }); if (r.ok) { running = true; onStatus({ running }); } return r; },
     async stop() { if (!engine) return true; const ok = await engine.stop(); running = false; onStatus({ running }); return ok; },
+    pause() { if (engine) engine.pause(); },
+    step() { if (engine) engine.step(); },
+    async reset() { if (engine) await engine.reset(); for (const k of Object.keys(ui)) delete ui[k]; burned = new Set(); pinState = engine ? engine.pins() : {}; tick(); },
     async check(code) { if (!engine) await api.attach(); return engine.check(code); },
     cmd(c) { if (engine) engine.cmd(c); },
-    get engine() { return engine; },
-    get vb() { return engine && engine._vb; },
   };
   applyView(); render();
   return api;
