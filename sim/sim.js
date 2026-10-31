@@ -4,6 +4,7 @@ import { CATALOG, PIN_TABLE, DEVKIT_PINMAP, DEVKIT_PINS, BOARD_ART } from "./cat
 import { solve, BOARDS, PARTS } from "./circuit.js";
 import { BREADBOARD, holeAt } from "./breadboard.js";
 import { toWokwiDiagram, fromWokwiDiagram } from "./diagram.js";
+import { createEngine } from "./engine.js";
 
 const $ = (id) => document.getElementById(id);
 const SVGNS = "http://www.w3.org/2000/svg";
@@ -21,7 +22,7 @@ export function createSimulator(opts) {
   const ui = {};                           // 互動元件狀態 {partId: {pressed,value,light}}
   let burned = new Set(), lastResult = null, selected = null, nextIds = {};
   const undo = [], redo = [];
-  let vb = null, running = false, boardState = null;
+  let engine = null, running = false, pinState = {};   // pinState：engine.pins() 的快照 {pin: {mode, level, pull, pwm}}
 
   // ---------- DOM ----------
   const viewport = root.querySelector(".sim-viewport");
@@ -176,15 +177,18 @@ export function createSimulator(opts) {
     return { board: doc.board, parts, wires };
   }
   function io() {
-    const st = boardState || { pins: {}, pinModes: {}, pinPulls: {}, pwm: {} };
-    return { pins: st.pins, modes: st.pinModes, pulls: st.pinPulls || {}, pwm: st.pwm, ui, burned };
+    const pins = {}, modes = {}, pulls = {}, pwm = {};
+    for (const [p, s] of Object.entries(pinState)) { modes[p] = s.mode; if (s.mode === "out" || s.mode === "pwm") pins[p] = s.level; if (s.pull) pulls[p] = 1; if (s.pwm) pwm[p] = s.pwm; }
+    return { pins, modes, pulls, pwm, ui, burned };
   }
+  const boardButtons = () => (doc.board === "tqt_pro" ? [0, 47] : doc.board === "tdisplay_s3" ? [0, 14] : [0]);
   function tick() {
     const r = solve(circuitForSolver(), io(), breadboardLinks());
     lastResult = r; burned = new Set(r.burned);
-    if (vb) {
-      for (const [g, lv] of Object.entries(r.inputs)) if ((boardState.inputs[g] ?? -1) !== lv && !(doc.board === "tqt_pro" && (g == 0 || g == 47)) && !(doc.board === "tdisplay_s3" && (g == 0 || g == 14)) && !(doc.board === "xiao_esp32s3" && g == 0)) vb.setInput(Number(g), lv);
-      for (const [g, raw] of Object.entries(r.adc)) if (boardState.pinModes[g] === "adc" && boardState.adc[g] !== raw) vb.setAdc(Number(g), raw);
+    if (engine) {
+      // 電路算出的腳位電位回灌引擎（板載按鍵的腳位由按鍵自己管）
+      for (const [g, lv] of Object.entries(r.inputs)) if (!boardButtons().includes(Number(g)) && pinState[g] && pinState[g].mode === "in" && pinState[g].level !== lv) engine.setPin(Number(g), lv);
+      for (const [g, raw] of Object.entries(r.adc)) if (pinState[g] && pinState[g].mode === "adc") { const v = raw / 4095 * 3.3; if (Math.abs((pinState[g].analog ?? -1) - v) > 0.002) { pinState[g].analog = v; engine.setAnalog(Number(g), v); } }
     }
     applyState(); onWarnings(r.warnings);
     return r;
@@ -206,19 +210,21 @@ export function createSimulator(opts) {
       }
     }
     // 板子：板載 LED、按鍵、螢幕
-    const boardEl = partsLayer.querySelector(".sim-board"); if (!boardEl || !boardState) return;
-    if (doc.board === "devkit") { boardEl.firstChild.led1 = !!boardState.pins[2]; boardEl.firstChild.ledPower = true; }
+    const boardEl = partsLayer.querySelector(".sim-board"); if (!boardEl || !engine) return;
+    const level = (g) => (pinState[g] && (pinState[g].mode === "out" || pinState[g].mode === "pwm") ? pinState[g].level : null);
+    if (doc.board === "devkit") { boardEl.firstChild.led1 = level(2) === 1; boardEl.firstChild.ledPower = true; }
     else {
       const a = BOARD_ART[doc.board];
-      if (a.led) { const c = boardEl.querySelector(".bled"); const on = a.led.inverted ? boardState.pins[a.led.gpio] === 0 : !!boardState.pins[a.led.gpio]; c.setAttribute("fill", on ? "#ff3" : "#553"); }
-      for (const b of boardEl.querySelectorAll(".bbtn")) b.setAttribute("fill", boardState.buttons[b.dataset.gpio] ? "#777" : "#333");
+      if (a.led) { const c = boardEl.querySelector(".bled"); const lv = level(a.led.gpio); const on = lv === null ? false : (a.led.inverted ? lv === 0 : lv === 1); c.setAttribute("fill", on ? "#ff3" : "#553"); }
+      for (const b of boardEl.querySelectorAll(".bbtn")) b.setAttribute("fill", pressedButtons.has(Number(b.dataset.gpio)) ? "#777" : "#333");
       const cv = boardEl.querySelector(".sim-screen");
-      if (cv && vb && doc.board === "tqt_pro" && vb.takeScreenDirty()) cv.getContext("2d").putImageData(new ImageData(vb.screenRGBA(), 128, 128), 0, 0);
+      if (cv && engine.capabilities.screen && engine.takeScreenDirty()) cv.getContext("2d").putImageData(new ImageData(engine.screenRGBA(), 128, 128), 0, 0);
     }
   }
 
   // ---------- 互動 ----------
   let drag = null;   // {kind:"part"|"pan"|"wire"|"board"|"bb", ...}
+  const pressedButtons = new Set();
   const pointers = new Map();
   viewport.addEventListener("pointerdown", (ev) => {
     pointers.set(ev.pointerId, [ev.clientX, ev.clientY]);
@@ -236,7 +242,7 @@ export function createSimulator(opts) {
         if (running && c.interact) { interactStart(id, ev); select(id); return; }   // 執行中：操作元件
         select(id);
       }
-      if (ev.target.closest && ev.target.closest(".bbtn")) { const g = Number(ev.target.closest(".bbtn").dataset.gpio); if (vb) vb.pressButton(g, true); drag = { kind: "bbtn", gpio: g }; viewport.setPointerCapture(ev.pointerId); return; }
+      if (ev.target.closest && ev.target.closest(".bbtn")) { const g = Number(ev.target.closest(".bbtn").dataset.gpio); pressedButtons.add(g); if (engine) engine.pressButton(g, true); applyState(); drag = { kind: "bbtn", gpio: g }; viewport.setPointerCapture(ev.pointerId); return; }
       if (running && id !== "board" && id !== "bb") return;
       ev.preventDefault(); viewport.setPointerCapture(ev.pointerId);
       const [wx, wy] = toWorld(ev.clientX, ev.clientY);
@@ -275,7 +281,7 @@ export function createSimulator(opts) {
       tempWire.style.display = "none";
       if (to && to !== drag.from) { pushUndo(); doc.wires.push({ a: drag.from, b: to, color: WIRE_COLORS[$("sim-wire-color") ? Number($("sim-wire-color").value) : 0] }); select("wire:" + (doc.wires.length - 1)); render(); tick(); }
     } else if (drag.kind === "item") { if (drag.moved) { pushUndo(true); tick(); } }
-    else if (drag.kind === "bbtn") { if (vb) vb.pressButton(drag.gpio, false); }
+    else if (drag.kind === "bbtn") { pressedButtons.delete(drag.gpio); if (engine) engine.pressButton(drag.gpio, false); applyState(); }
     else if (drag.kind === "interact") interactEnd(drag);
     drag = pointers.size === 2 ? drag : null;
   };
@@ -334,7 +340,7 @@ export function createSimulator(opts) {
     undo() { if (!undo.length) return; redo.push(lastSnap); restore(undo.pop()); },
     redo() { if (!redo.length) return; undo.push(lastSnap); restore(redo.pop()); },
     clear() { pushUndo(); doc.parts = {}; doc.wires = []; doc.breadboard = null; burned = new Set(); pushUndo(); render(); tick(); },
-    async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); pushUndo(); render(); if (vb) await api.attach(kind); tick(); },
+    async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); pushUndo(); render(); if (engine) await api.attach(kind); tick(); },
     load(d) { restore(JSON.stringify({ board: d.board || "tqt_pro", parts: d.parts || {}, wires: d.wires || [], boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null })); burned = new Set(); undo.length = 0; redo.length = 0; },
     save() { return JSON.parse(snapshot()); },
     exportWokwi() { return toWokwiDiagram(api.save()); },
@@ -345,18 +351,21 @@ export function createSimulator(opts) {
     tick, render, select, get selected() { return selected; },
     resetBurned() { burned = new Set(); tick(); },
 
-    // ---------- 執行 ----------
-    async attach(kind) {
-      const mod = await import(new URL("../vboard/vboard.js", import.meta.url).href);
-      if (vb) { try { await vb.stop(); } catch (e) {} }
-      vb = await mod.createVirtualBoard({ board: kind || doc.board, onEvent: (m) => { if (m.t === "done") { running = false; onStatus({ running }); } if (m.t === "start") { running = true; onStatus({ running }); } onEvent(m); }, onState: (st) => { boardState = st; tick(); } });
-      boardState = vb.state; tick(); return vb;
+    // ---------- 執行（透過可插拔引擎介面 engine.js） ----------
+    async attach(kind, engineKind) {
+      if (engine) { try { await engine.stop(); } catch (e) {} }
+      engine = await createEngine(engineKind || opts.engine || "micropython-wasm", { board: kind || doc.board });
+      pinState = engine.pins();
+      engine.onPinChange((pin, st) => { pinState[pin] = { ...(pinState[pin] || {}), ...st }; tick(); });
+      engine.onConsole((m) => { if (m.t === "done") { running = false; onStatus({ running }); } if (m.t === "start") { running = true; onStatus({ running }); } onEvent(m); });
+      tick(); return engine;
     },
-    async run(code, name) { if (!vb) await api.attach(); burned = new Set(); const r = await vb.run(code, name || "main.py"); if (r.ok) { running = true; onStatus({ running }); } return r; },
-    async stop() { if (!vb) return true; const ok = await vb.stop(); running = false; onStatus({ running }); return ok; },
-    async check(code) { if (!vb) await api.attach(); return vb.check(code); },
-    cmd(c) { if (vb) vb.cmd(c); },
-    get vb() { return vb; },
+    async run(code, name) { if (!engine) await api.attach(); burned = new Set(); const r = await engine.boot(code, name || "main.py"); if (r.ok) { running = true; onStatus({ running }); } return r; },
+    async stop() { if (!engine) return true; const ok = await engine.stop(); running = false; onStatus({ running }); return ok; },
+    async check(code) { if (!engine) await api.attach(); return engine.check(code); },
+    cmd(c) { if (engine) engine.cmd(c); },
+    get engine() { return engine; },
+    get vb() { return engine && engine._vb; },
   };
   applyView(); render();
   return api;
