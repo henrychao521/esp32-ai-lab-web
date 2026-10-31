@@ -10,6 +10,7 @@
 | micropython-esp32c6.bin | ESP32-C6（RISC-V，Wi-Fi 6） | https://micropython.org/resources/firmware/ESP32_GENERIC_C6-20260824-v1.29.0.bin | 0x0 | 3688ba4e2c3949e639f5772e99fdb0efa1258b162a496133f78c108434195c89 |
 
 | micropython-esp32cam.bin | ESP32-CAM（AI-Thinker，OV2640，4MB＋PSRAM） | 社群相機建置 cnadler86/micropython-camera-API v0.6.2（2026-01-12）= **MicroPython v1.27.0**＋camera 模組：https://github.com/cnadler86/micropython-camera-API/releases/download/v0.6.2/mpy_cam-v1.27.0-AI_THINKER.zip（zip sha256 133e568e2f9feb0db56fc75f29fe2029919fafa0c445980f026a1934b4f8aada，內含 firmware.bin） | 0x1000 | b26ba45de13549272d888c229c5c3864b75250471ac290478d752b8098ee70ea |
+| micropython-xiao-esp32s3-cam.bin | XIAO ESP32S3 Sense（2026-10-31 實機為 OV3660） | 社群相機建置 cnadler86/micropython-camera-API v0.6.2 = **MicroPython v1.27.0**＋camera 模組：https://github.com/cnadler86/micropython-camera-API/releases/download/v0.6.2/mpy_cam-v1.27.0-XIAO_ESP32S3.zip（解壓 firmware.bin） | 0x0 | 0e5f549d86e8bdedb1cc8ab4fb0afc9239276ca9f69273802f7983572dbc99c2 |
 
 - **ESP32-CAM 用的不是官方 1.29**：官方 MicroPython 沒有相機模組；社群版最新釋出對應 MicroPython 1.27.0（截至 2026-10-31 沒有 1.29 建置）。代理程式只用 asyncio／network／requests，1.27 也有，`micropython tools/unix_check.py` 的靜態檢查涵蓋。相機 API：`from camera import Camera`（cnadler86 版）。
 - 2026-10-31 下載並以 `shasum -a 256` 核對；`tools/verify_firmware.sh` 可重新核對。

@@ -75,12 +75,12 @@
   "id": "xiao_esp32s3",
   "name": "Seeed XIAO ESP32S3／Sense（8MB＋8MB PSRAM）",
   "chip": "esp32s3",
-  "firmware": "esp32s3-octal",
+  "firmware": "xiao-esp32s3-cam",
   "python": true,
   "transport": "ws",
   "boot_button": true,
   "ttl": false,
-  "camera": false,
+  "camera": true,
   "display": false
  },
  {

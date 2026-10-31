@@ -44,12 +44,13 @@ esp-web-install-button{--esp-tools-button-color:var(--accent);--esp-tools-button
 <div class="row">
 <select id="chip">
 <option value="esp32s3">ESP32-S3（四線 PSRAM：T-QT Pro、DevKitC-1 N8R2）</option>
-<option value="esp32s3-octal">ESP32-S3（八線 PSRAM：T-Display S3、XIAO ESP32S3）</option>
+<option value="esp32s3-octal">ESP32-S3（八線 PSRAM：T-Display S3、沒有鏡頭的 XIAO ESP32S3）</option>
 <option value="esp32">ESP32 經典版（DevKit WROOM、T-Display v1.1）</option>
 <option value="esp32s2">ESP32-S2</option>
 <option value="esp32c3">ESP32-C3（XIAO ESP32C3、SuperMini）</option>
 <option value="esp32c6">ESP32-C6</option>
 <option value="esp32cam">ESP32-CAM（AI-Thinker，相機版 MicroPython 1.27）</option>
+<option value="xiao-esp32s3-cam">XIAO ESP32S3 Sense（有鏡頭，相機版 MicroPython 1.27，先接天線）</option>
 </select>
 <esp-web-install-button id="installBtn" manifest="manifest-esp32s3.json"><button slot="activate" class="primary">安裝 MicroPython</button></esp-web-install-button>
 <button id="autoResetBtn" type="button">先試自動重置（選用）</button>

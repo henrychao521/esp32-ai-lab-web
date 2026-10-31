@@ -1,0 +1,1 @@
+{"name": "XIAO ESP32S3 Sense 相機版 MicroPython 1.27", "version": "1.27.0-cam", "new_install_prompt_erase": true, "builds": [{"chipFamily": "ESP32-S3", "parts": [{"path": "firmware/micropython-xiao-esp32s3-cam.bin", "offset": 0}]}]}
