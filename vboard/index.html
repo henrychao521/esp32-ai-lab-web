@@ -89,6 +89,12 @@ window.VB = {
   screenPNG: () => { if (kind !== "tqt_pro") return null; if (vb.takeScreenDirty()) screen.getContext("2d").putImageData(new ImageData(vb.screenRGBA(), 128, 128), 0, 0); return screen.toDataURL("image/png"); },
   state: () => vb.state,
 };
+// App 用：呼叫 window.VB.<fn> 後把結果以 {"t":"reply","id","r"} 經 messageHandler 送回（evaluateJavaScript 的回傳值不可靠）
+window.VBCall = async (id, fn, args) => {
+  let r;
+  try { r = await window.VB[fn](...(args || [])); } catch (e) { r = { error: String(e && e.message || e) }; }
+  post({ t: "reply", id, r: r === undefined ? null : r });
+};
 post({ t: "ready", board: kind });
 </script>
 </body>
