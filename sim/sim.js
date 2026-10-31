@@ -414,6 +414,13 @@ export function createSimulator(opts) {
     wireColor: 0, get gridSnap() { return gridSnap; }, set gridSnap(v) { gridSnap = !!v; }, get wireMode() { return wireMode; }, set wireMode(v) { wireMode = !!v; },
     pinInfo, nodeVoltage, bounds, tick, render, select, toast,
     highlightWires(idx) { hlWires = new Set(idx || []); renderWires(); },
+    /** 老師模式用：正規化的網路表（每個網路＝排序後的元件腳／板子腳清單，忽略麵包板孔與沒接東西的網路） */
+    canonicalNets() {
+      const r = lastResult || solve(circuitForSolver(), io(), breadboardLinks());
+      const nets = [];
+      for (const members of Object.values(r.nets.nets)) { const m = members.filter((x) => !x.startsWith("bb:")).sort(); if (m.length >= 2) nets.push(m.join("+")); }
+      return nets.sort();
+    },
     setCards(c) { cards = c; }, get cards() { return cards; },
     addPart(type, x, y) {
       pushUndo(); const base = { led: "led", resistor: "r", pushbutton: "btn", "slide-switch": "sw", potentiometer: "pot", "photoresistor-sensor": "ldr", buzzer: "bz", servo: "servo", "led-bar-graph": "bar", "rgb-led": "rgb" }[type] || type;

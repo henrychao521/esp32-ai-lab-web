@@ -161,6 +161,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <button id="btn-share" class="desk" title="分享網址">分享</button>
   <button id="btn-clear" class="desk">清空</button>
   <button id="btn-push" title="把程式送到真板子，並顯示接線對照表">推到實機</button>
+  <button id="btn-teacher" class="desk" title="出題與批改">老師</button>
   <button id="btn-help" class="icon" title="說明與快捷鍵">?</button>
 </header>
 <nav class="pal" id="palette">
@@ -187,6 +188,25 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
       <div id="push-result" class="muted" style="margin-top:6px"></div>
     </div>
   </dialog>
+  <dialog id="teacher-dlg" style="border:0;border-radius:12px;padding:0;max-width:720px;width:94vw;background:var(--panel);color:var(--ink)">
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)"><b>老師模式</b><button id="t-tab-make" class="on">出題</button><button id="t-tab-grade">批改</button><span style="flex:1"></span><button id="teacher-close">關閉</button></div>
+    <div id="t-make" style="padding:12px 16px;max-height:70vh;overflow:auto;font-size:13px;display:flex;flex-direction:column;gap:8px">
+      <div class="muted">以目前畫布的電路與程式為「正確答案」出題。學生拿到題目後接線或寫程式，按「交作業」自動比對網路表與程式輸出。</div>
+      <input id="t-title" type="text" placeholder="題目名稱，例如 第 3 週：按鍵控燈">
+      <div class="row" style="display:flex;gap:10px;flex-wrap:wrap"><label><input type="radio" name="t-mode" value="wires" checked> 缺線（隨機拿掉幾條線）</label><label><input type="radio" name="t-mode" value="code"> 缺程式（給電路、程式空白）</label><label><input type="radio" name="t-mode" value="both"> 兩者都缺</label></div>
+      <div class="row" style="display:flex;gap:8px;align-items:center"><span>拿掉幾條線</span><input id="t-remove" type="number" min="1" max="20" value="2" style="width:70px"></div>
+      <div><div class="muted">程式輸出必須包含這些行（自動從正確程式跑 3 秒取得，可修改，一行一條）：</div><textarea id="t-expect" style="width:100%;min-height:80px;font:12px ui-monospace,monospace"></textarea><button id="t-capture">重新擷取輸出</button></div>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button id="t-make-go" class="primary">產生題目</button><button id="t-copy-url" disabled>複製題目網址</button><button id="t-download" disabled>下載題目 JSON</button><button id="t-preview" disabled>以學生身分開啟</button></div>
+      <div id="t-make-result" class="muted"></div>
+    </div>
+    <div id="t-grade" style="display:none;padding:12px 16px;max-height:70vh;overflow:auto;font-size:13px;flex-direction:column;gap:8px">
+      <div class="muted">學生交作業後會得到一串「結果碼」，貼到這裡（可多筆、一行一筆）：</div>
+      <textarea id="t-codes" style="width:100%;min-height:90px;font:12px ui-monospace,monospace"></textarea>
+      <div class="row" style="display:flex;gap:8px"><button id="t-grade-go" class="primary">整理成表</button><button id="t-csv" disabled>匯出 CSV</button></div>
+      <table id="t-table" style="width:100%;border-collapse:collapse;font-size:12px"></table>
+    </div>
+  </dialog>
+  <div id="assign" style="display:none;position:absolute;right:10px;top:10px;z-index:4;background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;max-width:300px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px"><b id="assign-title"></b><div id="assign-text" class="muted"></div><div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap"><input id="assign-name" type="text" placeholder="座號 姓名" style="flex:1;min-width:120px"><button id="assign-submit" class="primary">交作業</button><button id="assign-close" class="icon">✕</button></div><div id="assign-result" style="margin-top:6px"></div></div>
   <dialog id="examples-dlg"><div class="hd"><b>範例電路</b><span class="muted">點一個：電路、程式、接線步驟一起載入</span><span style="flex:1"></span><button id="examples-close">關閉</button></div><div class="grid" id="examples-grid"></div></dialog>
   <div id="tour"><div class="box">
     <h3>第一次用？三步驟</h3>
@@ -341,6 +361,66 @@ $("btn-png").addEventListener("click", async () => { try { const url = await sim
 $("btn-import").addEventListener("click", () => { const i = document.createElement("input"); i.type = "file"; i.accept = ".json"; i.onchange = async () => { const t = await i.files[0].text(); try { const j = JSON.parse(t); if (j.editor === "wokwi" || j.connections) sim.importWokwi(j); else sim.load(j); if (j.code) setCode(j.code); $("board").value = sim.doc.board; toast("已匯入"); } catch (e) { alert("匯入失敗：" + e.message); } }; i.click(); });
 $("btn-share").addEventListener("click", async () => { const data = { d: sim.save(), c: getCode() }; const s = await compress(JSON.stringify(data)); const url = location.origin + location.pathname + "#s=" + s; try { await navigator.clipboard.writeText(url); toast("分享網址已複製（" + Math.round(url.length / 1024) + " KB）"); } catch { prompt("分享網址", url); } });
 $("btn-help").addEventListener("click", () => { $("tour").style.display = "flex"; });
+// ---------- 老師模式：出題／作答／自動檢查／CSV ----------
+let assignment = null;
+const tdlg = $("teacher-dlg");
+$("btn-teacher").addEventListener("click", () => { tdlg.showModal(); if (!$("t-expect").value) captureExpected(); });
+$("teacher-close").addEventListener("click", () => tdlg.close());
+$("t-tab-make").addEventListener("click", () => { $("t-make").style.display = "flex"; $("t-grade").style.display = "none"; $("t-tab-make").classList.add("on"); $("t-tab-grade").classList.remove("on"); });
+$("t-tab-grade").addEventListener("click", () => { $("t-make").style.display = "none"; $("t-grade").style.display = "flex"; $("t-tab-grade").classList.add("on"); $("t-tab-make").classList.remove("on"); });
+async function runCapture(code, ms = 3000) {
+  const lines = []; const off = sim.engine.on("console", (m) => { if (m.t === "out") lines.push(...m.s.split("\n").map((x) => x.trim()).filter(Boolean)); });
+  await sim.run(code); await new Promise((r) => setTimeout(r, ms)); await sim.stop(); off(); return lines;
+}
+const normLine = (l) => l.replace(/\d+(\.\d+)?/g, "#").trim();
+async function captureExpected() { const lines = await runCapture(getCode()); const uniq = [...new Set(lines.map(normLine))].slice(0, 6); $("t-expect").value = uniq.join("\n"); }
+$("t-capture").addEventListener("click", captureExpected);
+let madeURL = null;
+$("t-make-go").addEventListener("click", async () => {
+  const mode = document.querySelector("input[name=t-mode]:checked").value; const title = $("t-title").value.trim() || "未命名題目";
+  const full = sim.save(); const expectNets = sim.canonicalNets();
+  const student = JSON.parse(JSON.stringify(full)); let removed = [];
+  if (mode === "wires" || mode === "both") { const n = Math.min(Number($("t-remove").value) || 1, student.wires.length); const idx = [...student.wires.keys()].sort(() => Math.random() - 0.5).slice(0, n).sort((a, b) => b - a); for (const i of idx) removed.push(student.wires.splice(i, 1)[0]); }
+  const code = mode === "code" || mode === "both" ? "import lab\n# 請在這裡寫程式，讓電路做出題目要求的行為\n\nwhile lab.running():\n    lab.sleep(0.1)\n" : getCode();
+  assignment = { v: 1, title, mode, board: full.board, student, code, expect: { nets: expectNets, lines: $("t-expect").value.split("\n").map((x) => x.trim()).filter(Boolean), wiresMissing: removed.length }, hint: mode === "code" ? "電路已接好，請寫程式。" : `電路少了 ${removed.length} 條線，請接回去。` + (mode === "both" ? " 程式也要寫。" : "") };
+  const packed = await compress(JSON.stringify(assignment)); madeURL = location.origin + location.pathname + "#a=" + packed;
+  $("t-make-result").textContent = `題目已產生：${title}（${mode === "wires" ? "缺 " + removed.length + " 條線" : mode === "code" ? "缺程式" : "缺 " + removed.length + " 條線＋程式"}；答案網路 ${expectNets.length} 組、必含輸出 ${assignment.expect.lines.length} 行；網址 ${Math.round(madeURL.length / 1024)} KB）`;
+  $("t-copy-url").disabled = $("t-download").disabled = $("t-preview").disabled = false;
+});
+$("t-copy-url").addEventListener("click", async () => { try { await navigator.clipboard.writeText(madeURL); toast("題目網址已複製，傳給學生"); } catch { prompt("題目網址", madeURL); } });
+$("t-download").addEventListener("click", () => download("assignment.json", JSON.stringify(assignment, null, 2), "application/json"));
+$("t-preview").addEventListener("click", () => { tdlg.close(); location.hash = madeURL.slice(madeURL.indexOf("#")); loadAssignmentFromHash(); });
+async function loadAssignmentFromHash() {
+  const m = /#a=([A-Za-z0-9_-]+)/.exec(location.hash); if (!m) return false;
+  try { assignment = JSON.parse(await decompress(m[1])); } catch (e) { toast("題目網址解析失敗", "bad"); return false; }
+  sim.load(assignment.student); $("board").value = sim.doc.board; setCode(assignment.code); sim.fit();
+  $("assign").style.display = "block"; $("assign-title").textContent = "作業：" + assignment.title; $("assign-text").textContent = assignment.hint + " 接好、寫好後填座號姓名按「交作業」。"; $("assign-result").textContent = "";
+  return true;
+}
+$("assign-close").addEventListener("click", () => { $("assign").style.display = "none"; });
+$("assign-submit").addEventListener("click", async () => {
+  if (!assignment) return; const name = $("assign-name").value.trim(); if (!name) { toast("先填座號姓名", "warn"); return; }
+  $("assign-result").textContent = "檢查中…";
+  const nets = sim.canonicalNets(); const want = assignment.expect.nets; const netsOK = JSON.stringify(nets) === JSON.stringify(want);
+  const missingNets = want.filter((n) => !nets.includes(n)).length, extraNets = nets.filter((n) => !want.includes(n)).length;
+  const lines = (await runCapture(getCode(), 3000)).map(normLine); const needed = assignment.expect.lines.map(normLine); const hit = needed.filter((l) => lines.includes(l)); const outOK = needed.length === 0 || hit.length === needed.length;
+  const errs = sim.result && sim.result.warnings.filter((w) => w.severity === "error").map((w) => w.code);
+  const pass = netsOK && outOK && !errs.length;
+  const rec = { name, title: assignment.title, time: new Date().toISOString().slice(0, 16).replace("T", " "), pass, netsOK, missingNets, extraNets, outOK, outHit: hit.length + "/" + needed.length, errors: errs.join("|"), board: sim.doc.board };
+  const codeStr = btoa(unescape(encodeURIComponent(JSON.stringify(rec))));
+  $("assign-result").innerHTML = `<div style="color:${pass ? "var(--ok)" : "var(--bad)"}"><b>${pass ? "✅ 通過" : "❌ 還沒通過"}</b></div><div class="muted">接線：${netsOK ? "正確" : `少 ${missingNets} 組、多 ${extraNets} 組連接`}；輸出：${outOK ? "符合" : `只符合 ${hit.length}/${needed.length} 行`}${errs.length ? "；電路錯誤：" + errs.join("、") : ""}</div><div class="muted" style="margin-top:4px">結果碼（複製給老師）：</div><textarea readonly style="width:100%;height:46px;font:11px ui-monospace,monospace">${codeStr}</textarea>`;
+  try { const all = JSON.parse(localStorage.getItem("sim.results") || "[]"); all.push(rec); localStorage.setItem("sim.results", JSON.stringify(all)); } catch (e) {}
+});
+let gradeRows = [];
+$("t-grade-go").addEventListener("click", () => {
+  gradeRows = []; for (const line of $("t-codes").value.split("\n").map((x) => x.trim()).filter(Boolean)) { try { gradeRows.push(JSON.parse(decodeURIComponent(escape(atob(line))))); } catch (e) { gradeRows.push({ name: "（無法解析）", title: line.slice(0, 20) }); } }
+  try { const mine = JSON.parse(localStorage.getItem("sim.results") || "[]"); if (!gradeRows.length) gradeRows = mine; } catch (e) {}
+  const tb = $("t-table"); tb.innerHTML = "<tr><th style='text-align:left'>座號姓名</th><th style='text-align:left'>題目</th><th>時間</th><th>通過</th><th>接線</th><th>輸出</th><th>錯誤</th></tr>";
+  for (const r of gradeRows) { const tr = document.createElement("tr"); tr.innerHTML = `<td>${esc(r.name)}</td><td>${esc(r.title)}</td><td>${esc(r.time || "")}</td><td style="text-align:center">${r.pass ? "✅" : "❌"}</td><td style="text-align:center">${r.netsOK ? "✓" : `少${r.missingNets ?? "?"}多${r.extraNets ?? "?"}`}</td><td style="text-align:center">${esc(r.outHit || "")}</td><td>${esc(r.errors || "")}</td>`; for (const td of tr.children) { td.style.padding = "3px 6px"; td.style.borderBottom = "1px solid var(--line)"; } tb.appendChild(tr); }
+  $("t-csv").disabled = !gradeRows.length;
+});
+$("t-csv").addEventListener("click", () => { const head = ["座號姓名", "題目", "時間", "通過", "接線正確", "少的連接", "多的連接", "輸出符合", "電路錯誤", "板子"]; const rows = gradeRows.map((r) => [r.name, r.title, r.time, r.pass ? "是" : "否", r.netsOK ? "是" : "否", r.missingNets ?? "", r.extraNets ?? "", r.outHit ?? "", r.errors ?? "", r.board ?? ""]); const csv = "\uFEFF" + [head, ...rows].map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n"); download("成績.csv", csv, "text/csv"); });
+
 // ---------- 推到實機：腳位對照表＋送程式 ----------
 const EMBED = q.get("embed") === "1"; let parentBoard = null;
 const REAL_NAME = { tqt_pro: (n) => n, devkit: (n) => n, tdisplay_s3: (n) => n, xiao_esp32s3: (n) => n };
@@ -372,6 +452,34 @@ $("push-go").addEventListener("click", async () => {
 // ---------- 內嵌在 IDE 時的訊息 ----------
 window.addEventListener("message", (ev) => { const m = ev.data || {}; if (m.t === "sim:setCode" && typeof m.code === "string") { setCode(m.code); toast("已載入 IDE 的程式"); } if (m.t === "sim:getCode") { ev.source.postMessage({ t: "sim:code", code: getCode() }, "*"); } if (m.t === "sim:board") { parentBoard = m; if (m.board && BOARDS[m.board] && m.board !== sim.doc.board) toast("IDE 連線的是 " + BOARDS[m.board].name + "，可從上方選單切換板子"); } });
 if (EMBED) { document.body.classList.add("embed"); window.parent.postMessage({ t: "sim:ready" }, "*"); }
+// ---------- ?bench=1：量 FPS 與互動延遲（App 實機效能用），結果 postMessage 給宿主 ----------
+if (q.get("bench") === "1") (async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 100 && !sim.engine; i++) await wait(100);
+  const t0 = performance.now();
+  sim.load({ board: "tqt_pro", parts: {}, wires: [], boardPos: { x: 60, y: 40 }, breadboard: { x: 40, y: 300 } });
+  const led = sim.addPart("led", 420, 150), r1 = sim.addPart("resistor", 320, 150), btn = sim.addPart("pushbutton", 420, 260), o = sim.addPart("ssd1306", 560, 120);
+  sim.doc.wires.push({ a: "board:G16", b: r1 + ":1", color: "#d33", pts: [] }, { a: r1 + ":2", b: led + ":A", color: "#e90", pts: [] }, { a: led + ":C", b: "board:GND", color: "#111", pts: [] }, { a: "board:G17", b: btn + ":1.l", color: "#27d", pts: [] }, { a: btn + ":2.l", b: "board:GND", color: "#111", pts: [] }, { a: o + ":3V3", b: "board:3V3", color: "#d33", pts: [] }, { a: o + ":GND", b: "board:GND", color: "#111", pts: [] }, { a: o + ":DATA", b: "board:G18", color: "#27d", pts: [] }, { a: o + ":CLK", b: "board:G48", color: "#2a7", pts: [] });
+  sim.render(); sim.tick(); sim.fit();
+  setCode("import lab, ssd1306\nfrom machine import Pin, I2C\nled = Pin(16, Pin.OUT); btn = Pin(17, Pin.IN, Pin.PULL_UP)\ni2c = I2C(0, scl=Pin(48), sda=Pin(18)); oled = ssd1306.SSD1306_I2C(128, 64, i2c)\nn = 0\nwhile lab.running():\n    led.value(1 if btn.value() == 0 else n % 2)\n    oled.fill(0); oled.text('n=%d' % n, 0, 0); oled.show()\n    n += 1\n    lab.sleep(0.05)\n");
+  const r = await sim.run(getCode()); const tBoot = performance.now() - t0;
+  // FPS：5 秒 rAF
+  let frames = 0; const tf = performance.now(); await new Promise((res) => { const f = () => { frames++; if (performance.now() - tf < 5000) requestAnimationFrame(f); else res(); }; requestAnimationFrame(f); });
+  const fps = frames / ((performance.now() - tf) / 1000);
+  // 互動延遲：按下按鍵 → LED 狀態改變（10 次平均）
+  const lat = [];
+  for (let i = 0; i < 10; i++) {
+    sim.ui[btn] = { pressed: false }; sim.tick(); await wait(150);
+    const t1 = performance.now(); sim.ui[btn].pressed = true; sim.tick();
+    for (let k = 0; k < 200; k++) { if (sim.result.parts[led].on) break; await wait(5); }
+    lat.push(performance.now() - t1);
+  }
+  sim.ui[btn].pressed = false; sim.tick();
+  const tickT = performance.now(); for (let i = 0; i < 50; i++) sim.tick(); const tickMs = (performance.now() - tickT) / 50;
+  const result = { ua: navigator.userAgent, bootMs: Math.round(tBoot), fps: Math.round(fps * 10) / 10, latencyMs: Math.round(lat.reduce((a, b) => a + b, 0) / lat.length), latencyMax: Math.round(Math.max(...lat)), tickMs: Math.round(tickMs * 100) / 100, ran: r.ok, parts: Object.keys(sim.doc.parts).length, dpr: devicePixelRatio, w: innerWidth, h: innerHeight };
+  await sim.stop();
+  window.parent.postMessage({ t: "sim:bench", result }, "*"); window.__benchResult = result; toast("效能量測：" + JSON.stringify(result));
+})();
 $("tour-close").addEventListener("click", () => { $("tour").style.display = "none"; localStorage.setItem("sim.toured", "1"); });
 // ---------- 範例電路（sim/examples.json）＋步驟式接線提示 ----------
 let EXAMPLES = []; let stepState = null;
@@ -609,6 +717,7 @@ async function decompress(b64) { const bin = atob(b64.replace(/-/g, "+").replace
 
 (async () => {
   let loaded = false, sharedCode = null;
+  if (/#a=/.test(location.hash)) { for (let i = 0; i < 100 && !sim.engine; i++) await new Promise((r) => setTimeout(r, 100)); }
   const m = /#s=([A-Za-z0-9_-]+)/.exec(location.hash);
   if (m) { try { const data = JSON.parse(await decompress(m[1])); sim.load(data.d); sharedCode = data.c || null; loaded = true; toast("已載入分享的電路"); } catch (e) { toast("分享網址解析失敗", "bad"); } }
   if (!loaded && q.get("fresh") !== "1") { try { const saved = localStorage.getItem("sim.doc"); if (saved) { sim.load(JSON.parse(saved)); loaded = true; } } catch (e) {} }
@@ -622,6 +731,7 @@ async function decompress(b64) { const bin = atob(b64.replace(/-/g, "+").replace
   if (!localStorage.getItem("sim.toured") && !q.get("notour")) $("tour").style.display = "flex";
   window.addEventListener("beforeunload", saveLocal);
   try { await sim.attach(); log("模擬器就緒（" + sim.engine.info().version + "）", "sys"); } catch (e) { log("MicroPython 載入失敗：" + e.message, "err"); }
+  if (await loadAssignmentFromHash()) toast("已載入作業");
   sim.fit();
 })();
 </script>
