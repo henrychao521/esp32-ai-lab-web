@@ -2128,13 +2128,17 @@ const PROMPTS = {
       window.__selftestResult = pre.textContent;
     }
 
-    base = normAddr(targetBoard);
-    sSet("base", base);
-    $("input-base").value = base;
     lastHelloMsg = null;
-
-    const helloPromise = waitForWsEvent(function(m) { return m.t === "hello"; }, 6000);
-    openWebSocket();
+    const helloPromise = waitForWsEvent(function(m) { return m.t === "hello"; }, 20000);
+    if (/^virtual:\/\//.test(targetBoard)) {
+      // 虛擬板也能跑同一套 selftest：?selftest=1&board=virtual://tqt_pro
+      await connectVirtual(targetBoard.replace(/^virtual:\/\//, ""));
+    } else {
+      base = normAddr(targetBoard);
+      sSet("base", base);
+      $("input-base").value = base;
+      openWebSocket();
+    }
 
     // 1. ws_hello
     const helloMsg = lastHelloMsg || (await helloPromise);
