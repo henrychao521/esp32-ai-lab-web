@@ -160,6 +160,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <button id="btn-import" class="desk">匯入</button>
   <button id="btn-share" class="desk" title="分享網址">分享</button>
   <button id="btn-clear" class="desk">清空</button>
+  <button id="btn-push" title="把程式送到真板子，並顯示接線對照表">推到實機</button>
   <button id="btn-help" class="icon" title="說明與快捷鍵">?</button>
 </header>
 <nav class="pal" id="palette">
@@ -176,6 +177,16 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <div id="tooltip"></div>
   <div id="toasts"></div>
   <div id="steps"><b id="steps-title"></b><div id="steps-text"></div><div class="nav"><button id="steps-prev" class="icon">‹</button><span id="steps-pos" class="muted"></span><button id="steps-next" class="icon">›</button><span style="flex:1"></span><button id="steps-close" class="icon">✕</button></div></div>
+  <dialog id="push-dlg" style="border:0;border-radius:12px;padding:0;max-width:640px;width:94vw;background:var(--panel);color:var(--ink)">
+    <div class="hd" style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)"><b>推到實機</b><span class="muted" id="push-board"></span><span style="flex:1"></span><button id="push-close">關閉</button></div>
+    <div style="padding:12px 16px;max-height:70vh;overflow:auto;font-size:13px">
+      <div class="muted" style="margin-bottom:8px">先照這張表把真板子接好（模擬器的腳位名就是板子絲印），再按「送出並執行」。</div>
+      <table id="push-table" style="width:100%;border-collapse:collapse;font-size:12px"></table>
+      <div id="push-notes" class="muted" style="margin:8px 0"></div>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="push-addr" type="text" placeholder="板子位址（esp32lab-xxxx.local 或 IP）" style="flex:1;min-width:200px"><button id="push-go" class="primary">送出並執行</button></div>
+      <div id="push-result" class="muted" style="margin-top:6px"></div>
+    </div>
+  </dialog>
   <dialog id="examples-dlg"><div class="hd"><b>範例電路</b><span class="muted">點一個：電路、程式、接線步驟一起載入</span><span style="flex:1"></span><button id="examples-close">關閉</button></div><div class="grid" id="examples-grid"></div></dialog>
   <div id="tour"><div class="box">
     <h3>第一次用？三步驟</h3>
@@ -330,6 +341,37 @@ $("btn-png").addEventListener("click", async () => { try { const url = await sim
 $("btn-import").addEventListener("click", () => { const i = document.createElement("input"); i.type = "file"; i.accept = ".json"; i.onchange = async () => { const t = await i.files[0].text(); try { const j = JSON.parse(t); if (j.editor === "wokwi" || j.connections) sim.importWokwi(j); else sim.load(j); if (j.code) setCode(j.code); $("board").value = sim.doc.board; toast("已匯入"); } catch (e) { alert("匯入失敗：" + e.message); } }; i.click(); });
 $("btn-share").addEventListener("click", async () => { const data = { d: sim.save(), c: getCode() }; const s = await compress(JSON.stringify(data)); const url = location.origin + location.pathname + "#s=" + s; try { await navigator.clipboard.writeText(url); toast("分享網址已複製（" + Math.round(url.length / 1024) + " KB）"); } catch { prompt("分享網址", url); } });
 $("btn-help").addEventListener("click", () => { $("tour").style.display = "flex"; });
+// ---------- 推到實機：腳位對照表＋送程式 ----------
+const EMBED = q.get("embed") === "1"; let parentBoard = null;
+const REAL_NAME = { tqt_pro: (n) => n, devkit: (n) => n, tdisplay_s3: (n) => n, xiao_esp32s3: (n) => n };
+function wiringTable() {
+  const rows = []; const B = BOARDS[sim.doc.board];
+  for (const w of sim.doc.wires) for (const [me, other] of [[w.a, w.b], [w.b, w.a]]) {
+    if (!me.startsWith("board:")) continue; const name = me.slice(6); const inf = sim.pinInfo(me);
+    const [oid, opin] = other.split(":"); const otherText = oid === "bb" ? "麵包板 " + opin : oid === "board" ? "板子 " + opin : `${oid}（${CATALOG[sim.doc.parts[oid]?.type]?.label || oid}）的 ${opin}`;
+    rows.push({ pin: name, desc: inf.desc, to: otherText, reserved: inf.reserved, adcIssue: inf.gpio !== null && !B.adc.includes(inf.gpio) && /ADC\(Pin\(\s*${inf.gpio}/.test(getCode()) });
+  }
+  return rows;
+}
+$("btn-push").addEventListener("click", () => {
+  const rows = wiringTable(); const tb = $("push-table"); tb.innerHTML = "<tr><th style='text-align:left'>板子腳位</th><th style='text-align:left'>接到</th><th style='text-align:left'>說明</th></tr>";
+  for (const r of rows) { const tr = document.createElement("tr"); tr.innerHTML = `<td style="padding:3px 4px;border-bottom:1px solid var(--line)"><b>${esc(r.pin)}</b></td><td style="padding:3px 4px;border-bottom:1px solid var(--line)">${esc(r.to)}</td><td style="padding:3px 4px;border-bottom:1px solid var(--line)" class="muted">${esc(r.desc)}${r.reserved ? `<br><span style="color:var(--bad)">保留腳：${esc(r.reserved)}</span>` : ""}${r.adcIssue ? `<br><span style="color:var(--warn)">實機這支腳沒有 ADC，程式要改用有 ADC 的腳位</span>` : ""}</td>`; tb.appendChild(tr); }
+  if (!rows.length) tb.innerHTML += "<tr><td colspan=3 class='muted'>畫布上沒有接到板子的線</td></tr>";
+  const notes = []; if (sim.doc.board === "tqt_pro") notes.push("T-QT Pro 實機只有 G16、G17、G18、G48 四支擴充腳，而且沒有可用的 ADC 腳；需要類比輸入請換板子。"); if (sim.doc.breadboard) notes.push("麵包板同一欄 5 孔相通、電源軌整列相通，照模擬器的孔位插。"); notes.push("ECHO、DO 這類 5 V 輸出接 3.3 V 腳位時，實機要加分壓電阻。");
+  $("push-notes").textContent = notes.join(" "); $("push-board").textContent = BOARDS[sim.doc.board].name + (parentBoard ? `（IDE 目前連線：${parentBoard.ip || parentBoard.board}）` : "");
+  $("push-addr").value = (parentBoard && parentBoard.ip) || localStorage.getItem("sim.pushAddr") || ""; $("push-result").textContent = EMBED ? "在 IDE 裡：按下去會把程式放進 IDE 編輯器並執行到目前連線的板子。" : (location.protocol === "https:" ? "這一頁是 https，瀏覽器不允許直接連 http 的板子；請用板子或教室伺服器提供的 IDE 開模擬器，或複製程式貼到 App。" : "");
+  $("push-dlg").showModal();
+});
+$("push-close").addEventListener("click", () => $("push-dlg").close());
+$("push-go").addEventListener("click", async () => {
+  const code = getCode();
+  if (EMBED) { window.parent.postMessage({ t: "sim:push", code }, "*"); $("push-result").textContent = "已送到 IDE 執行，看 IDE 的主控台。"; return; }
+  let addr = $("push-addr").value.trim(); if (!addr) { $("push-result").textContent = "請填板子位址"; return; } localStorage.setItem("sim.pushAddr", addr); if (!/^https?:\/\//.test(addr)) addr = "http://" + addr;
+  try { const r = await fetch(addr + "/run?name=sim.py", { method: "POST", headers: { "Content-Type": "text/plain" }, body: code }); const j = await r.json(); $("push-result").textContent = j.ok ? "已送到板子執行（輸出在板子的 IDE／App 主控台）" : "板子回：" + (j.msg || r.status); } catch (e) { $("push-result").textContent = "連不到板子：" + e.message; }
+});
+// ---------- 內嵌在 IDE 時的訊息 ----------
+window.addEventListener("message", (ev) => { const m = ev.data || {}; if (m.t === "sim:setCode" && typeof m.code === "string") { setCode(m.code); toast("已載入 IDE 的程式"); } if (m.t === "sim:getCode") { ev.source.postMessage({ t: "sim:code", code: getCode() }, "*"); } if (m.t === "sim:board") { parentBoard = m; if (m.board && BOARDS[m.board] && m.board !== sim.doc.board) toast("IDE 連線的是 " + BOARDS[m.board].name + "，可從上方選單切換板子"); } });
+if (EMBED) { document.body.classList.add("embed"); window.parent.postMessage({ t: "sim:ready" }, "*"); }
 $("tour-close").addEventListener("click", () => { $("tour").style.display = "none"; localStorage.setItem("sim.toured", "1"); });
 // ---------- 範例電路（sim/examples.json）＋步驟式接線提示 ----------
 let EXAMPLES = []; let stepState = null;

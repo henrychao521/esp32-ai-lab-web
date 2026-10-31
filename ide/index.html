@@ -305,74 +305,55 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   </section>
 <!-- 接線分頁（由 tools/patch_ide_features.py 插入 IDE；需要主程式提供 window.IDEBridge = {board(), usable(), reserved(), setEditor(code), chip()}） -->
 <section id="panel-wiring" class="panel">
-  <div class="sec-title">接線檢查（LED、電阻、按鍵）</div>
-  <p class="hint">選元件、把每一隻腳接到板子的腳位或另一個元件；按「檢查接線」用網路表規則判定（短路、缺限流電阻、LED 極性、保留腳位、按鍵浮接），通過後會產生對應的程式。真正的電氣模擬用 Wokwi。</p>
-  <div class="row"><label>加入元件</label>
-    <button type="button" id="wire-add-led">＋LED</button>
-    <button type="button" id="wire-add-res">＋電阻 220Ω</button>
-    <button type="button" id="wire-add-btn">＋按鍵</button>
-    <button type="button" id="wire-clear">清空</button>
+  <div class="sec-title">電路模擬器（Tinkercad 式：放元件、接線、程式真的驅動元件）</div>
+  <div class="row">
+    <button type="button" id="sim-send" class="btn-primary">把編輯器的程式送進模擬器</button>
+    <button type="button" id="sim-take">把模擬器的程式拿回編輯器</button>
+    <button type="button" id="sim-open" >另開視窗</button>
+    <span class="hint" id="sim-note">模擬器從教室伺服器或 GitHub Pages 載入（約 1.5 MB，第一次較慢）；「推到實機」會把模擬器裡的程式送到目前連線的板子。</span>
   </div>
-  <div id="wire-parts" class="mono"></div>
-  <div id="wire-rows"></div>
-  <div class="row"><button type="button" id="wire-add-wire">＋一條線</button>
-    <button type="button" id="wire-check" class="btn-primary">檢查接線</button>
-    <button type="button" id="wire-to-editor" disabled>把程式放進編輯器</button>
-    <a id="wire-wokwi" href="#" target="_blank" rel="noopener">在 Wokwi 模擬（新視窗）</a></div>
-  <div id="wire-result"></div>
-  <pre id="wire-program" class="mono" hidden></pre>
+  <div id="sim-wrap" style="position:relative;min-height:520px;border:2px solid var(--line);border-radius:4px;overflow:hidden">
+    <iframe id="sim-frame" title="電路模擬器" style="width:100%;height:70vh;min-height:520px;border:0;display:none" allow="clipboard-write"></iframe>
+    <div id="sim-placeholder" class="hint" style="padding:14px">切到這個分頁就會載入模擬器。</div>
+  </div>
 </section>
-<script id="wiring-ui">
-window.addEventListener("DOMContentLoaded", function () {
-  const $ = (id) => document.getElementById(id);
-  const parts = {};   // id → type
-  let wires = [];     // [[a,b]]
-  let n = { led: 0, res: 0, btn: 0 };
-  function pinOptions() {
-    const B = window.IDEBridge || {};
-    const usable = (B.usable && B.usable()) || [];
-    const opts = ['<option value="">—</option>', '<option value="board.3V3">板子 3V3</option>', '<option value="board.GND">板子 GND</option>'];
-    for (const p of usable) opts.push(`<option value="board.G${p}">板子 GPIO${p}</option>`);
-    for (const id in parts) for (const pin of WIRING_PARTS[parts[id]].pins) opts.push(`<option value="${id}.${pin}">${id} ${WIRING_PARTS[parts[id]].labels[pin]}</option>`);
-    return opts.join("");
+<script id="sim-ui">
+(function() {
+  const $ = function(id) { return document.getElementById(id); };
+  const PAGES_SIM = "https://henrychao521.github.io/esp32-ai-lab-web/sim/index.html";
+  let loaded = false, origin = "*";
+  function simSources() {
+    const list = [];
+    const server = (typeof window.IDEBridge === "object" && window.IDEBridge.server && window.IDEBridge.server()) || "";
+    if (/^https?:$/i.test(location.protocol) && !/github\.io$/.test(location.hostname)) list.push(location.origin + "/sim/index.html");
+    if (server) list.push(server.replace(/\/$/, "") + "/sim/index.html");
+    list.push(PAGES_SIM);
+    return list.filter(function(u, i, a) { return a.indexOf(u) === i; });
   }
-  function render() {
-    $("wire-parts").textContent = Object.keys(parts).length ? Object.keys(parts).map((k) => k + "＝" + WIRING_PARTS[parts[k]].name).join("、") : "（還沒有元件）";
-    const rows = $("wire-rows"); rows.innerHTML = "";
-    wires.forEach((w, i) => {
-      const d = document.createElement("div"); d.className = "row wire-row";
-      d.innerHTML = `<select data-i="${i}" data-k="0">${pinOptions()}</select><span>→</span><select data-i="${i}" data-k="1">${pinOptions()}</select><button type="button" data-del="${i}">✕</button>`;
-      d.querySelectorAll("select").forEach((s) => { s.value = w[Number(s.dataset.k)] || ""; s.addEventListener("change", () => { wires[Number(s.dataset.i)][Number(s.dataset.k)] = s.value; }); });
-      d.querySelector("button").addEventListener("click", () => { wires.splice(i, 1); render(); });
-      rows.appendChild(d);
-    });
-    const B = window.IDEBridge || {};
-    $("wire-wokwi").href = wokwiLink(B.chip ? B.chip() : "esp32");
-  }
-  function add(type) { n[type]++; parts[type + n[type]] = type; render(); }
-  $("wire-add-led").addEventListener("click", () => add("led"));
-  $("wire-add-res").addEventListener("click", () => add("res"));
-  $("wire-add-btn").addEventListener("click", () => add("btn"));
-  $("wire-add-wire").addEventListener("click", () => { wires.push(["", ""]); render(); });
-  $("wire-clear").addEventListener("click", () => { for (const k in parts) delete parts[k]; wires = []; n = { led: 0, res: 0, btn: 0 }; $("wire-result").innerHTML = ""; $("wire-program").hidden = true; $("wire-to-editor").disabled = true; render(); });
-  $("wire-check").addEventListener("click", () => {
-    const B = window.IDEBridge || {};
-    const board = { usable: (B.usable && B.usable()) || [], reserved: (B.reserved && B.reserved()) || {}, led: null };
-    const ws = wires.filter((w) => w[0] && w[1]);
-    const r = wiringCheck(parts, ws, board);
-    const box = $("wire-result"); box.innerHTML = "";
-    if (r.ok) {
-      box.className = "ok"; box.textContent = "✓ 接線檢查通過（" + Object.keys(parts).length + " 個元件、" + ws.length + " 條線）";
-      $("wire-program").textContent = r.program; $("wire-program").hidden = false; $("wire-to-editor").disabled = false;
-    } else {
-      box.className = "warn";
-      box.innerHTML = "<b>接線有 " + r.findings.length + " 個問題：</b>" + r.findings.map((f) => "<div class=\"guard-item\"><b>" + f.brief + "</b><div class=\"guard-fix\">→ " + f.detail + "</div></div>").join("");
-      $("wire-program").hidden = true; $("wire-to-editor").disabled = true;
+  async function loadSim() {
+    if (loaded) return;
+    const fr = $("sim-frame");
+    for (const u of simSources()) {
+      try {
+        if (!/github\.io/.test(u)) { const r = await fetch(u, { cache: "no-store" }); if (!r.ok) continue; }   // 教室伺服器不支援 HEAD，用 GET 探
+        fr.src = u + "?embed=1&notour=1"; fr.style.display = "block"; $("sim-placeholder").style.display = "none"; loaded = true;
+        try { origin = new URL(u).origin; } catch (e) {}
+        return;
+      } catch (e) {}
     }
+    $("sim-placeholder").textContent = "載入模擬器失敗：需要連得到教室伺服器或網路。";
+  }
+  document.addEventListener("ide:tab", function(ev) { if (ev.detail === "wiring") loadSim(); });
+  $("sim-send").addEventListener("click", function() { loadSim(); const fr = $("sim-frame"); if (fr.contentWindow) fr.contentWindow.postMessage({ t: "sim:setCode", code: $("editor").value }, "*"); });
+  $("sim-take").addEventListener("click", function() { const fr = $("sim-frame"); if (fr.contentWindow) fr.contentWindow.postMessage({ t: "sim:getCode" }, "*"); });
+  $("sim-open").addEventListener("click", function() { window.open(simSources()[0], "_blank"); });
+  window.addEventListener("message", function(ev) {
+    const m = ev.data || {};
+    if (m.t === "sim:code" && typeof m.code === "string") { window.IDEBridge.setEditor(m.code); }
+    if (m.t === "sim:push" && typeof m.code === "string") { window.IDEBridge.setEditor(m.code); window.IDEBridge.run(); }
+    if (m.t === "sim:ready") { const fr = $("sim-frame"); if (fr.contentWindow) fr.contentWindow.postMessage({ t: "sim:board", board: window.IDEBridge.board(), ip: window.IDEBridge.boardIp() }, "*"); }
   });
-  $("wire-to-editor").addEventListener("click", () => { if (window.IDEBridge && window.IDEBridge.setEditor) window.IDEBridge.setEditor($("wire-program").textContent); });
-  render();
-});
+})();
 </script>
 
 <!-- 視覺分頁（說明＋入口；辨識本體在 vision.html，因為板子的 http 來源開不了鏡頭） -->
@@ -412,7 +393,7 @@ window.addEventListener("DOMContentLoaded", function () {
   <button id="tab-paste" type="button"><span>貼上</span></button>
   <button id="tab-console" type="button"><span>主控台</span></button>
   <button id="tab-remote" type="button"><span>遙控</span></button>
-  <button id="tab-wiring" type="button"><span>接線</span></button>
+  <button id="tab-wiring" type="button"><span>模擬</span></button>
   <button id="tab-vision" type="button"><span>視覺</span></button>
   <button id="tab-teacher" type="button"><span>老師</span></button>
 </nav>
@@ -1359,6 +1340,7 @@ const PROMPTS = {
     // 桌機版主控台永遠在右欄，切到主控台不要把左欄清空
     if (name === "console" && window.matchMedia && window.matchMedia("(min-width:900px)").matches) return;
     activeTab = name;
+    document.dispatchEvent(new CustomEvent("ide:tab", { detail: name }));
     Object.keys(TAB_MAP).forEach(function(k) {
       const btn = $(TAB_MAP[k][0]);
       const pnl = $(TAB_MAP[k][1]);
