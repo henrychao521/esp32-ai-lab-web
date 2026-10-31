@@ -529,7 +529,9 @@ function drawScope() {
     const st = sim.engine ? sim.engine.pins()[g] : null; const cur = st ? (st.pwm ? 0.5 + st.pwm.duty / 2 : st.level) : 0;
     const level0 = pts.length ? pts[0][1] : cur;
     ctx.moveTo(0, y1 - level0 * (y1 - y0)); last = level0;
-    for (const p of pts) { const x = Math.max(0, ((p[0] - t0) / win) * W); ctx.lineTo(x, y1 - last * (y1 - y0)); ctx.lineTo(x, y1 - p[1] * (y1 - y0)); last = p[1]; if (p[2] === "pwm") { ctx.fillStyle = "#e90"; ctx.fillText(`PWM ${p[3]} Hz ${Math.round(p[4] * 100)}%`, Math.min(W - 110, x + 2), y0 + 10); } }
+    let lastPwm = null;
+    for (const p of pts) { const x = Math.max(0, ((p[0] - t0) / win) * W); ctx.lineTo(x, y1 - last * (y1 - y0)); ctx.lineTo(x, y1 - p[1] * (y1 - y0)); last = p[1]; if (p[2] === "pwm") lastPwm = p; }
+    if (lastPwm) { ctx.fillStyle = "#e90"; ctx.fillText(`PWM ${lastPwm[3]} Hz，目前工作比 ${Math.round(lastPwm[4] * 100)}%`, 60, y0 + 10); }
     ctx.lineTo(W, y1 - last * (y1 - y0)); ctx.stroke();
   });
   ctx.fillStyle = "#6b7280"; ctx.font = "10px sans-serif"; for (let i = 0; i <= 5; i++) ctx.fillText(((t0 + (win * i) / 5) / 1000).toFixed(1) + "s", (W * i) / 5 + 2, H - 2);
