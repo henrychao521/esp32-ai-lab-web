@@ -17,9 +17,10 @@ export async function createEngine(kind = "micropython-wasm", opts = {}) {
     const chip = { devkit: "esp32" }[opts.board] || "esp32s3";
     const romName = { esp32: "esp32_rev300_rom.elf", esp32s3: "esp32s3_rev0_rom.elf" }[chip];
     const fwId = opts.board === "devkit" ? "micropython-esp32" : "micropython-esp32s3";
+    // size：解壓後的大小（Pages 以 gzip 傳，content-length 是壓縮後的數字，進度會超過 100%）
     const files = {
-      wasm: new URL("./esp32sim.wasm", base), rom: new URL("./rom/" + romName, base),
-      fw: new URL(FW_BASE + fwId + ".bin", import.meta.url),
+      wasm: { url: new URL("./esp32sim.wasm", base), size: 4103631 }, rom: { url: new URL("./rom/" + romName, base), size: chip === "esp32" ? 857500 : 949552 },
+      fw: { url: new URL(FW_BASE + fwId + ".bin", import.meta.url), size: fwId === "micropython-esp32" ? 1790544 : 1783296 },
     };
     const blobs = await preloadAll(files, opts.onProgress);
     const e = await mod.createEsp32simEngine({
@@ -42,14 +43,15 @@ export async function preloadAll(files, onProgress) {
   const keys = Object.keys(files), sizes = {}, done = {}, out = {};
   const report = (label) => { if (!onProgress) return; const t = keys.reduce((a, k) => a + (sizes[k] || 0), 0), d = keys.reduce((a, k) => a + (done[k] || 0), 0); onProgress(d, t, label); };
   await Promise.all(keys.map(async (k) => {
-    const href = files[k].href;
+    const f = files[k]; const href = (f.url || f).href, hint = f.size || 0;
     if (href.startsWith("file:") || typeof document === "undefined") { out[k] = href; return; }   // Node（契約測試）：引擎 B 自己讀檔
     if (preloadCache[href]) { out[k] = preloadCache[href]; return; }
     const r = await fetch(href); if (!r.ok) throw new Error(href + ": " + r.status);
-    sizes[k] = Number(r.headers.get("content-length")) || 0; done[k] = 0;
+    const encoded = !!r.headers.get("content-encoding");   // gzip 時 content-length 是壓縮後的，改用 size 提示
+    sizes[k] = (encoded && hint) ? hint : (Number(r.headers.get("content-length")) || hint || 0); done[k] = 0;
     const chunks = []; const reader = r.body.getReader();
-    for (;;) { const { value, done: fin } = await reader.read(); if (fin) break; chunks.push(value); done[k] += value.length; report(k); }
-    if (!sizes[k]) sizes[k] = done[k];
+    for (;;) { const { value, done: fin } = await reader.read(); if (fin) break; chunks.push(value); done[k] = Math.min(done[k] + value.length, sizes[k] || Infinity); report(k); }
+    sizes[k] = done[k];
     const type = href.endsWith(".wasm") ? "application/wasm" : "application/octet-stream";
     out[k] = preloadCache[href] = URL.createObjectURL(new Blob(chunks, { type })); report(k);
   }));
