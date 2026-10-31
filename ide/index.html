@@ -1,0 +1,2318 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ESP32 AI Lab 網頁版 IDE</title>
+<style>
+:root{--bg:#efe6d6;--panel:#f6f0e4;--ink:#1c1917;--muted:#6b6560;--line:#1c1917;--accent:#d9480f;--accent-ink:#fff;--term-bg:#14161a;--term-ink:#e7e5e4;--term-muted:#8b8f98;--ok:#15803d;--err:#dc2626;--warn:#d97706;--warn-bg:rgba(217,119,6,.10);--err-bg:rgba(220,38,38,.08);--ok-bg:rgba(21,128,61,.10);--purple:#7c3aed;--field:#fffdf8;--tab-h:56px;--top-h:48px}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--panel:#171a21;--ink:#e7e5e4;--muted:#9a9ea8;--line:rgba(231,229,228,.4);--accent:#ff6a2b;--accent-ink:#0f1115;--term-bg:#0b0d10;--term-ink:#e7e5e4;--term-muted:#7c8290;--field:#111318}}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;display:flex;flex-direction:column;height:100dvh;overflow:hidden;-webkit-text-size-adjust:100%}
+.mono,textarea,pre,code,#console,#sensor-bar,.ln-num,.preview-box,table,#status-name,#editor-gutter{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+h4{margin:0 0 6px;font-size:14px;font-weight:800}
+a{color:var(--accent)}
+button,select,input[type=text],input[type=password],input[type=number]{font:inherit;color:var(--ink);background:var(--field);border:2px solid var(--line);border-radius:4px;min-height:44px;padding:0 14px}
+button{cursor:pointer;font-weight:700}
+button:disabled{opacity:.4;cursor:default}
+button.btn-primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.btn-danger{border-color:var(--err);color:var(--err)}
+select{padding-right:28px}
+input[type=range]{width:100%;height:44px;accent-color:var(--accent)}
+textarea{width:100%;resize:vertical;padding:10px 12px;line-height:1.5;font-size:15px;background:var(--term-bg);color:var(--term-ink);border:2px solid var(--line);border-radius:4px;tab-size:4}
+textarea::placeholder{color:var(--term-muted)}
+#selftest{display:none;margin:0;padding:8px;font-size:12px;background:var(--term-bg);color:var(--term-ink);white-space:pre-wrap;max-height:40vh;overflow:auto;border-bottom:2px solid var(--line)}
+#selftest.visible{display:block}
+/* 頂列 */
+.topbar{height:var(--top-h);display:flex;align-items:center;gap:12px;padding:0 14px;border-bottom:2px solid var(--line);background:var(--bg);flex:none}
+.topbar .brand{font-weight:900;letter-spacing:.02em;white-space:nowrap}
+.status-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+#status-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none;display:inline-block}
+.dot.ok,.dot.online{background:var(--ok)}
+.state-badge{font-size:13px;font-weight:700;padding:2px 8px;border:2px solid var(--line);border-radius:4px;white-space:nowrap}
+.state-badge.running{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+#btn-device{min-height:36px;padding:0 12px}
+/* 工作區：桌機左右兩欄，手機單欄 */
+.workspace{flex:1;min-height:0;display:grid;grid-template-columns:1fr;overflow:hidden}
+.col-left,.col-right{min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+.panel{display:none;padding:12px 14px;flex-direction:column;gap:10px}
+.panel.active{display:flex}
+.sec-title{font-weight:900;font-size:16px;padding-bottom:4px;border-bottom:2px solid var(--line)}
+.hint,.hint-text{color:var(--muted);font-size:13px;margin:0}
+.row,.toolbar,.action-row,.input-row,.gpio-row,.slider-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.action-row .btn-primary{flex:1 1 180px}
+.card{display:flex;flex-direction:column;gap:8px;padding:10px 0;border-bottom:2px solid var(--line)}
+.steps-list{margin:0;padding:0 0 0 12px;border-left:3px solid var(--accent);list-style:none}
+.steps-list li{padding:2px 0}
+details.menu{position:relative}
+details.menu summary{list-style:none;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;padding:0 14px;border:2px solid var(--line);border-radius:4px;font-weight:700}
+details.menu summary::-webkit-details-marker{display:none}
+details.menu .menu-body{position:absolute;left:0;top:48px;z-index:5;background:var(--panel);border:2px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:6px;min-width:220px}
+/* 編輯器＋行號 */
+.editor-wrap{display:flex;border:2px solid var(--line);border-radius:4px;background:var(--term-bg);min-height:220px;flex:1}
+.editor-wrap textarea{border:0;border-radius:0;min-height:220px;flex:1;outline:none;white-space:pre;overflow:auto}
+#editor-gutter{margin:0;padding:10px 6px 10px 10px;color:var(--term-muted);text-align:right;font-size:15px;line-height:1.5;user-select:none;overflow:hidden;border-right:1px solid rgba(255,255,255,.12);min-width:44px}
+#paste{min-height:200px}
+/* 主控台 */
+#panel-console{height:100%}
+/* 虛擬板（沒有板子時：MicroPython wasm 在瀏覽器執行） */
+#vboard-dock{display:none;border-bottom:2px solid var(--line);padding:6px 0 8px;gap:8px;flex-direction:column}
+body.vb-on #vboard-dock{display:flex}
+#vboard-dock canvas{display:block;max-width:100%;height:auto;touch-action:none;cursor:pointer;margin:0 auto}
+.vb-ctl{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:13px;color:var(--muted)}
+.vb-ctl label{display:flex;align-items:center;gap:6px}.vb-ctl input[type=range]{width:110px}
+.vb-ctl .vb-note{flex-basis:100%;font-size:12px}
+.vb-buttons{display:flex;gap:6px;flex-wrap:wrap}
+#sensor-bar{display:flex;gap:0;flex-wrap:wrap;border-bottom:2px solid var(--line)}
+#sensor-bar:empty{display:none}
+.sensor-card{padding:4px 10px;border-right:2px solid var(--line);font-size:14px}
+.sensor-key{color:var(--muted)}.sensor-key::after{content:" = "}
+.sensor-val{font-weight:700}
+#console{flex:1;min-height:200px;overflow:auto;background:var(--term-bg);color:var(--term-ink);padding:8px 10px;font-size:15px;line-height:1.5;border:2px solid var(--line);border-radius:4px}
+.c-line{white-space:pre-wrap;word-break:break-word;display:flex;gap:8px}
+.c-line::before{content:">";width:1.2em;flex:none;color:var(--term-muted)}
+.c-err{color:#f87171}.c-err::before{content:"!";color:#f87171}
+.c-sys{color:var(--term-muted)}.c-sys::before{content:"·"}
+.c-start{color:var(--accent)}.c-start::before{content:"▶";color:var(--accent)}
+.c-done{color:#4ade80}.c-done::before{content:"✓";color:#4ade80}
+.c-display{color:#c4b5fd}.c-display::before{content:"▭";color:#c4b5fd}
+.c-img img{max-width:240px;border:1px solid var(--term-muted);display:block;margin:4px 0}
+/* 檢查結果 */
+#clean-status{font-size:13px;color:var(--muted);min-height:1.2em}
+#check-result{display:none;padding:10px 12px;border-left:4px solid var(--line);background:var(--panel)}
+#check-result.ok{display:block;border-left-color:var(--ok);background:var(--ok-bg);color:var(--ok);font-weight:700}
+#check-result.err{display:block;border-left-color:var(--err);background:var(--err-bg)}
+#check-result.warn{display:block;border-left-color:var(--warn);background:var(--warn-bg)}
+.guard-item{margin:6px 0;line-height:1.45}.guard-item b{color:var(--warn)}.guard-fix{opacity:.9}
+.guard-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.preview-box{margin-top:8px;max-height:240px;overflow:auto;background:var(--term-bg);color:var(--term-ink);border:2px solid var(--line);border-radius:4px;font-size:14px}
+.preview-line{display:flex;padding:2px 8px;white-space:pre}
+.preview-line.err-line{background:rgba(220,38,38,.3);color:#fca5a5;font-weight:700}
+.preview-line.warn-line{background:rgba(217,119,6,.3);color:#fcd34d;font-weight:700}
+.ln-num{width:40px;flex:none;color:var(--term-muted);user-select:none;text-align:right;padding-right:10px}
+/* 遙控 */
+.remote-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pad-btn{min-height:72px;font-size:22px;font-weight:900;touch-action:none;user-select:none}
+.pad-btn.pressed{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.slider-row label{width:36px}.slider-row input{flex:1}
+.joy-wrap{align-items:center}
+#joystick{width:260px;height:260px;max-width:90vw;max-height:90vw;border:2px solid var(--line);border-radius:50%;position:relative;touch-action:none;background:
+ linear-gradient(var(--line),var(--line)) center/1px 100% no-repeat,linear-gradient(var(--line),var(--line)) center/100% 1px no-repeat,var(--panel)}
+#joy-thumb{width:72px;height:72px;border-radius:50%;background:var(--accent);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none}
+.toggle-btn.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+#gpio-pin{width:80px}
+/* 老師、裝置面板、表格 */
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:800;border-bottom:2px solid var(--line);padding:6px 8px}
+td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align:top}
+.clickable-row{cursor:pointer}.clickable-row:hover td{background:var(--panel)}
+.badge-updatable{color:var(--warn);font-weight:700}
+.chip-list{display:flex;flex-wrap:wrap;gap:6px}
+.chip{min-height:36px;padding:0 10px;font-weight:600}
+dialog{border:2px solid var(--line);border-radius:4px;padding:16px;max-width:560px;width:calc(100% - 32px);background:var(--bg);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+.dlg-section{padding:8px 0;border-bottom:2px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.dlg-section .input-row input{flex:1;min-width:0}
+/* 底部分頁列（手機）／桌機為左欄上方 */
+.tabbar{flex:none;display:flex;border-top:2px solid var(--line);background:var(--bg);height:var(--tab-h)}
+.tabbar button{flex:1;border:0;border-radius:0;background:transparent;color:var(--muted);font-weight:700;font-size:13px;min-height:0;padding:0 4px;border-top:3px solid transparent}
+.tabbar button.active{color:var(--accent);border-top-color:var(--accent)}
+.tab-ico{display:none}
+@media (min-width:900px){
+  body{flex-direction:column}
+  .workspace{grid-template-columns:55% 45%}
+  .col-left{border-right:2px solid var(--line);display:flex;flex-direction:column}
+  .col-left .tabbar{order:-1;border-top:0;border-bottom:2px solid var(--line);height:44px}
+  .tabbar button{font-size:14px;border-top:0;border-bottom:3px solid transparent}
+  .tabbar button.active{border-bottom-color:var(--accent)}
+  #tab-console{display:none}
+  #panel-console{display:flex!important}
+  .editor-wrap{min-height:320px}
+  .editor-wrap textarea,#console{font-size:15px}
+}
+</style>
+</head>
+<body>
+
+<pre id="selftest"></pre>
+
+<header class="topbar">
+  <div class="brand">ESP32 AI Lab</div>
+  <div class="status-left">
+    <span id="status-dot" class="dot"></span>
+    <span id="status-name">未連線</span>
+    <span id="status-state" class="state-badge">待命</span>
+  </div>
+  <button id="btn-device" type="button">裝置</button>
+</header>
+
+<main class="workspace">
+<div class="col-left">
+  <!-- 1. 程式 -->
+  <section id="panel-code" class="panel active">
+    <div class="toolbar">
+      <select id="select-file" aria-label="檔案名稱">
+        <option value="main.py">main.py</option>
+        <option value="lesson1.py">lesson1.py</option>
+        <option value="lesson2.py">lesson2.py</option>
+        <option value="test.py">test.py</option>
+      </select>
+      <select id="select-example" aria-label="範例程式">
+        <option value="">範例…</option>
+      </select>
+      <details class="menu"><summary>⋯ 更多</summary><div class="menu-body">
+        <button id="btn-load-file" type="button">從板子載入</button>
+        <button id="btn-save-file" type="button">存到板子</button>
+        <button id="btn-reset" class="btn-danger" type="button">重開板子</button>
+        <button id="btn-clear-code" type="button">清除全部程式碼</button>
+        <button id="btn-restore-code" type="button" disabled>還原上次清除</button>
+      </div></details>
+    </div>
+
+    <div class="editor-wrap"><pre id="editor-gutter" aria-hidden="true">1</pre><textarea id="editor" class="code-area" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea></div>
+
+    <div class="action-row">
+      <button id="btn-run" class="btn-primary" type="button">檢查並執行</button>
+      <button id="btn-stop" type="button" disabled>停止</button>
+    </div>
+  </section>
+
+  <!-- 範例 -->
+  <section id="panel-examples" class="panel">
+    <div class="sec-title">範例（先跑一支看結果）</div>
+    <div class="row">
+      <select id="ex-level"><option value="">全部難度</option><option>入門</option><option>感測</option><option>遙控</option><option>視覺</option><option>進階</option></select>
+      <label><input type="checkbox" id="ex-myboard" checked> 只顯示這塊板子能跑的</label>
+      <button type="button" id="ex-reload">重新載入</button>
+    </div>
+    <p class="hint" id="ex-source">範例清單來自教室伺服器或 Pages（板子上不放）。</p>
+    <div id="ex-list"></div>
+    <div id="ex-detail" hidden>
+      <div class="sec-title" id="ex-title"></div>
+      <div class="row"><img id="ex-thumb" alt="預期畫面" width="192" height="192" style="image-rendering:pixelated;background:#000;display:none"><div>
+        <p><b>預期結果：</b><span id="ex-expect"></span></p><p id="ex-desc"></p><p class="hint" id="ex-needs"></p></div></div>
+      <p><b>試試改這裡：</b></p><ul id="ex-next"></ul>
+      <div class="row"><button type="button" id="ex-load">載入編輯器</button><button type="button" id="ex-run" class="btn-primary">載入並執行</button><button type="button" id="ex-back">返回清單</button></div>
+      <pre id="ex-code" class="mono" style="background:var(--term-bg);color:var(--term-ink);padding:10px;border:2px solid var(--line);max-height:320px;overflow:auto"></pre>
+    </div>
+  </section>
+  <!-- 2. 貼上 -->
+  <section id="panel-paste" class="panel">
+    <div class="card">
+      <ul class="steps-list">
+        <li>① 按「複製 AI 提示」貼給你用的 AI 並描述想做什麼</li>
+        <li>② 把 AI 給的程式整段貼到下面（有 &#96;&#96;&#96; 也沒關係）</li>
+        <li>③ 按「檢查並執行」</li>
+      </ul>
+      <button id="btn-copy-prompt" class="btn-primary" type="button" style="width:100%;">複製 AI 提示</button>
+      <textarea id="prompt-fallback" class="code-area" style="display:none;min-height:90px;margin-top:8px;" readonly></textarea>
+    </div>
+
+    <textarea id="paste" class="code-area" placeholder="把 AI 產生的回覆或程式碼貼在這裡…" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+
+    <div class="action-row">
+      <button id="btn-paste-clean" type="button">清理</button>
+      <button id="btn-paste-check" type="button">檢查語法</button>
+      <button id="btn-paste-run" class="btn-primary" type="button">檢查並執行</button>
+    </div>
+    <div class="row"><button id="btn-clear-paste" type="button">清除全部程式碼</button><button id="btn-restore-paste" type="button" disabled>還原上次清除</button></div>
+
+    <div id="clean-status" aria-live="polite"></div>
+    <div id="check-result"></div>
+  </section>
+
+  <!-- 4. 遙控 -->
+  <section id="panel-remote" class="panel">
+    <div class="card">
+      <div class="remote-grid">
+        <button class="pad-btn" data-btn="A" type="button">A</button>
+        <button class="pad-btn" data-btn="B" type="button">B</button>
+        <button class="pad-btn" data-btn="C" type="button">C</button>
+        <button class="pad-btn" data-btn="D" type="button">D</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="slider-row">
+        <label for="slider-s1"><strong>s1</strong></label>
+        <input id="slider-s1" type="range" min="0" max="100" value="0">
+        <span id="val-s1" style="width:32px;text-align:right;">0</span>
+      </div>
+      <div class="slider-row">
+        <label for="slider-s2"><strong>s2</strong></label>
+        <input id="slider-s2" type="range" min="0" max="100" value="0">
+        <span id="val-s2" style="width:32px;text-align:right;">0</span>
+      </div>
+    </div>
+
+    <div class="card joy-wrap">
+      <div id="joystick">
+        <div id="joy-thumb"></div>
+      </div>
+      <div id="joy-label" class="hint-text">x: 0.00, y: 0.00</div>
+    </div>
+
+    <div class="card">
+      <div class="gpio-row" style="margin-bottom:8px;">
+        <span>板載 LED：</span>
+        <button id="btn-led-toggle" class="toggle-btn" type="button">LED：關</button>
+      </div>
+      <div class="gpio-row">
+        <label for="gpio-pin">腳位</label>
+        <input id="gpio-pin" type="number" min="0" max="48" value="2">
+        <button id="btn-gpio-out" class="toggle-btn" type="button">輸出：0</button>
+        <button id="btn-gpio-read" type="button">讀取</button>
+        <button id="btn-gpio-adc" type="button">ADC</button>
+      </div>
+    </div>
+
+    <p class="hint-text">讀到的值會出現在主控台上方的感測值列；程式裡用 @lab.on_cmd 接按鈕、滑桿、搖桿。</p>
+  </section>
+
+  <!-- 5. 老師 -->
+  <section id="panel-teacher" class="panel">
+    <div id="teacher-no-server" class="card" style="display:none;">
+      請在裝置面板填教室伺服器位址
+    </div>
+    <div id="teacher-main" class="card" style="display:none;flex-direction:column;gap:10px;">
+      <div class="input-row">
+        <input id="teacher-token" type="password" placeholder="班級通行碼">
+        <button id="btn-teacher-auth" type="button">驗證通行碼</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>可推送的代理版本：<strong id="bundle-version">-</strong></div>
+        <button id="btn-fleet-update" class="btn-primary" type="button">全班更新</button>
+      </div>
+      <div id="fleet-results" style="display:none;" class="card"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>名稱</th>
+              <th>板型</th>
+              <th>IP</th>
+              <th>版本</th>
+              <th>狀態</th>
+              <th>幾秒前</th>
+            </tr>
+          </thead>
+          <tbody id="teacher-devices-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+<!-- 接線分頁（由 tools/patch_ide_features.py 插入 IDE；需要主程式提供 window.IDEBridge = {board(), usable(), reserved(), setEditor(code), chip()}） -->
+<section id="panel-wiring" class="panel">
+  <div class="sec-title">接線檢查（LED、電阻、按鍵）</div>
+  <p class="hint">選元件、把每一隻腳接到板子的腳位或另一個元件；按「檢查接線」用網路表規則判定（短路、缺限流電阻、LED 極性、保留腳位、按鍵浮接），通過後會產生對應的程式。真正的電氣模擬用 Wokwi。</p>
+  <div class="row"><label>加入元件</label>
+    <button type="button" id="wire-add-led">＋LED</button>
+    <button type="button" id="wire-add-res">＋電阻 220Ω</button>
+    <button type="button" id="wire-add-btn">＋按鍵</button>
+    <button type="button" id="wire-clear">清空</button>
+  </div>
+  <div id="wire-parts" class="mono"></div>
+  <div id="wire-rows"></div>
+  <div class="row"><button type="button" id="wire-add-wire">＋一條線</button>
+    <button type="button" id="wire-check" class="btn-primary">檢查接線</button>
+    <button type="button" id="wire-to-editor" disabled>把程式放進編輯器</button>
+    <a id="wire-wokwi" href="#" target="_blank" rel="noopener">在 Wokwi 模擬（新視窗）</a></div>
+  <div id="wire-result"></div>
+  <pre id="wire-program" class="mono" hidden></pre>
+</section>
+<script id="wiring-ui">
+window.addEventListener("DOMContentLoaded", function () {
+  const $ = (id) => document.getElementById(id);
+  const parts = {};   // id → type
+  let wires = [];     // [[a,b]]
+  let n = { led: 0, res: 0, btn: 0 };
+  function pinOptions() {
+    const B = window.IDEBridge || {};
+    const usable = (B.usable && B.usable()) || [];
+    const opts = ['<option value="">—</option>', '<option value="board.3V3">板子 3V3</option>', '<option value="board.GND">板子 GND</option>'];
+    for (const p of usable) opts.push(`<option value="board.G${p}">板子 GPIO${p}</option>`);
+    for (const id in parts) for (const pin of WIRING_PARTS[parts[id]].pins) opts.push(`<option value="${id}.${pin}">${id} ${WIRING_PARTS[parts[id]].labels[pin]}</option>`);
+    return opts.join("");
+  }
+  function render() {
+    $("wire-parts").textContent = Object.keys(parts).length ? Object.keys(parts).map((k) => k + "＝" + WIRING_PARTS[parts[k]].name).join("、") : "（還沒有元件）";
+    const rows = $("wire-rows"); rows.innerHTML = "";
+    wires.forEach((w, i) => {
+      const d = document.createElement("div"); d.className = "row wire-row";
+      d.innerHTML = `<select data-i="${i}" data-k="0">${pinOptions()}</select><span>→</span><select data-i="${i}" data-k="1">${pinOptions()}</select><button type="button" data-del="${i}">✕</button>`;
+      d.querySelectorAll("select").forEach((s) => { s.value = w[Number(s.dataset.k)] || ""; s.addEventListener("change", () => { wires[Number(s.dataset.i)][Number(s.dataset.k)] = s.value; }); });
+      d.querySelector("button").addEventListener("click", () => { wires.splice(i, 1); render(); });
+      rows.appendChild(d);
+    });
+    const B = window.IDEBridge || {};
+    $("wire-wokwi").href = wokwiLink(B.chip ? B.chip() : "esp32");
+  }
+  function add(type) { n[type]++; parts[type + n[type]] = type; render(); }
+  $("wire-add-led").addEventListener("click", () => add("led"));
+  $("wire-add-res").addEventListener("click", () => add("res"));
+  $("wire-add-btn").addEventListener("click", () => add("btn"));
+  $("wire-add-wire").addEventListener("click", () => { wires.push(["", ""]); render(); });
+  $("wire-clear").addEventListener("click", () => { for (const k in parts) delete parts[k]; wires = []; n = { led: 0, res: 0, btn: 0 }; $("wire-result").innerHTML = ""; $("wire-program").hidden = true; $("wire-to-editor").disabled = true; render(); });
+  $("wire-check").addEventListener("click", () => {
+    const B = window.IDEBridge || {};
+    const board = { usable: (B.usable && B.usable()) || [], reserved: (B.reserved && B.reserved()) || {}, led: null };
+    const ws = wires.filter((w) => w[0] && w[1]);
+    const r = wiringCheck(parts, ws, board);
+    const box = $("wire-result"); box.innerHTML = "";
+    if (r.ok) {
+      box.className = "ok"; box.textContent = "✓ 接線檢查通過（" + Object.keys(parts).length + " 個元件、" + ws.length + " 條線）";
+      $("wire-program").textContent = r.program; $("wire-program").hidden = false; $("wire-to-editor").disabled = false;
+    } else {
+      box.className = "warn";
+      box.innerHTML = "<b>接線有 " + r.findings.length + " 個問題：</b>" + r.findings.map((f) => "<div class=\"guard-item\"><b>" + f.brief + "</b><div class=\"guard-fix\">→ " + f.detail + "</div></div>").join("");
+      $("wire-program").hidden = true; $("wire-to-editor").disabled = true;
+    }
+  });
+  $("wire-to-editor").addEventListener("click", () => { if (window.IDEBridge && window.IDEBridge.setEditor) window.IDEBridge.setEditor($("wire-program").textContent); });
+  render();
+});
+</script>
+
+<!-- 視覺分頁（說明＋入口；辨識本體在 vision.html，因為板子的 http 來源開不了鏡頭） -->
+<section id="panel-vision" class="panel">
+  <div class="sec-title">視覺（鏡頭辨識 → 板子）</div>
+  <p>辨識在瀏覽器跑（MediaPipe 手勢／人臉／物件／姿勢、Teachable Machine），結果以 <code>{"op":"vision","label":…}</code> 送進板子，程式用 <code>@lab.on_cmd</code> 接（範例：程式分頁「範例」→「視覺：看到剪刀手就亮燈」）。</p>
+  <p class="hint">Safari 只允許 https 或 localhost 開鏡頭，所以視覺頁不能從板子（http）開；請用下面其中一個：</p>
+  <ol>
+    <li>老師電腦本機：<a id="vision-link-local" href="#" target="_blank" rel="noopener">http://localhost:8765/vision</a>（教室伺服器 `server/run.sh`）</li>
+    <li>iPad／手機：<a id="vision-link-https" href="#" target="_blank" rel="noopener">https://老師IP:8766/vision</a>（`server/run_secure.sh`，先安裝憑證 <code>/cert.pem</code>），板子位址填 <code id="vision-relay">wss://老師IP:8767/relay?target=板子IP</code></li>
+    <li>GitHub Pages：<a href="https://henrychao521.github.io/esp32-ai-lab-web/vision/" target="_blank" rel="noopener">esp32-ai-lab-web/vision</a>（同樣填 wss 轉發位址）</li>
+  </ol>
+  <p class="hint">相機板（ESP32-CAM、AMB82-MINI）：視覺頁的「相機板串流網址」填 <code>http://板子IP/camera.jpg?fresh=1</code>（ESP32-CAM）或 <code>http://板子IP/snapshot.jpg</code>（AMB82）。</p>
+</section>
+<script id="vision-ui">
+(function () {
+  const $ = (id) => document.getElementById(id);
+  function refresh() {
+    const B = window.IDEBridge || {};
+    const server = (B.server && B.server()) || "";
+    const boardIp = (B.boardIp && B.boardIp()) || "板子IP";
+    const host = server ? server.replace(/^https?:\/\//, "").replace(/:\d+.*$/, "") : "老師IP";
+    const q = "?board=" + encodeURIComponent(boardIp === "板子IP" ? "" : boardIp);
+    $("vision-link-local").href = "http://localhost:8765/vision" + q;
+    $("vision-link-https").href = "https://" + host + ":8766/vision?board=" + encodeURIComponent("wss://" + host + ":8767/relay?target=" + boardIp);
+    $("vision-link-https").textContent = "https://" + host + ":8766/vision";
+    $("vision-relay").textContent = "wss://" + host + ":8767/relay?target=" + boardIp;
+  }
+  refresh();
+  document.addEventListener("ide:state", refresh);
+})();
+</script>
+
+<nav class="tabbar">
+  <button id="tab-examples" type="button"><span>範例</span></button>
+  <button id="tab-code" class="active" type="button"><span>程式</span></button>
+  <button id="tab-paste" type="button"><span>貼上</span></button>
+  <button id="tab-console" type="button"><span>主控台</span></button>
+  <button id="tab-remote" type="button"><span>遙控</span></button>
+  <button id="tab-wiring" type="button"><span>接線</span></button>
+  <button id="tab-vision" type="button"><span>視覺</span></button>
+  <button id="tab-teacher" type="button"><span>老師</span></button>
+</nav>
+</div>
+<div class="col-right">
+  <!-- 3. 主控台 -->
+  <section id="panel-console" class="panel">
+    <div id="vboard-dock">
+      <canvas id="vboard-canvas" width="300" height="420" aria-label="虛擬板"></canvas>
+      <div class="vb-ctl">
+        <label>電池 <input id="vb-batt" type="range" min="3.3" max="4.2" step="0.01" value="3.92"><span id="vb-batt-v">3.92V</span></label>
+        <label>Wi-Fi <input id="vb-rssi" type="range" min="-90" max="-30" step="1" value="-55"><span id="vb-rssi-v">-55 dBm</span></label>
+        <label>ADC <select id="vb-adc-pin"></select> <input id="vb-adc" type="range" min="0" max="4095" step="1" value="2048"><span id="vb-adc-v">2048</span></label>
+        <button id="vb-reset" type="button">重開虛擬板</button>
+        <button id="vb-leave" type="button">離開虛擬板</button>
+        <div class="vb-note">點螢幕旁的按鍵＝按 BOOT／KEY；點腳位可切換輸入電位。限制：沒有真的 Wi-Fi／相機／計時精度，外接元件只支援 LED、按鍵、ADC、伺服（PWM）。</div>
+      </div>
+    </div>
+    <div id="sensor-bar"></div>
+    <div id="console"></div>
+    <div class="action-row">
+      <button id="btn-console-rerun" class="btn-primary" type="button">再執行</button>
+      <button id="btn-console-stop" type="button" disabled>停止</button>
+      <button id="btn-console-clear" type="button">清除</button>
+    </div>
+  </section>
+
+</div>
+</main>
+
+
+
+<dialog id="device-dialog">
+  <div class="dlg-section">
+    <h4>板子位址</h4>
+    <div class="input-row">
+      <input id="input-base" type="text" placeholder="esp32lab-xxxx.local 或 IP" spellcheck="false" autocapitalize="off" autocorrect="off">
+      <button id="btn-connect" class="btn-primary" type="button">連線</button>
+    </div>
+  </div>
+
+  <div class="dlg-section">
+    <h4>沒有板子？用虛擬板</h4>
+    <div class="vb-buttons">
+      <button id="btn-virtual-tqt" type="button">虛擬 T-QT Pro（有螢幕）</button>
+      <button id="btn-virtual-devkit" type="button">虛擬 ESP32 DevKit</button>
+    </div>
+    <div id="vb-https-note" class="muted" style="font-size:12px;display:none">這一頁是 https，瀏覽器不允許連 http 的實體板子；連實體板子請改開板子或教室伺服器提供的 IDE。</div>
+  </div>
+
+  <div class="dlg-section">
+    <h4>最近用過的板子</h4>
+    <div id="recent-boards" class="chip-list"></div>
+  </div>
+
+  <div id="dlg-server-devices" class="dlg-section" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <h4 style="margin:0;">線上板子清單</h4>
+      <button id="btn-refresh-devices" type="button">重新整理</button>
+    </div>
+    <div class="table-wrap" style="max-height:180px;overflow-y:auto;">
+      <table>
+        <thead>
+          <tr><th>名稱</th><th>板型</th><th>IP</th><th>版本</th><th>幾秒前</th></tr>
+        </thead>
+        <tbody id="dlg-devices-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="dlg-section">
+    <h4>教室伺服器與通行碼</h4>
+    <div class="input-row">
+      <input id="input-server" type="text" placeholder="教室伺服器位址（選填）" spellcheck="false" autocapitalize="off" autocorrect="off">
+    </div>
+    <div class="input-row">
+      <input id="input-token" type="password" placeholder="班級通行碼（選填）">
+      <button id="btn-save-server" type="button">儲存設定</button>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;">
+    <button id="btn-close-dialog" type="button">關閉</button>
+  </div>
+</dialog>
+
+<script id="cleaner">
+// cleanCodeStats(text) → { text, stats }；cleanCode(text) → text。純函式，不碰 DOM（驗收會在 Node 裡跑）。
+function cleanCodeStats(text) {
+  const stats = { fence: 0, zeroWidth: 0, quotes: 0, parens: 0, punct: 0, nbsp: 0, tabs: 0, reindent: 0, repl: 0, trail: 0, crlf: 0 };
+  if (typeof text !== "string" || !text) return { text: "", stats: stats };
+  stats.zeroWidth = (text.match(/[\u200B\uFEFF]/g) || []).length;
+  text = text.replace(/[\u200B\uFEFF]/g, "");
+  stats.crlf = (text.match(/\r/g) || []).length;
+  text = text.replace(/\r\n?/g, "\n");
+
+  const rawLines = text.split("\n");
+  const blocks = [];
+  let inFence = false;
+  let cur = [];
+  for (let i = 0; i < rawLines.length; i++) {
+    const ln = rawLines[i];
+    if (!inFence) {
+      if (/^\s*`{3,}/.test(ln)) {
+        inFence = true;
+        cur = [];
+      }
+    } else {
+      if (/^\s*`{3,}\s*$/.test(ln)) {
+        blocks.push(cur.join("\n"));
+        inFence = false;
+        cur = [];
+      } else {
+        cur.push(ln);
+      }
+    }
+  }
+  if (inFence) {
+    blocks.push(cur.join("\n"));
+  }
+  if (blocks.length > 0) {
+    let best = blocks[0];
+    for (let i = 1; i < blocks.length; i++) {
+      if (blocks[i].length > best.length) best = blocks[i];
+    }
+    stats.fence = rawLines.length - best.split("\n").length;   // 圍欄行＋區塊外的說明行
+    text = best;
+  }
+
+  const mapChar = {
+    "\u201C": '"', "\u201D": '"', "\u201E": '"',
+    "\u2018": "'", "\u2019": "'", "\u201A": "'",
+    "（": "(", "）": ")",
+    "，": ",", "：": ":", "；": ";",
+    "【": "[", "】": "]",
+    "\u3000": " ", "\u00A0": " "
+  };
+
+  let lines = text.split("\n").map(function(line) {
+    if (line === ">>>" || line === "...") {
+      line = ""; stats.repl++;
+    } else if (line.indexOf(">>> ") === 0 || line.indexOf("... ") === 0) {
+      line = line.slice(4); stats.repl++;
+    }
+    const hashIdx = line.indexOf("#");
+    const codePart = hashIdx === -1 ? line : line.slice(0, hashIdx);
+    const commentPart = hashIdx === -1 ? "" : line.slice(hashIdx);
+    const converted = codePart.replace(/[\u201C\u201D\u201E\u2018\u2019\u201A（），：；【】\u3000\u00A0]/g, function(ch) {
+      if ("\u201C\u201D\u201E\u2018\u2019\u201A".indexOf(ch) !== -1) stats.quotes++;
+      else if ("（）【】".indexOf(ch) !== -1) stats.parens++;
+      else if ("\u3000\u00A0".indexOf(ch) !== -1) stats.nbsp++;
+      else stats.punct++;
+      return mapChar[ch] || ch;
+    });
+    const joined = converted + commentPart;
+    stats.tabs += (joined.match(/\t/g) || []).length;
+    return joined.replace(/\t/g, "    ");
+  });
+
+  function gcd(a, b) {
+    while (b !== 0) {
+      const t = b;
+      b = a % b;
+      a = t;
+    }
+    return a;
+  }
+
+  let g = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].replace(/\s+$/g, "");
+    lines[i] = trimmed;
+    if (trimmed.length > 0) {
+      const m = trimmed.match(/^ +/);
+      const lead = m ? m[0].length : 0;
+      if (lead > 0) {
+        g = g === 0 ? lead : gcd(g, lead);
+      }
+    }
+  }
+
+  if (g === 2 || g === 3) {
+    lines = lines.map(function(ln) {
+      if (!ln) return "";
+      const m = ln.match(/^ +/);
+      if (!m) return ln;
+      stats.reindent++;
+      const newCount = (m[0].length * 4) / g;
+      return " ".repeat(newCount) + ln.slice(m[0].length);
+    });
+  }
+
+  while (lines.length > 0 && lines[0] === "") lines.shift();
+  while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+  if (lines.length === 0) return { text: "", stats: stats };
+  return { text: lines.join("\n") + "\n", stats: stats };
+}
+
+function cleanCode(text) {
+  return cleanCodeStats(text).text;
+}
+
+// 把統計變成一行中文；沒有任何變動回「不需清理」
+function cleanSummary(before, after, st) {
+  const parts = [];
+  if (st.fence) parts.push("移除 " + st.fence + " 行圍欄與說明");
+  if (st.repl) parts.push("REPL 提示 " + st.repl + " 行");
+  if (st.zeroWidth) parts.push(st.zeroWidth + " 個零寬字元");
+  if (st.quotes) parts.push("全形引號 " + st.quotes + " 個");
+  if (st.parens) parts.push("全形括號 " + st.parens + " 個");
+  if (st.punct) parts.push("全形標點 " + st.punct + " 個");
+  if (st.nbsp) parts.push("全形／不換行空白 " + st.nbsp + " 個");
+  if (st.tabs) parts.push("Tab 縮排 " + st.tabs + " 個換成空白");
+  if (st.reindent) parts.push("縮排寬度改成 4 格（" + st.reindent + " 行）");
+  if (st.crlf) parts.push("Windows 換行 " + st.crlf + " 個");
+  if (parts.length === 0) return before === after ? "不需清理" : "已清理：去掉多餘空白與空行";
+  return "已清理：" + parts.join("、");
+}
+</script>
+
+<script id="guard">
+/* RULES-BEGIN */
+const GUARD_RULES = [{"id": "wifi", "re": "\\bnetwork\\.WLAN\\b|\\bWLAN\\s*\\(|\\.connect\\s*\\(\\s*(WIFI|SSID|ssid|wifi|\"|')", "reason": "程式自己連 Wi-Fi，會把板子切到別的網路而失聯（Wi-Fi 由代理程式管理，已經連好）", "fix": "刪掉 import network、WLAN、connect 這幾行，直接用網路"}, {"id": "while_true", "re": "\\bwhile\\s+(True|1)\\s*:", "reason": "while True 停止鍵按了也停不下來", "fix": "改成 while lab.running():"}, {"id": "time_sleep", "re": "\\b(time|utime)\\.sleep(_ms|_us)?\\s*\\(|\\bfrom\\s+(time|utime)\\s+import\\s+[^\\n]*\\bsleep", "reason": "time.sleep 期間不會檢查停止鍵", "fix": "改用 lab.sleep(秒)（例如 time.sleep_ms(500) → lab.sleep(0.5)）"}, {"id": "display_driver", "re": "\\bmachine\\.SPI\\b|\\bSPI\\s*\\(|\\bclass\\s+(GC9107|ST7789|ST7735|ILI9341|SSD1306)\\b|\\bframebuf\\.FrameBuffer\\s*\\(", "reason": "自己初始化 SPI／螢幕驅動會跟代理程式的螢幕打架（畫面黑掉或背光反相）", "fix": "螢幕已經準備好：用 lab.display（framebuf API：fill、text、rect…，最後 lab.display.show()）"}, {"id": "forbidden", "re": "\\bmachine\\.(reset|soft_reset|deepsleep|lightsleep)\\s*\\(|\\bimport\\s+webrepl\\b|\\bwebrepl\\.start\\b|\\bos\\.remove\\s*\\(\\s*['\"](main|boot)\\.py", "reason": "重開、睡眠、WebREPL 或刪掉開機檔會讓代理程式停擺", "fix": "把這行拿掉；要重開板子用主控台的「重開板子」按鈕"}, {"id": "thread", "re": "\\bimport\\s+_thread\\b|\\b_thread\\.start_new_thread\\b", "reason": "另開執行緒的程式停止鍵管不到，也容易把記憶體吃光", "fix": "把工作放進 while lab.running(): 迴圈裡輪流做"}];
+const GUARD_PIN_RE = "\\bPin\\s*\\(\\s*(\\d+)|\\b(?:sck|mosi|miso|cs|dc|rst|bl|pin)\\s*=\\s*Pin\\s*\\(\\s*(\\d+)|\\b(?:ADC|PWM)\\s*\\(\\s*Pin\\s*\\(\\s*(\\d+)";
+const GUARD_PIN_ALLOW_RE = "可當輸入|lab\\.led";
+/* RULES-END */
+/* BOARDS-BEGIN */
+const BOARD_RESERVED = {"tqt_pro":{"pins":{"1":"螢幕 RST","2":"螢幕 MOSI","3":"螢幕 SCLK","5":"螢幕 CS","6":"螢幕 DC","10":"螢幕背光","0":"左按鍵（可當輸入）","47":"右按鍵（可當輸入）","4":"電池電壓 ADC","26":"PSRAM／內建快閃","27":"PSRAM／內建快閃","28":"PSRAM／內建快閃","29":"PSRAM／內建快閃","30":"PSRAM／內建快閃","31":"PSRAM／內建快閃","32":"PSRAM／內建快閃","33":"PSRAM／內建快閃","34":"PSRAM／內建快閃","35":"PSRAM／內建快閃","36":"PSRAM／內建快閃","37":"PSRAM／內建快閃"},"usable":[16,17,18,48]},"devkit":{"pins":{"6":"內建快閃（SPI flash）","7":"內建快閃（SPI flash）","8":"內建快閃（SPI flash）","9":"內建快閃（SPI flash）","10":"內建快閃（SPI flash）","11":"內建快閃（SPI flash）","0":"BOOT 鍵／開機選擇","2":"板載 LED（lab.led）","1":"UART0 TX（序列埠）","3":"UART0 RX（序列埠）"},"usable":[4,5,12,13,14,15,16,17,18,19,21,22,23,25,26,27,32,33]},"tdisplay":{"pins":{"6":"內建快閃","7":"內建快閃","8":"內建快閃","9":"內建快閃","10":"內建快閃","11":"內建快閃","19":"螢幕 MOSI","18":"螢幕 SCLK","5":"螢幕 CS","16":"螢幕 DC","23":"螢幕 RST","4":"螢幕背光","14":"電池量測致能","34":"電池電壓 ADC","0":"左按鍵（可當輸入）","35":"右按鍵（可當輸入）"},"usable":[2,12,13,15,17,21,22,25,26,27,32,33]},"esp32s2":{"pins":{"0":"BOOT 鍵","18":"板載 RGB LED（lab.led）","19":"USB D-","20":"USB D+","26":"PSRAM","43":"UART0 TX","44":"UART0 RX","27":"內建快閃","28":"內建快閃","29":"內建快閃","30":"內建快閃","31":"內建快閃","32":"內建快閃"},"usable":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,21,33,34,35,36,37,38,40,41,42]},"esp32s3_devkitc":{"pins":{"0":"BOOT 鍵","3":"JTAG 選擇（strapping）","19":"USB D-","20":"USB D+","43":"UART0 TX","44":"UART0 RX","48":"板載 WS2812 RGB LED（用 neopixel）","26":"PSRAM／內建快閃","27":"PSRAM／內建快閃","28":"PSRAM／內建快閃","29":"PSRAM／內建快閃","30":"PSRAM／內建快閃","31":"PSRAM／內建快閃","32":"PSRAM／內建快閃","33":"PSRAM／內建快閃","34":"PSRAM／內建快閃","35":"PSRAM／內建快閃","36":"PSRAM／內建快閃","37":"PSRAM／內建快閃"},"usable":[1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,21,38,39,40,41,42,45,46,47]},"tdisplay_s3":{"pins":{"0":"左按鍵（可當輸入）","14":"右按鍵（可當輸入）","4":"電池電壓 ADC","15":"螢幕電源致能","38":"螢幕背光","5":"螢幕 RST","6":"螢幕 CS","7":"螢幕 DC","8":"螢幕 WR","9":"螢幕 RD","39":"螢幕 D0","40":"螢幕 D1","41":"螢幕 D2","42":"螢幕 D3","45":"螢幕 D4","46":"螢幕 D5","47":"螢幕 D6","48":"螢幕 D7","19":"USB D-","20":"USB D+","26":"PSRAM／內建快閃","27":"PSRAM／內建快閃","28":"PSRAM／內建快閃","29":"PSRAM／內建快閃","30":"PSRAM／內建快閃","31":"PSRAM／內建快閃","32":"PSRAM／內建快閃","33":"PSRAM／內建快閃","34":"PSRAM／內建快閃","35":"PSRAM／內建快閃","36":"PSRAM／內建快閃","37":"PSRAM／內建快閃"},"usable":[1,2,3,10,11,12,13,16,17,18,21,43,44]},"xiao_esp32s3":{"pins":{"21":"板載黃色 LED（lab.led，低電位亮）","19":"USB D-","20":"USB D+","0":"BOOT 鍵","26":"PSRAM／內建快閃","27":"PSRAM／內建快閃","28":"PSRAM／內建快閃","29":"PSRAM／內建快閃","30":"PSRAM／內建快閃","31":"PSRAM／內建快閃","32":"PSRAM／內建快閃","33":"PSRAM／內建快閃","34":"PSRAM／內建快閃","35":"PSRAM／內建快閃","36":"PSRAM／內建快閃","37":"PSRAM／內建快閃","10":"Sense 鏡頭／麥克風／SD（擴充板）","11":"Sense 鏡頭／麥克風／SD（擴充板）","12":"Sense 鏡頭／麥克風／SD（擴充板）","13":"Sense 鏡頭／麥克風／SD（擴充板）","14":"Sense 鏡頭／麥克風／SD（擴充板）","15":"Sense 鏡頭／麥克風／SD（擴充板）","16":"Sense 鏡頭／麥克風／SD（擴充板）","17":"Sense 鏡頭／麥克風／SD（擴充板）","18":"Sense 鏡頭／麥克風／SD（擴充板）","38":"Sense 鏡頭／麥克風／SD（擴充板）","39":"Sense 鏡頭／麥克風／SD（擴充板）","40":"Sense 鏡頭／麥克風／SD（擴充板）","41":"Sense 鏡頭／麥克風／SD（擴充板）","42":"Sense 鏡頭／麥克風／SD（擴充板）","45":"Sense 鏡頭／麥克風／SD（擴充板）","46":"Sense 鏡頭／麥克風／SD（擴充板）","47":"Sense 鏡頭／麥克風／SD（擴充板）","48":"Sense 鏡頭／麥克風／SD（擴充板）"},"usable":[1,2,3,4,5,6,7,8,9,43,44]},"xiao_esp32c3":{"pins":{"18":"USB D-","19":"USB D+","9":"BOOT 鍵（D9，可當輸入）","11":"內建快閃","12":"內建快閃","13":"內建快閃","14":"內建快閃","15":"內建快閃","16":"內建快閃","17":"內建快閃"},"usable":[2,3,4,5,6,7,8,9,10,20,21]},"esp32c3_supermini":{"pins":{"8":"板載藍色 LED（lab.led，低電位亮）","9":"BOOT 鍵（可當輸入）","18":"USB D-","19":"USB D+","11":"內建快閃","12":"內建快閃","13":"內建快閃","14":"內建快閃","15":"內建快閃","16":"內建快閃","17":"內建快閃"},"usable":[0,1,2,3,4,5,6,7,10,20,21]},"esp32c6":{"pins":{"8":"板載 WS2812 RGB LED（用 neopixel）","9":"BOOT 鍵","12":"USB D-","13":"USB D+","15":"開機 LED／strapping","16":"UART0 TX","17":"UART0 RX","24":"內建快閃","25":"內建快閃","26":"內建快閃","27":"內建快閃","28":"內建快閃","29":"內建快閃","30":"內建快閃"},"usable":[0,1,2,3,4,5,6,7,10,11,18,19,20,21,22,23]},"esp32cam":{"pins":{"4":"閃光 LED（lab.led，很亮）","33":"板載紅色 LED（低電位亮）","0":"鏡頭 XCLK／首燒要接地","5":"鏡頭 D0","18":"鏡頭 D1","19":"鏡頭 D2","21":"鏡頭 D3","36":"鏡頭 D4","39":"鏡頭 D5","34":"鏡頭 D6","35":"鏡頭 D7","25":"鏡頭 VSYNC","23":"鏡頭 HREF","22":"鏡頭 PCLK","26":"鏡頭 SDA","27":"鏡頭 SCL","32":"鏡頭電源","1":"UART0 TX（接 USB-TTL）","3":"UART0 RX（接 USB-TTL）","6":"內建快閃","7":"內建快閃","8":"內建快閃","9":"內建快閃","10":"內建快閃","11":"內建快閃"},"usable":[12,13,14,15,2,16]},"amb82_mini":{"pins":{},"usable":[]},"ameba_rtl8722dm":{"pins":{},"usable":[]},"generic":{"pins":{},"usable":[]}};
+/* BOARDS-END */
+// guardCode(text, board) → [{line, rule, reason, fix}]：執行前的靜態保護檢查（純文字比對，不碰 DOM）。
+// 目的：擋下會讓跑著代理程式的板子失聯或停不下來的寫法（Wi-Fi 接管、while True、time.sleep、自建螢幕驅動、保留腳位）。
+function guardCode(text, board) {
+  const findings = [];
+  if (typeof text !== "string") return findings;
+  const _b = BOARD_RESERVED[board];
+  const reserved = _b ? { [board]: { pins: Object.fromEntries(Object.entries(_b.pins).map(function(e) { return [Number(e[0]), e[1]]; })), psram: [], usable: _b.usable } } : {};
+  const rsv = reserved[board] || null;
+  const rules = GUARD_RULES.map(function(r) { return { re: new RegExp(r.re), rule: r.id, reason: r.reason, fix: r.fix }; });
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  const seen = {};
+  lines.forEach(function(raw, idx) {
+    const code = raw.replace(/#.*$/, "");
+    if (!code.trim()) return;
+    const lineNo = idx + 1;
+    rules.forEach(function(r) {
+      if (r.re.test(code)) {
+        findings.push({ line: lineNo, rule: r.rule, reason: r.reason, fix: r.fix });
+      }
+    });
+    if (rsv) {
+      const pinRe = new RegExp(GUARD_PIN_RE, "g");
+      let m;
+      while ((m = pinRe.exec(code)) !== null) {
+        const n = Number(m[1] || m[2] || m[3]);
+        const key = lineNo + ":" + n;
+        if (seen[key]) continue;
+        seen[key] = true;
+        if (rsv.pins[n] !== undefined && !new RegExp(GUARD_PIN_ALLOW_RE).test(rsv.pins[n])) {
+          findings.push({ line: lineNo, rule: "reserved_pin", reason: "GPIO" + n + " 是" + rsv.pins[n] + "，被程式搶走板子會失聯或壞掉", fix: "換成可用腳位：" + ((rsv.usable && rsv.usable.length) ? rsv.usable.join("、") : "見板子描述") });
+        } else if (rsv.psram.indexOf(n) !== -1) {
+          findings.push({ line: lineNo, rule: "reserved_pin", reason: "GPIO" + n + " 接的是 PSRAM／內建快閃記憶體，動了板子會當機", fix: "換成可用腳位（T-QT Pro：16、17、18、48）" });
+        }
+      }
+    }
+  });
+  return findings;
+}
+</script>
+
+<script id="wiring">
+/* ESP32 AI Lab 接線檢查（最小版：LED、電阻、按鍵）。純函式，不碰 DOM；IDE 內嵌為 <script id="wiring">，node 可直接測。
+   做法沿用 circuit-lab 的「網路表＋規則」：元件腳位用聯集尋找合併成網路，規則只看電氣連接，與擺放位置無關。 */
+const WIRING_PARTS = {
+  led: { name: "LED", pins: ["A", "K"], labels: { A: "長腳（＋）", K: "短腳（−）" } },
+  res: { name: "電阻 220Ω", pins: ["1", "2"], labels: { 1: "一端", 2: "另一端" } },
+  btn: { name: "按鍵", pins: ["A", "B"], labels: { A: "一側", B: "另一側" } },
+};
+
+function wiringNets(parts, wires) {
+  // parts: {id: type}；wires: [[refA, refB]]；ref 形如 "led1.A"、"board.G16"、"board.3V3"、"board.GND"
+  const par = {};
+  const refs = new Set(["board.3V3", "board.GND"]);
+  for (const id in parts) for (const p of WIRING_PARTS[parts[id]].pins) refs.add(id + "." + p);
+  for (const [a, b] of wires) { refs.add(a); refs.add(b); }
+  for (const r of refs) par[r] = r;
+  const find = (x) => { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+  for (const [a, b] of wires) { const ra = find(a), rb = find(b); if (ra !== rb) par[ra] = rb; }
+  const nets = {};
+  for (const r of refs) (nets[find(r)] = nets[find(r)] || []).push(r);
+  return { find, nets, same: (a, b) => find(a) === find(b) };
+}
+
+/* board: {usable:[...], reserved:{pin:why}, led:n} ；回傳 {ok, findings:[{code, brief, detail}], program} */
+function wiringCheck(parts, wires, board) {
+  const N = wiringNets(parts, wires);
+  const F = [];
+  const gpioOf = (ref) => { const m = /^board\.G(\d+)$/.exec(ref); return m ? Number(m[1]) : null; };
+  const netGpios = (ref) => N.nets[N.find(ref)].map(gpioOf).filter((x) => x !== null);
+  const is = (ref, what) => N.same(ref, "board." + what);
+  // 1. 短路：3V3 直接接 GND，或 GPIO 直接接 3V3／GND
+  if (N.same("board.3V3", "board.GND")) F.push({ code: "SHORT", brief: "3V3 和 GND 接在一起", detail: "電源正負極直接相連是短路，板子會重開或燒毀。拆掉這條線。" });
+  for (const ref of Object.keys(N.nets).flatMap((k) => N.nets[k])) {
+    const g = gpioOf(ref);
+    if (g !== null && (is(ref, "GND") || is(ref, "3V3"))) F.push({ code: "GPIO_SHORT", brief: "GPIO" + g + " 直接接到 " + (is(ref, "GND") ? "GND" : "3V3"), detail: "腳位當輸出時會跟電源打架，可能燒掉這支腳。中間要有元件（LED＋電阻或按鍵）。" });
+  }
+  // 2. 保留腳位
+  for (const ref of Object.keys(N.nets).flatMap((k) => N.nets[k])) {
+    const g = gpioOf(ref);
+    if (g !== null && board.reserved && board.reserved[g] !== undefined && !(board.led === g)) F.push({ code: "RESERVED_PIN", brief: "GPIO" + g + " 是保留腳位（" + board.reserved[g] + "）", detail: "換成可用腳位：" + (board.usable || []).join("、") + "。" });
+  }
+  // 3. 每個元件兩腳都要接
+  for (const id in parts) for (const p of WIRING_PARTS[parts[id]].pins) {
+    if (N.nets[N.find(id + "." + p)].length < 2) F.push({ code: "OPEN", brief: id + " 的 " + WIRING_PARTS[parts[id]].labels[p] + " 沒接線", detail: "每個元件的兩隻腳都要接到東西。" });
+  }
+  // 4. LED：A 側透過電阻接到 GPIO 或 3V3、K 側接 GND（或反過來電阻在 K 側），不能沒有電阻
+  const leds = Object.keys(parts).filter((k) => parts[k] === "led");
+  const ress = Object.keys(parts).filter((k) => parts[k] === "res");
+  const ledPins = [];
+  for (const L of leds) {
+    const A = L + ".A", K = L + ".K";
+    const aGpio = netGpios(A), kGpio = netGpios(K);
+    const resOnA = ress.find((R) => N.same(A, R + ".1") || N.same(A, R + ".2"));
+    const resOnK = ress.find((R) => N.same(K, R + ".1") || N.same(K, R + ".2"));
+    const otherEnd = (R, ref) => (N.same(ref, R + ".1") ? R + ".2" : R + ".1");
+    if (!resOnA && !resOnK) {
+      if (aGpio.length || kGpio.length || is(A, "3V3")) F.push({ code: "NO_RESISTOR", brief: L + " 沒有串聯限流電阻", detail: "LED 直接接 GPIO 會超過 12 mA 的安全電流，LED 或腳位會壞。GPIO → 電阻 → LED 長腳，LED 短腳 → GND。" });
+      continue;
+    }
+    // 找出驅動腳：電阻另一端或 LED 腳直接接到的 GPIO
+    let drive = null, polarityOK = false;
+    if (resOnA) { const o = otherEnd(resOnA, A); drive = netGpios(o)[0] ?? (is(o, "3V3") ? "3V3" : null); polarityOK = is(K, "GND"); }
+    if (resOnK) { const o = otherEnd(resOnK, K); if (is(o, "GND")) { polarityOK = true; drive = aGpio[0] ?? (is(A, "3V3") ? "3V3" : null); } }
+    if (!polarityOK) F.push({ code: "LED_POLARITY", brief: L + " 的短腳（−）沒有回到 GND", detail: "LED 有方向：長腳接正（GPIO／3V3 經電阻），短腳接 GND。接反不會亮，不會壞。" });
+    if (polarityOK && drive === null) F.push({ code: "LED_NO_DRIVE", brief: L + " 沒有接到 GPIO 或 3V3", detail: "LED 的正極那一路要接到 GPIO（程式控制）或 3V3（常亮）。" });
+    else if (drive !== "3V3") ledPins.push(drive);
+  }
+  // 5. 按鍵：一側 GPIO、另一側 GND（程式用內部上拉）；接 3V3 要外加下拉電阻
+  const btnPins = [];
+  for (const B of Object.keys(parts).filter((k) => parts[k] === "btn")) {
+    const a = B + ".A", b = B + ".B";
+    const g = [...netGpios(a), ...netGpios(b)];
+    const toGnd = is(a, "GND") || is(b, "GND"), to3v3 = is(a, "3V3") || is(b, "3V3");
+    if (!g.length) F.push({ code: "BTN_NO_GPIO", brief: B + " 沒有接到 GPIO", detail: "按鍵一側接 GPIO、另一側接 GND，程式用 Pin.PULL_UP 讀：按下＝0。" });
+    else if (!toGnd && !to3v3) F.push({ code: "BTN_FLOAT", brief: B + " 另一側沒接 GND", detail: "沒接 GND 的按鍵永遠讀不到變化。另一側接 GND，程式開內部上拉。" });
+    else if (to3v3) F.push({ code: "BTN_3V3", brief: B + " 接到 3V3（需要下拉電阻）", detail: "可以，但 GPIO 要外加 10kΩ 下拉電阻到 GND，否則放開時腳位浮接。建議改接 GND＋內部上拉。" });
+    else btnPins.push(g[0]);
+  }
+  const ok = F.length === 0;
+  return { ok, findings: F, program: ok ? wiringProgram(ledPins, btnPins) : "" };
+}
+
+function wiringProgram(ledPins, btnPins) {
+  const L = ["import lab", "from machine import Pin", "# 由接線分頁依你接的電路產生：先確認接線檢查通過再執行"];
+  ledPins.forEach((p, i) => L.push(`led${i + 1} = Pin(${p}, Pin.OUT)   # LED 經 220Ω 電阻接 GPIO${p}`));
+  btnPins.forEach((p, i) => L.push(`btn${i + 1} = Pin(${p}, Pin.IN, Pin.PULL_UP)   # 按鍵接 GPIO${p} 與 GND，按下為 0`));
+  L.push("n = 0", "while lab.running():");
+  if (btnPins.length && ledPins.length) {
+    L.push("    pressed = btn1.value() == 0", "    led1.value(1 if pressed else 0)   # 按住亮、放開滅", "    if pressed:", "        n += 1", "        print('按下', n, '次')", "        lab.send(presses=n)", "        while lab.running() and btn1.value() == 0:", "            lab.sleep(0.02)   # 等放開，避免連數", "    lab.sleep(0.02)");
+  } else if (ledPins.length) {
+    L.push("    led1.value(1); lab.sleep(0.5)", "    led1.value(0); lab.sleep(0.5)", "    n += 1", "    print('閃了', n, '次')");
+  } else if (btnPins.length) {
+    L.push("    if btn1.value() == 0:", "        n += 1", "        print('按下', n, '次')", "        lab.send(presses=n)", "        while lab.running() and btn1.value() == 0:", "            lab.sleep(0.02)", "    lab.sleep(0.02)");
+  } else {
+    L.push("    lab.sleep(1)");
+  }
+  return L.join("\n") + "\n";
+}
+
+function wokwiLink(chip) {
+  // 真正的電氣模擬用 Wokwi，不自寫；依板型帶對應模板（Wokwi 沒有可帶接線的公開連結，開啟後請照畫面接線）
+  const t = { esp32: "esp32", esp32s3: "esp32-s3", esp32s2: "esp32-s2", esp32c3: "esp32-c3", esp32c6: "esp32-c6" }[chip] || "esp32";
+  return "https://wokwi.com/projects/new/micropython-" + t;
+}
+
+</script>
+
+
+<script id="examples-ui">
+window.addEventListener("DOMContentLoaded", function () {
+  const $ = (id) => document.getElementById(id);
+  const PAGES = "https://henrychao521.github.io/esp32-ai-lab-web/examples/";
+  let items = [], base = "";
+  async function load() {
+    const B = window.IDEBridge || {};
+    const server = (B.server && B.server()) || "";
+    const tries = server ? [server.replace(/\/$/, "") + "/examples/", PAGES] : [PAGES];
+    for (const u of tries) {
+      try { const r = await fetch(u + "manifest.json", { cache: "no-store" }); if (!r.ok) continue; items = await r.json(); base = u; $("ex-source").textContent = "範例來源：" + u; render(); return; }
+      catch (e) {}
+    }
+    $("ex-list").innerHTML = '<p class="hint">載不到範例清單：請在裝置面板填教室伺服器位址，或確認能連到網際網路（Pages）。</p>';
+  }
+  function render() {
+    const B = window.IDEBridge || {};
+    const board = (B.board && B.board()) || "generic";
+    const lv = $("ex-level").value, mine = $("ex-myboard").checked;
+    const known = board && board !== "generic";   // 沒連板子（generic）時不依板型篩選
+    const list = items.filter((e) => (!lv || e.level === lv) && (!mine || !known || e.boards.includes(board) || e.boards.includes("generic")));
+    $("ex-list").innerHTML = list.map((e) => `<div class="ex-card" data-id="${e.id}" style="display:flex;gap:10px;padding:8px 0;border-bottom:2px solid var(--line);cursor:pointer">
+      ${e.thumb ? `<img src="${base}${e.thumb}" width="56" height="56" style="image-rendering:pixelated;background:#000;flex:none" alt="">` : `<div style="width:56px;height:56px;background:var(--term-bg);flex:none"></div>`}
+      <div><b>${e.title}</b> <span class="hint">${e.level} · ${e.lines || 0} 行</span><div class="hint">${e.expect}</div></div></div>`).join("") || '<p class="hint">這個篩選沒有範例。</p>';
+    $("ex-list").querySelectorAll(".ex-card").forEach((c) => c.addEventListener("click", () => show(c.dataset.id)));
+    $("ex-detail").hidden = true; $("ex-list").hidden = false;
+  }
+  let cur = null;
+  function show(id) {
+    cur = items.find((e) => e.id === id); if (!cur) return;
+    $("ex-title").textContent = cur.title + "（" + cur.level + "）"; $("ex-expect").textContent = cur.expect; $("ex-desc").textContent = cur.description;
+    const needs = { none: "不用外接", buttons: "板上按鍵", remote: "遙控頁", vision: "視覺頁", ldr: "外接光敏電阻", servo: "外接伺服馬達" }[cur.needs] || cur.needs;
+    $("ex-needs").textContent = "需要：" + needs + "；適用板子：" + cur.boards.join("、");
+    $("ex-next").innerHTML = cur.next.map((n) => "<li>" + n + "</li>").join("");
+    if (cur.thumb) { $("ex-thumb").src = base + cur.thumb; $("ex-thumb").style.display = ""; } else { $("ex-thumb").style.display = "none"; }
+    $("ex-code").textContent = cur.code;
+    $("ex-list").hidden = true; $("ex-detail").hidden = false;
+  }
+  $("ex-level").addEventListener("change", render); $("ex-myboard").addEventListener("change", render);
+  $("ex-reload").addEventListener("click", load); $("ex-back").addEventListener("click", render);
+  $("ex-load").addEventListener("click", () => { if (cur && window.IDEBridge) { window.IDEBridge.setEditor(cur.code); } });
+  $("ex-run").addEventListener("click", () => { if (cur && window.IDEBridge) { window.IDEBridge.setEditor(cur.code); window.IDEBridge.run && window.IDEBridge.run(); } });
+  document.addEventListener("ide:state", () => { if (items.length) render(); else load(); });
+  document.getElementById("tab-examples").addEventListener("click", () => { if (!items.length) load(); });
+  load();
+});
+</script>
+
+<script id="prompts">
+/* PROMPTS-BEGIN */
+const PROMPTS = {
+ "header": "我在用一塊 ESP32 開發板學 MicroPython，請幫我寫程式。請遵守下面的規則，只回我一個 \u0060\u0060\u0060python 程式碼區塊，前面用一到三句話說明程式做什麼。\n\n板子上有 `lab` 模組（已經 import 好），規則：\n- 需要等待一律用 lab.sleep(秒)，不要用 time.sleep；它會在我按「停止」時結束程式。\n- 無限迴圈寫成 while lab.running(): ...，不要寫 while True。\n- print() 的內容會顯示在我的主控台；要回報數值用 lab.send(名稱=數值)，例如 lab.send(temp=25.3)。\n- 要接收遙控頁（按鈕、滑桿、搖桿）用 @lab.on_cmd 裝飾一個函式 fn(cmd)；cmd 是 dict，例如 {\"op\":\"joy\",\"x\":0.3,\"y\":-0.8}、{\"op\":\"btn\",\"id\":\"A\",\"v\":1}、{\"op\":\"slider\",\"id\":\"s1\",\"v\":42}。\n- 程式要短、能跑、用繁體中文註解；不要用板子上沒有的函式庫；不要改 Wi-Fi、不要呼叫 machine.reset()。\n\n",
+ "boards": {
+  "tqt_pro": "板子：LILYGO T-QT Pro（ESP32-S3，4MB flash，2MB PSRAM，Wi-Fi）\n- 螢幕：128×128 彩色，透過 lab.display 操作（framebuf API）：fill(c)、text(s,x,y,c)（內建 8×8 英數字型，一行 16 字、共 16 行，不支援中文）、pixel、line、rect、fill_rect、hline、vline，畫完要呼叫 lab.display.show() 才會顯示。顏色常數：lab.display.BLACK/WHITE/RED/GREEN/BLUE/YELLOW/CYAN；自訂顏色 from lab.board_tqt import color; color(r,g,b)。\n- 按鍵：GPIO0（左／BOOT）、GPIO47（右），按下為 0：from machine import Pin; Pin(0, Pin.IN, Pin.PULL_UP)。\n- 沒有板載 LED；lab.led(1) 會改亮螢幕右上角的小方塊。\n- 可用的外接腳位：GPIO16、17、18、48（右側排針）；GPIO43／44 是 UART0。其他腳位已被螢幕、PSRAM 佔用，不要用。\n- 電池電壓 ADC：GPIO4。\n",
+  "devkit": "板子：ESP32 DevKit（經典版 ESP32，Wi-Fi）\n- 板載 LED：GPIO2，lab.led(1)/lab.led(0)。\n- 沒有螢幕；lab.display.text() 會把文字送到 App 主控台顯示（仍要呼叫 lab.display.show()）。\n- 可用 GPIO：4、5、12～19、21～23、25～27、32、33（輸出與輸入）；34～39 只能輸入／ADC；避免 0、2（已用）、6～11（flash）。\n- PWM：from machine import PWM, Pin; PWM(Pin(5), freq=1000).duty_u16(32768)。ADC：from machine import ADC; ADC(Pin(34), atten=ADC.ATTN_11DB).read_u16()。\n",
+  "generic": "板子：ESP32 系列（型號未指定）。只用最通用的 machine.Pin／PWM／ADC，腳位由學生在程式開頭的常數指定；沒有螢幕，lab.display.text() 會把文字送到主控台。\n"
+ }
+};
+/* PROMPTS-END */
+</script>
+
+<script>
+(function() {
+  const $ = function(id) { return document.getElementById(id); };
+
+  const EXAMPLES = [
+    [
+      "視覺：看到剪刀手就亮燈（配合視覺頁）",
+      "import lab\n# 視覺頁（vision.html）會把辨識結果送過來：{\"op\":\"vision\",\"label\":\"Victory\",\"score\":0.9,...}\n# 看到剪刀手（Victory）就點亮 LED，螢幕顯示標籤\nd = lab.display\nlast = \"\"\n\n@lab.on_cmd\ndef on_cmd(cmd):\n    global last\n    if cmd.get(\"op\") != \"vision\":\n        return\n    label = cmd.get(\"label\", \"none\")\n    if label == last:\n        return\n    last = label\n    lab.led(label == \"Victory\")\n    d.fill(d.BLACK)\n    d.text(\"vision\", 0, 0, d.CYAN)\n    d.text(label[:16], 0, 40, d.YELLOW if label != \"none\" else d.WHITE)\n    d.text(\"%.0f%%\" % (float(cmd.get(\"score\", 0)) * 100), 0, 60, d.GREEN)\n    d.show()\n    print(\"看到\", label)\n    lab.send(vision=label)\n\nd.fill(d.BLACK); d.text(\"vision ready\", 0, 0, d.CYAN); d.show()\nprint(\"等待視覺頁送結果…\")\nwhile lab.running():\n    lab.sleep(0.2)\n"
+    ],
+    [
+      "閃燈（LED／螢幕角落）",
+      "import lab\n# 讓板載 LED（或螢幕角落的小方塊）每 0.3 秒閃一次，按停止才結束\nn = 0\nwhile lab.running():\n    lab.led(1); lab.sleep(0.3)\n    lab.led(0); lab.sleep(0.3)\n    n += 1\n    print(\"閃了\", n, \"次\")\n"
+    ],
+    [
+      "螢幕顯示文字",
+      "import lab\nd = lab.display\nd.fill(d.BLACK)\nd.text(\"Hello\", 10, 40, d.YELLOW)\nd.text(\"ESP32 AI Lab\", 10, 60, d.CYAN)\nd.show()\nprint(\"已顯示\")\n"
+    ],
+    [
+      "搖桿畫點",
+      "import lab\nd = lab.display\npos = [64, 64]\n\n@lab.on_cmd\ndef on_cmd(cmd):\n    # 遙控頁的搖桿：x、y 在 -1～1 之間\n    if cmd.get(\"op\") == \"joy\":\n        pos[0] = max(0, min(127, pos[0] + cmd[\"x\"] * 4))\n        pos[1] = max(0, min(127, pos[1] + cmd[\"y\"] * 4))\n    elif cmd.get(\"op\") == \"btn\" and cmd.get(\"v\"):\n        d.fill(d.BLACK)\n\nwhile lab.running():\n    d.fill_rect(int(pos[0]), int(pos[1]), 3, 3, d.GREEN)\n    d.show()\n    lab.send(x=int(pos[0]), y=int(pos[1]))\n    lab.sleep(0.05)\n"
+    ],
+    [
+      "讀按鍵（T-QT Pro）",
+      "import lab\nfrom machine import Pin\nleft = Pin(0, Pin.IN, Pin.PULL_UP)\nright = Pin(47, Pin.IN, Pin.PULL_UP)\nwhile lab.running():\n    l, r = left.value() == 0, right.value() == 0\n    if l or r:\n        print(\"左\" if l else \"\", \"右\" if r else \"\")\n    lab.send(left=l, right=r)\n    lab.sleep(0.1)\n"
+    ]
+  ];
+
+  function sGet(key, fallback) {
+    try {
+      const v = localStorage.getItem("esp32lab." + key);
+      return v !== null ? v : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function sSet(key, val) {
+    try {
+      localStorage.setItem("esp32lab." + key, val);
+    } catch (e) {}
+  }
+
+  function normAddr(raw) {
+    let s = (raw || "").trim().replace(/\/+$/, "");
+    if (!s) return "";
+    s = s.replace(/^https?:\/\/(virtual:\/\/)/i, "$1");   // 舊版存過的壞值
+    if (/^virtual:\/\//.test(s)) return s;
+    if (!/^https?:\/\//i.test(s)) {
+      s = "http" + "://" + s;
+    }
+    return s;
+  }
+
+  let base = normAddr(sGet("base", ""));
+  let server = normAddr(sGet("server", ""));
+  let token = sGet("token", "");
+  let boardName = "";
+  let boardType = "generic";
+  let boardStatus = "idle";
+  let activeTab = "code";
+  let ws = null;
+  let wsReconnectTimer = null;
+  let wsPingTimer = null;
+  let wsClosingExplicitly = false;
+  let teacherTimer = null;
+  let bundleVersion = "";
+  const sensorState = {};
+  const wsListeners = [];
+  let lastHelloMsg = null;
+
+  const exSelect = $("select-example");
+  EXAMPLES.forEach(function(item, idx) {
+    const opt = document.createElement("option");
+    opt.value = String(idx);
+    opt.textContent = item[0];
+    exSelect.appendChild(opt);
+  });
+
+  const savedEditor = sGet("editor", null);
+  $("editor").value = savedEditor !== null ? savedEditor : EXAMPLES[0][1];
+  $("paste").value = sGet("paste", "");
+  $("input-token").value = token;
+  $("teacher-token").value = token;
+
+  $("editor").addEventListener("input", function() {
+    sSet("editor", $("editor").value);
+  });
+  $("paste").addEventListener("input", function() {
+    sSet("paste", $("paste").value);
+  });
+
+  function updateStatusUI() {
+    const connected = (ws && ws.readyState === WebSocket.OPEN) || (isVirtual() && vb);
+    $("status-dot").classList.toggle("online", !!connected);
+    $("status-name").textContent = boardName || "未連線";
+    const isRun = boardStatus === "running";
+    $("status-state").textContent = isRun ? "執行中" : "待命";
+    $("status-state").classList.toggle("running", isRun);
+    $("btn-stop").disabled = !isRun;
+    $("btn-console-stop").disabled = !isRun;
+  }
+
+  function setBoardStatus(st) {
+    boardStatus = st === "running" ? "running" : "idle";
+    updateStatusUI();
+  }
+
+  function appendConsoleLine(text, cls) {
+    const con = $("console");
+    const stickBottom = (con.scrollHeight - con.scrollTop - con.clientHeight) <= 45;
+    const div = document.createElement("div");
+    div.className = "c-line " + (cls || "c-out");
+    div.textContent = text;
+    con.appendChild(div);
+    while (con.childNodes.length > 2000) {
+      con.removeChild(con.firstChild);
+    }
+    if (stickBottom) {
+      con.scrollTop = con.scrollHeight;
+    }
+  }
+
+  function appendMultiline(str, cls) {
+    const normalized = String(str || "").replace(/\r\n?/g, "\n").replace(/\n$/, "");
+    const parts = normalized.split("\n");
+    for (let i = 0; i < parts.length; i++) {
+      appendConsoleLine(parts[i], cls);
+    }
+  }
+
+  function updateSensors(obj) {
+    if (!obj || typeof obj !== "object") return;
+    const bar = $("sensor-bar");
+    Object.keys(obj).forEach(function(k) {
+      sensorState[k] = obj[k];
+    });
+    bar.innerHTML = "";
+    Object.keys(sensorState).forEach(function(k) {
+      const card = document.createElement("div");
+      card.className = "sensor-card";
+      const kSpan = document.createElement("span");
+      kSpan.className = "sensor-key";
+      kSpan.textContent = k;
+      const vSpan = document.createElement("span");
+      vSpan.className = "sensor-val";
+      vSpan.textContent = String(sensorState[k]);
+      card.appendChild(kSpan);
+      card.appendChild(vSpan);
+      bar.appendChild(card);
+    });
+  }
+
+  async function apiFetch(url, opts) {
+    if (/^virtual:\/\//.test(url)) return virtualFetch(url, opts);
+    const options = Object.assign({ cache: "no-store" }, opts || {});
+    try {
+      const res = await fetch(url, options);
+      return res;
+    } catch (err) {
+      appendConsoleLine("網路錯誤：" + (err && err.message ? err.message : String(err)), "c-sys");
+      return null;
+    }
+  }
+
+  function getRecentBoards() {
+    try {
+      const raw = sGet("recent", "[]");
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function addRecentBoard(addr, name) {
+    if (!addr) return;
+    const list = getRecentBoards().filter(function(item) {
+      return item && item.addr !== addr;
+    });
+    list.unshift({ addr: addr, name: name || addr });
+    if (list.length > 8) list.length = 8;
+    sSet("recent", JSON.stringify(list));
+    renderRecentBoards();
+  }
+
+  function renderRecentBoards() {
+    const wrap = $("recent-boards");
+    wrap.innerHTML = "";
+    const list = getRecentBoards();
+    if (list.length === 0) {
+      const span = document.createElement("span");
+      span.className = "hint-text";
+      span.textContent = "尚無紀錄";
+      wrap.appendChild(span);
+      return;
+    }
+    list.forEach(function(item) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip";
+      btn.textContent = item.name && item.name !== item.addr ? item.name + " (" + item.addr.replace(/^https?:\/\//, "") + ")" : item.addr;
+      btn.addEventListener("click", function() {
+        $("input-base").value = item.addr;
+        connectToBoard(item.addr);
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  function emitWsEvent(msg) {
+    for (let i = wsListeners.length - 1; i >= 0; i--) {
+      try {
+        wsListeners[i](msg);
+      } catch (e) {}
+    }
+  }
+
+  let transport = "ws", pythonOK = true, sensorPoll = null;
+  // ---- 虛擬板（vboard/vboard.js，從教室伺服器 /vboard/ 或 GitHub Pages 動態載入） ----
+  const VBOARD_PAGES = "https://henrychao521.github.io/esp32-ai-lab-web/vboard/";
+  let vb = null, vbArt = null, vbScreen = null, vbKind = "";
+  const isVirtual = function() { return /^virtual:\/\//.test(base); };
+  function vbSources() {
+    const list = [];
+    if (/^https?:$/i.test(location.protocol) && !/^file:/.test(location.protocol)) list.push(location.origin + "/vboard/");
+    if (server) list.push(server.replace(/\/$/, "") + "/vboard/");
+    list.push(VBOARD_PAGES);
+    return list.filter(function(u, i, a) { return a.indexOf(u) === i; });
+  }
+  async function connectVirtual(kind) {
+    kind = kind === "devkit" ? "devkit" : "tqt_pro";
+    if (vb && vbKind !== kind) { try { await vb.stop(); } catch (e) {} vb = null; }
+    if (!vb) {
+      let mod = null, art = null, lastErr = null;
+      for (const u of vbSources()) {
+        try { mod = await import(u + "vboard.js"); art = await import(u + "board-art.js"); break; } catch (e) { lastErr = e; }
+      }
+      if (!mod) { appendConsoleLine("載入虛擬板失敗（需要連得到教室伺服器或網路）：" + (lastErr && lastErr.message), "c-err"); return null; }
+      appendConsoleLine("虛擬板載入中（MicroPython WebAssembly）…", "c-sys");
+      try {
+        vb = await mod.createVirtualBoard({ board: kind, onEvent: handleBoardMessage, onState: vbDraw });
+      } catch (e) { appendConsoleLine("虛擬板啟動失敗：" + e.message, "c-err"); vb = null; return null; }
+      vbKind = kind;
+      const cv = $("vboard-canvas");
+      vbArt = art.createBoardArt(cv, { board: kind, scale: 1 });
+      cv.width = vbArt.layout.width; cv.height = vbArt.layout.height;
+      vbScreen = document.createElement("canvas"); vbScreen.width = 128; vbScreen.height = 128;
+      const sel = $("vb-adc-pin"); sel.innerHTML = "";
+      (kind === "tqt_pro" ? [16, 17, 18, 48, 4] : [32, 33, 34, 35, 36, 39, 4, 16, 17]).forEach(function(p) { const o = document.createElement("option"); o.value = p; o.textContent = "GPIO" + p; sel.appendChild(o); });
+    }
+    if (ws) { wsClosingExplicitly = true; try { ws.close(); } catch (e) {} ws = null; }
+    base = "virtual://" + kind; sSet("base", base); $("input-base").value = "";
+    transport = "virtual"; pythonOK = true;
+    document.body.classList.add("vb-on");
+    const dlg = $("device-dialog"); if (dlg && dlg.open) { try { dlg.close(); } catch (e) {} }
+    await fetchBoardInfo(base);
+    vbDraw(vb.state);
+    appendConsoleLine("已連線虛擬板：" + boardName + "。程式會在瀏覽器裡的 MicroPython 執行，畫面在主控台上方。", "c-sys");
+    return vb;
+  }
+  function leaveVirtual() {
+    if (vb) { try { vb.stop(); } catch (e) {} }
+    document.body.classList.remove("vb-on");
+    base = ""; sSet("base", ""); transport = "ws"; boardName = ""; boardType = "generic"; boardStatus = "idle"; info = null;
+    updateStatusUI();
+  }
+  let vbRaf = 0;
+  function vbDraw(stt) {
+    if (!vb || !vbArt || vbRaf) return;
+    vbRaf = requestAnimationFrame(function() {
+      vbRaf = 0;
+      if (!vb || !vbArt) return;
+      const stx = vb.state;
+      if (vbKind === "tqt_pro") {
+        if (vb.takeScreenDirty()) vbScreen.getContext("2d").putImageData(new ImageData(vb.screenRGBA(), 128, 128), 0, 0);
+      }
+      vbArt.draw({ screen: vbKind === "tqt_pro" ? vbScreen : null, led: stx.led, buttons: stx.buttons, pins: stx.pins, servos: stx.servos, adc: stx.adc,
+                   battery: vbKind === "tqt_pro" ? stx.battery : null, status: stx.status, name: boardName || "虛擬板" });
+    });
+  }
+  /** 把 /info /run /check /stop /reset 轉給虛擬板，回傳像 fetch 的 Response。 */
+  async function virtualFetch(url, opts) {
+    const path = url.replace(/^virtual:\/\/[a-z_]+/, "");
+    const method = (opts && opts.method) || "GET";
+    const reply = function(obj, status) { return { ok: (status || 200) < 300, status: status || 200, json: async function() { return obj; }, text: async function() { return JSON.stringify(obj); } }; };
+    if (!vb) return reply({ error: "virtual board not ready" }, 503);
+    if (path === "/info") return reply(vb.info());
+    if (path.indexOf("/run") === 0 && method === "POST") {
+      const q = /name=([^&]+)/.exec(path); const name = q ? decodeURIComponent(q[1]) : "main.py";
+      const r = await vb.run(String(opts.body || ""), name);
+      return reply(r, r.status === 409 ? 409 : 200);
+    }
+    if (path === "/check" && method === "POST") return reply(await vb.check(String(opts.body || "")));
+    if (path === "/stop") { const okk = await vb.stop(); return reply({ ok: okk, status: vb.state.status }); }
+    if (path === "/reset") { await vb.reset(); return reply({ ok: true }); }
+    if (path === "/screen.bmp") return reply({ error: "use canvas" }, 404);
+    return reply({ error: "not found" }, 404);
+  }
+  function sendWs(payload) {
+    if (isVirtual()) { if (payload && payload.t === "cmd" && vb) vb.cmd(payload); return; }
+    if (transport === "http" && base && payload && payload.t === "cmd") {
+      // Arduino 代理子集（AMB82 等）：沒有 WebSocket，改 POST /cmd
+      apiFetch(base + "/cmd", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+        .then(function(r) { return r && r.json(); }).then(function(j) { if (j && j.v) handleSensorValues(j.v); }).catch(function() {});
+      return;
+    }
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(JSON.stringify(payload));
+      } catch (e) {}
+    }
+  }
+  function handleSensorValues(v) { if (v) Object.keys(v).forEach(function(k) { sensorValues[k] = v[k]; }); renderSensorBar(); }
+  window.IDEBridge = {
+    board: function() { return boardType; },
+    chip: function() { return (info && info.chip) || ({ tqt_pro: "esp32s3", esp32s3_devkitc: "esp32s3", tdisplay_s3: "esp32s3", xiao_esp32s3: "esp32s3", esp32s2: "esp32s2", xiao_esp32c3: "esp32c3", esp32c3_supermini: "esp32c3", esp32c6: "esp32c6" }[boardType] || "esp32"); },
+    usable: function() { const b = (typeof BOARD_RESERVED !== "undefined") && BOARD_RESERVED[boardType]; return b ? b.usable : []; },
+    reserved: function() { const b = (typeof BOARD_RESERVED !== "undefined") && BOARD_RESERVED[boardType]; return b ? Object.fromEntries(Object.entries(b.pins).map(function(e) { return [Number(e[0]), e[1]]; })) : {}; },
+    setEditor: function(code) { $("editor").value = code; sSet("editor", code); updateGutter(); switchTab("code"); },
+    run: function() { runEditorGuarded(false); },
+    server: function() { return server; },
+    boardIp: function() { return (info && info.ip) || (base ? base.replace(/^https?:\/\//, "") : ""); }
+  };
+  let info = null;
+  function updateGutter() {
+    const g = $("editor-gutter"); if (!g) return;
+    const n = Math.max(1, $("editor").value.split("\n").length);
+    let out = ""; for (let i = 1; i <= n; i++) out += i + "\n";
+    g.textContent = out;
+    g.scrollTop = $("editor").scrollTop;
+  }
+  $("editor").addEventListener("input", updateGutter);
+  $("editor").addEventListener("scroll", function() { $("editor-gutter").scrollTop = $("editor").scrollTop; });
+  $("editor").addEventListener("keydown", function(e) {
+    if (e.key === "Tab") { e.preventDefault(); const t = e.target, st = t.selectionStart, en = t.selectionEnd; t.value = t.value.slice(0, st) + "    " + t.value.slice(en); t.selectionStart = t.selectionEnd = st + 4; updateGutter(); }
+  });
+  setTimeout(updateGutter, 0);
+
+  function openWebSocket() {
+    if (wsReconnectTimer) {
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = null;
+    }
+    if (wsPingTimer) {
+      clearInterval(wsPingTimer);
+      wsPingTimer = null;
+    }
+    if (ws) {
+      wsClosingExplicitly = true;
+      try { ws.close(); } catch (e) {}
+      ws = null;
+    }
+    if (!base || isVirtual()) {
+      updateStatusUI();
+      return;
+    }
+    wsClosingExplicitly = false;
+    const wsUrl = base.replace(/^http/i, "ws") + "/ws";
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch (e) {
+      appendConsoleLine("WebSocket 建立失敗：" + e.message, "c-sys");
+      scheduleReconnect();
+      return;
+    }
+
+    ws.onopen = function() {
+      updateStatusUI();
+      wsPingTimer = setInterval(function() {
+        sendWs({ t: "ping" });
+      }, 15000);
+    };
+
+    ws.onmessage = function(ev) {
+      let msg;
+      try {
+        msg = JSON.parse(ev.data);
+      } catch (e) {
+        return;
+      }
+      handleBoardMessage(msg);
+    };
+
+    ws.onclose = function() {
+      if (wsPingTimer) {
+        clearInterval(wsPingTimer);
+        wsPingTimer = null;
+      }
+      updateStatusUI();
+      if (!wsClosingExplicitly && base) {
+        appendConsoleLine("連線中斷，3 秒後重連…", "c-sys");
+        scheduleReconnect();
+      }
+    };
+
+    ws.onerror = function() {};
+  }
+
+  /** 板子（WebSocket）或虛擬板送來的事件，兩邊共用。 */
+  function handleBoardMessage(msg) {
+      if (!msg || !msg.t) return;
+      if (msg.t === "hello") {
+        lastHelloMsg = msg;
+        if (msg.name) boardName = msg.name;
+        if (msg.board) boardType = msg.board;
+        if (msg.status) boardStatus = msg.status;
+        addRecentBoard(base, boardName);
+        updateStatusUI();
+      } else if (msg.t === "out") {
+        appendMultiline(msg.s, "c-out");
+      } else if (msg.t === "err") {
+        appendMultiline(msg.s, "c-err");
+      } else if (msg.t === "start") {
+        boardStatus = "running";
+        updateStatusUI();
+        appendConsoleLine("▶ 開始執行 " + (msg.file || "main.py"), "c-start");
+      } else if (msg.t === "done") {
+        boardStatus = "idle";
+        updateStatusUI();
+        if (msg.stopped) {
+          appendConsoleLine("■ 已停止", "c-done-ok");
+        } else if (msg.ok === false) {
+          appendConsoleLine("✗ 程式因錯誤結束", "c-done-err");
+        } else {
+          appendConsoleLine("✓ 程式結束", "c-done-ok");
+        }
+      } else if (msg.t === "image") {
+        const d = document.createElement("div"); d.className = "c-line c-img";
+        const im = document.createElement("img"); im.src = base + msg.url; im.alt = "相機照片"; d.appendChild(im);
+        $("console").appendChild(d); $("console").scrollTop = $("console").scrollHeight;
+      } else if (msg.t === "sensor") {
+        updateSensors(msg.v);
+      } else if (msg.t === "display") {
+        const lines = Array.isArray(msg.lines) ? msg.lines.join(" / ") : "";
+        appendConsoleLine("🖥 " + lines, "c-display");
+      }
+      emitWsEvent(msg);
+  }
+
+  function scheduleReconnect() {
+    if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = setTimeout(function() {
+      wsReconnectTimer = null;
+      if (base) openWebSocket();
+    }, 3000);
+  }
+
+  async function fetchBoardInfo(targetBase) {
+    const b = targetBase || base;
+    if (!b) return null;
+    const res = await apiFetch(b + "/info");
+    if (!res || !res.ok) return null;
+    try {
+      const data = await res.json();
+      if (data && data.name) {
+        boardName = data.name;
+        boardType = data.board || "generic";
+        info = data;
+        transport = data.transport || "ws"; pythonOK = data.python !== false;
+        if (transport === "http") {
+          appendConsoleLine("這塊板子（" + boardType + "）跑的是 Arduino 代理子集：可用遙控頁（LED／GPIO／PWM／ADC）與拍照，不能執行 Python。", "c-sys");
+          if (!sensorPoll) sensorPoll = setInterval(function() { if (base && transport === "http") apiFetch(base + "/sensor").then(function(r) { return r && r.json(); }).then(handleSensorValues).catch(function() {}); }, 1000);
+        } else if (sensorPoll) { clearInterval(sensorPoll); sensorPoll = null; }
+        document.dispatchEvent(new Event("ide:state"));
+        boardStatus = data.status || "idle";
+        addRecentBoard(b, boardName);
+        updateStatusUI();
+      }
+      return data;
+    } catch (e) {
+      appendConsoleLine("解析 /info 失敗", "c-sys");
+      return null;
+    }
+  }
+
+  async function connectToBoard(rawAddr) {
+    if (/^virtual:\/\//.test(rawAddr || "")) return connectVirtual(rawAddr.replace(/^virtual:\/\//, ""));
+    const normalized = normAddr(rawAddr);
+    if (!normalized) return null;
+    base = normalized;
+    lastHelloMsg = null;
+    sSet("base", base);
+    $("input-base").value = base;
+    openWebSocket();
+    const info = await fetchBoardInfo(base);
+    const dlg = $("device-dialog");
+    if (dlg && dlg.open) {
+      try { dlg.close(); } catch (e) {}
+    }
+    return info;
+  }
+
+  const TAB_MAP = {
+    code: ["tab-code", "panel-code"],
+    paste: ["tab-paste", "panel-paste"],
+    console: ["tab-console", "panel-console"],
+    remote: ["tab-remote", "panel-remote"],
+    teacher: ["tab-teacher", "panel-teacher"],
+    wiring: ["tab-wiring", "panel-wiring"],
+    examples: ["tab-examples", "panel-examples"],
+    vision: ["tab-vision", "panel-vision"]
+  };
+
+  function switchTab(name) {
+    if (!TAB_MAP[name]) return;
+    // 桌機版主控台永遠在右欄，切到主控台不要把左欄清空
+    if (name === "console" && window.matchMedia && window.matchMedia("(min-width:900px)").matches) return;
+    activeTab = name;
+    Object.keys(TAB_MAP).forEach(function(k) {
+      const btn = $(TAB_MAP[k][0]);
+      const pnl = $(TAB_MAP[k][1]);
+      const isAct = k === name;
+      btn.classList.toggle("active", isAct);
+      pnl.classList.toggle("active", isAct);
+    });
+    if (name === "teacher") {
+      refreshTeacherView();
+      if (!teacherTimer) {
+        teacherTimer = setInterval(function() {
+          if (activeTab === "teacher" && server) {
+            refreshTeacherView();
+          }
+        }, 5000);
+      }
+    }
+  }
+
+  Object.keys(TAB_MAP).forEach(function(k) {
+    $(TAB_MAP[k][0]).addEventListener("click", function() {
+      switchTab(k);
+    });
+  });
+
+  exSelect.addEventListener("change", function() {
+    const idx = Number(exSelect.value);
+    if (!Number.isNaN(idx) && EXAMPLES[idx]) {
+      $("editor").value = EXAMPLES[idx][1];
+      sSet("editor", $("editor").value);
+    }
+    exSelect.value = "";
+  });
+
+  $("btn-load-file").addEventListener("click", async function() {
+    if (!base) {
+      appendConsoleLine("尚未設定板子位址", "c-sys");
+      return;
+    }
+    const fname = $("select-file").value;
+    const res = await apiFetch(base + "/files/" + encodeURIComponent(fname));
+    if (res && res.ok) {
+      const txt = await res.text();
+      $("editor").value = txt;
+      sSet("editor", txt);
+      appendConsoleLine("已從板子載入 " + fname, "c-sys");
+    } else {
+      appendConsoleLine("載入檔案失敗：" + fname, "c-sys");
+    }
+  });
+
+  $("btn-save-file").addEventListener("click", async function() {
+    if (!base) {
+      appendConsoleLine("尚未設定板子位址", "c-sys");
+      return;
+    }
+    const fname = $("select-file").value;
+    const res = await apiFetch(base + "/files/" + encodeURIComponent(fname), {
+      method: "PUT",
+      headers: { "Content-Type": "text/plain" },
+      body: $("editor").value
+    });
+    if (res && res.ok) {
+      appendConsoleLine("已存到板子：" + fname, "c-sys");
+    } else {
+      appendConsoleLine("儲存檔案失敗：" + fname, "c-sys");
+    }
+  });
+
+  async function runCodeOnBoard(code, fileName) {
+    if (!pythonOK) { appendConsoleLine("這塊板子不能執行 Python（Arduino 代理子集），請換 ESP32 板或只用遙控頁。", "c-err"); return null; }
+    if (!base) {
+      appendConsoleLine("請先在「裝置」連線到板子", "c-sys");
+      return null;
+    }
+    const fname = fileName || $("select-file").value || "main.py";
+    const res = await apiFetch(base + "/run?name=" + encodeURIComponent(fname), {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: code
+    });
+    if (!res) return null;
+    if (res.status === 409) {
+      appendConsoleLine("板子正在執行別的程式，先按停止", "c-sys");
+      return { ok: false, status: 409 };
+    }
+    try {
+      const data = await res.json();
+      if (data && data.ok) {
+        setBoardStatus("running");
+      } else if (data && data.msg === "busy") {
+        appendConsoleLine("板子正在執行別的程式，先按停止", "c-sys");
+      }
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function stopBoardCode() {
+    if (!base) return null;
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const tid = ctrl ? setTimeout(function() { ctrl.abort(); }, 2000) : null;
+    try {
+      const res = await apiFetch(base + "/stop", {
+        method: "POST",
+        signal: ctrl ? ctrl.signal : undefined
+      });
+      if (tid) clearTimeout(tid);
+      if (!res) return null;
+      const data = await res.json();
+      if (data && data.status) setBoardStatus(data.status);
+      else setBoardStatus("idle");
+      return data;
+    } catch (e) {
+      if (tid) clearTimeout(tid);
+      appendConsoleLine("停止逾時或失敗", "c-sys");
+      return null;
+    }
+  }
+
+  $("btn-run").addEventListener("click", async function() {
+    await runEditorGuarded(false);
+  });
+
+  $("btn-stop").addEventListener("click", function() {
+    stopBoardCode();
+  });
+
+  $("btn-reset").addEventListener("click", async function() {
+    if (!base) return;
+    if (!confirm("確定要重開板子嗎？")) return;
+    await apiFetch(base + "/reset", { method: "POST" });
+    setBoardStatus("idle");
+    appendConsoleLine("已送出重開板子指令", "c-sys");
+  });
+
+  $("btn-console-rerun").addEventListener("click", function() {
+    runCodeOnBoard($("editor").value, $("select-file").value);
+  });
+  $("btn-console-stop").addEventListener("click", function() {
+    stopBoardCode();
+  });
+  $("btn-console-clear").addEventListener("click", function() {
+    $("console").innerHTML = "";
+  });
+
+  $("btn-copy-prompt").addEventListener("click", async function() {
+    const bKey = PROMPTS.boards[boardType] ? boardType : "generic";
+    const fullPrompt = PROMPTS.header + PROMPTS.boards[bKey];
+    const fb = $("prompt-fallback");
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(fullPrompt);
+        fb.style.display = "none";
+        $("btn-copy-prompt").textContent = "✓ 已複製 AI 提示";
+        setTimeout(function() {
+          $("btn-copy-prompt").textContent = "複製 AI 提示";
+        }, 2000);
+        return;
+      }
+      throw new Error("clipboard unavailable");
+    } catch (e) {
+      fb.value = fullPrompt;
+      fb.style.display = "block";
+      fb.focus();
+      fb.select();
+    }
+  });
+
+  function doPasteClean() {
+    const before = $("paste").value;
+    const r = cleanCodeStats(before);
+    $("paste").value = r.text;
+    sSet("paste", r.text);
+    const status = $("clean-status");
+    status.textContent = before.trim() ? cleanSummary(before, r.text, r.stats) : "";
+    return r.text;
+  }
+
+  // 執行前保護檢查：有問題就先擋下，列行號／原因／改法；「仍要執行」才放行
+  function renderGuardResult(findings, codeText, onForce) {
+    const box = $("check-result");
+    box.innerHTML = "";
+    box.className = "warn";
+    const hdr = document.createElement("div");
+    hdr.style.fontWeight = "700";
+    hdr.textContent = "⚠️ 執行前檢查發現 " + findings.length + " 個會讓板子失聯或停不下來的寫法，先沒有執行：";
+    box.appendChild(hdr);
+    findings.forEach(function(f) {
+      const d = document.createElement("div");
+      d.className = "guard-item";
+      const b = document.createElement("b");
+      b.textContent = "第 " + f.line + " 行：";
+      d.appendChild(b);
+      d.appendChild(document.createTextNode(f.reason + "。"));
+      const fx = document.createElement("div");
+      fx.className = "guard-fix";
+      fx.textContent = "→ 建議：" + f.fix;
+      d.appendChild(fx);
+      box.appendChild(d);
+    });
+    const warnLines = {};
+    findings.forEach(function(f) { warnLines[f.line] = true; });
+    const preview = document.createElement("div");
+    preview.className = "preview-box";
+    const lines = String(codeText || "").replace(/\n$/, "").split("\n");
+    let firstEl = null;
+    lines.forEach(function(ln, idx) {
+      const lineNo = idx + 1;
+      const row = document.createElement("div");
+      row.className = "preview-line" + (warnLines[lineNo] ? " warn-line" : "");
+      const num = document.createElement("span");
+      num.className = "ln-num";
+      num.textContent = String(lineNo);
+      const txt = document.createElement("span");
+      txt.textContent = ln;
+      row.appendChild(num);
+      row.appendChild(txt);
+      preview.appendChild(row);
+      if (warnLines[lineNo] && !firstEl) firstEl = row;
+    });
+    box.appendChild(preview);
+    const actions = document.createElement("div");
+    actions.className = "guard-actions";
+    const fix = document.createElement("button");
+    fix.type = "button";
+    fix.className = "btn-primary";
+    fix.textContent = "回去修改（把 AI 提示貼給 AI 請它照規則改）";
+    fix.addEventListener("click", function() { box.className = ""; box.innerHTML = ""; });
+    const force = document.createElement("button");
+    force.type = "button";
+    force.textContent = "仍要執行（板子可能失聯，失聯就按重開板子）";
+    force.addEventListener("click", function() { if (onForce) onForce(); });
+    actions.appendChild(fix);
+    actions.appendChild(force);
+    box.appendChild(actions);
+    if (firstEl && firstEl.scrollIntoView) setTimeout(function() { firstEl.scrollIntoView({ block: "center" }); }, 20);
+  }
+
+  function renderCheckResult(data, codeText) {
+    const box = $("check-result");
+    box.innerHTML = "";
+    if (!data) {
+      box.className = "err";
+      box.textContent = "無法連線至板子檢查語法";
+      return;
+    }
+    if (data.ok) {
+      box.className = "ok";
+      box.textContent = "✓ 語法檢查通過";
+      return;
+    }
+    box.className = "err";
+    const errLine = data.line ? Number(data.line) : null;
+    const hdr = document.createElement("div");
+    hdr.style.fontWeight = "700";
+    hdr.textContent = (errLine ? "第 " + errLine + " 行：" : "語法錯誤：") + (data.msg || "未知錯誤");
+    box.appendChild(hdr);
+
+    const preview = document.createElement("div");
+    preview.className = "preview-box";
+    const lines = String(codeText || "").replace(/\n$/, "").split("\n");
+    let targetEl = null;
+    lines.forEach(function(ln, idx) {
+      const lineNo = idx + 1;
+      const row = document.createElement("div");
+      row.className = "preview-line" + (lineNo === errLine ? " err-line" : "");
+      const num = document.createElement("span");
+      num.className = "ln-num";
+      num.textContent = String(lineNo);
+      const txt = document.createElement("span");
+      txt.textContent = ln;
+      row.appendChild(num);
+      row.appendChild(txt);
+      preview.appendChild(row);
+      if (lineNo === errLine) targetEl = row;
+    });
+    box.appendChild(preview);
+    if (targetEl && targetEl.scrollIntoView) {
+      setTimeout(function() {
+        targetEl.scrollIntoView({ block: "center" });
+      }, 20);
+    }
+  }
+
+  async function checkCodeSyntax(codeText) {
+    if (!base) {
+      renderCheckResult(null, codeText);
+      return null;
+    }
+    const res = await apiFetch(base + "/check", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: codeText
+    });
+    if (!res) {
+      renderCheckResult(null, codeText);
+      return null;
+    }
+    try {
+      const data = await res.json();
+      renderCheckResult(data, codeText);
+      return data;
+    } catch (e) {
+      renderCheckResult(null, codeText);
+      return null;
+    }
+  }
+
+  async function doPasteRun(force) {
+    const cleaned = doPasteClean();
+    const chk = await checkCodeSyntax(cleaned);
+    if (!(chk && chk.ok)) return chk;
+    if (!force) {
+      const findings = guardCode(cleaned, boardType);
+      if (findings.length) {
+        renderGuardResult(findings, cleaned, function() { doPasteRun(true); });
+        return { ok: false, guard: true, findings: findings };
+      }
+    }
+    $("editor").value = cleaned;
+    sSet("editor", cleaned);
+    switchTab("console");
+    await runCodeOnBoard(cleaned, $("select-file").value);
+    return chk;
+  }
+
+  // 程式分頁的「推送並執行」也走同一道保護檢查（結果顯示在貼上分頁的檢查框）
+  async function runEditorGuarded(force) {
+    const code = $("editor").value;
+    if (!force) {
+      const findings = guardCode(code, boardType);
+      if (findings.length) {
+        switchTab("paste");
+        renderGuardResult(findings, code, function() { runEditorGuarded(true); });
+        return;
+      }
+    }
+    switchTab("console");
+    await runCodeOnBoard(code, $("select-file").value);
+  }
+
+  // 清除全部程式碼：先確認，清除前存一份到 localStorage，可一鍵還原
+  function clearWithUndo(id, key, restoreBtn, after) {
+    const el = $(id);
+    if (!el.value) return;
+    if (!confirm("清除全部程式碼？清除前的內容會保留一份，可按「還原上次清除」拿回來。")) return;
+    sSet(key, el.value); el.value = ""; $(restoreBtn).disabled = false;
+    if (after) after();
+  }
+  function restoreFrom(id, key, restoreBtn, after) {
+    const v = sGet(key, ""); if (!v) return;
+    $(id).value = v; sSet(key, ""); $(restoreBtn).disabled = true;
+    if (after) after();
+  }
+  $("btn-clear-code").addEventListener("click", function() { clearWithUndo("editor", "lastClearedCode", "btn-restore-code", function() { sSet("editor", ""); updateGutter(); }); });
+  $("btn-restore-code").addEventListener("click", function() { restoreFrom("editor", "lastClearedCode", "btn-restore-code", function() { sSet("editor", $("editor").value); updateGutter(); }); });
+  $("btn-clear-paste").addEventListener("click", function() { clearWithUndo("paste", "lastClearedPaste", "btn-restore-paste", function() { sSet("paste", ""); $("check-result").className = ""; $("check-result").innerHTML = ""; $("clean-status").textContent = ""; }); });
+  $("btn-restore-paste").addEventListener("click", function() { restoreFrom("paste", "lastClearedPaste", "btn-restore-paste", function() { sSet("paste", $("paste").value); }); });
+  $("btn-restore-code").disabled = !sGet("lastClearedCode", ""); $("btn-restore-paste").disabled = !sGet("lastClearedPaste", "");
+
+  $("btn-paste-clean").addEventListener("click", function() {
+    doPasteClean();
+  });
+
+  $("btn-paste-check").addEventListener("click", function() {
+    checkCodeSyntax($("paste").value);
+  });
+
+  $("btn-paste-run").addEventListener("click", function() {
+    doPasteRun();
+  });
+
+  document.querySelectorAll(".pad-btn").forEach(function(btn) {
+    const id = btn.getAttribute("data-btn");
+    let isDown = false;
+    btn.addEventListener("pointerdown", function(e) {
+      e.preventDefault();
+      isDown = true;
+      btn.classList.add("pressed");
+      sendWs({ t: "cmd", op: "btn", id: id, v: 1 });
+    });
+    function releaseBtn() {
+      if (!isDown) return;
+      isDown = false;
+      btn.classList.remove("pressed");
+      sendWs({ t: "cmd", op: "btn", id: id, v: 0 });
+    }
+    btn.addEventListener("pointerup", releaseBtn);
+    btn.addEventListener("pointercancel", releaseBtn);
+    btn.addEventListener("pointerleave", releaseBtn);
+  });
+
+  function bindSlider(inputId, valId, sliderKey) {
+    const el = $(inputId);
+    const label = $(valId);
+    let lastSent = 0;
+    el.addEventListener("input", function() {
+      const v = Number(el.value);
+      label.textContent = String(v);
+      const now = Date.now();
+      if (now - lastSent >= 50) {
+        lastSent = now;
+        sendWs({ t: "cmd", op: "slider", id: sliderKey, v: v });
+      }
+    });
+    function sendFinal() {
+      const v = Number(el.value);
+      label.textContent = String(v);
+      sendWs({ t: "cmd", op: "slider", id: sliderKey, v: v });
+    }
+    el.addEventListener("change", sendFinal);
+    el.addEventListener("pointerup", sendFinal);
+  }
+  bindSlider("slider-s1", "val-s1", "s1");
+  bindSlider("slider-s2", "val-s2", "s2");
+
+  const joyEl = $("joystick");
+  const thumbEl = $("joy-thumb");
+  const joyLabel = $("joy-label");
+  let joyActiveId = null;
+  let joyLastSent = 0;
+
+  function updateJoystick(clientX, clientY, forceSend) {
+    const rect = joyEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const maxR = (rect.width / 2) * 0.7;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxR && dist > 0) {
+      dx = (dx / dist) * maxR;
+      dy = (dy / dist) * maxR;
+    }
+    thumbEl.style.left = (rect.width / 2 + dx) + "px";
+    thumbEl.style.top = (rect.height / 2 + dy) + "px";
+    const nx = Math.max(-1, Math.min(1, Math.round((dx / maxR) * 100) / 100));
+    const ny = Math.max(-1, Math.min(1, Math.round((dy / maxR) * 100) / 100));
+    joyLabel.textContent = "x: " + nx.toFixed(2) + ", y: " + ny.toFixed(2);
+    const now = Date.now();
+    if (forceSend || now - joyLastSent >= 50) {
+      joyLastSent = now;
+      sendWs({ t: "cmd", op: "joy", x: nx, y: ny });
+    }
+  }
+
+  function resetJoystick() {
+    joyActiveId = null;
+    thumbEl.style.left = "50%";
+    thumbEl.style.top = "50%";
+    joyLabel.textContent = "x: 0.00, y: 0.00";
+    sendWs({ t: "cmd", op: "joy", x: 0, y: 0 });
+  }
+
+  joyEl.addEventListener("pointerdown", function(e) {
+    e.preventDefault();
+    joyActiveId = e.pointerId;
+    try { joyEl.setPointerCapture(e.pointerId); } catch (err) {}
+    updateJoystick(e.clientX, e.clientY, true);
+  });
+  joyEl.addEventListener("pointermove", function(e) {
+    if (joyActiveId !== e.pointerId) return;
+    updateJoystick(e.clientX, e.clientY, false);
+  });
+  joyEl.addEventListener("pointerup", function(e) {
+    if (joyActiveId !== e.pointerId) return;
+    resetJoystick();
+  });
+  joyEl.addEventListener("pointercancel", function(e) {
+    if (joyActiveId !== e.pointerId) return;
+    resetJoystick();
+  });
+
+  let ledState = false;
+  $("btn-led-toggle").addEventListener("click", function() {
+    ledState = !ledState;
+    $("btn-led-toggle").classList.toggle("on", ledState);
+    $("btn-led-toggle").textContent = ledState ? "LED：開" : "LED：關";
+    sendWs({ t: "cmd", op: "led", v: ledState });
+  });
+
+  let gpioOutState = 0;
+  $("btn-gpio-out").addEventListener("click", function() {
+    gpioOutState = gpioOutState ? 0 : 1;
+    const pin = Number($("gpio-pin").value) || 0;
+    $("btn-gpio-out").classList.toggle("on", gpioOutState === 1);
+    $("btn-gpio-out").textContent = "輸出：" + gpioOutState;
+    sendWs({ t: "cmd", op: "pin", pin: pin, v: gpioOutState });
+  });
+
+  $("btn-gpio-read").addEventListener("click", function() {
+    const pin = Number($("gpio-pin").value) || 0;
+    sendWs({ t: "cmd", op: "read", pin: pin });
+  });
+
+  $("btn-gpio-adc").addEventListener("click", function() {
+    const pin = Number($("gpio-pin").value) || 0;
+    sendWs({ t: "cmd", op: "adc", pin: pin });
+  });
+
+  const dlg = $("device-dialog");
+  $("btn-device").addEventListener("click", function() {
+    $("input-base").value = base;
+    $("input-server").value = server;
+    $("input-token").value = token;
+    renderRecentBoards();
+    refreshDialogDevices();
+    if (dlg.showModal) dlg.showModal();
+    else dlg.setAttribute("open", "open");
+  });
+
+  $("btn-close-dialog").addEventListener("click", function() {
+    if (dlg.close) dlg.close();
+    else dlg.removeAttribute("open");
+  });
+
+  $("btn-connect").addEventListener("click", function() {
+    connectToBoard($("input-base").value);
+  });
+  $("btn-virtual-tqt").addEventListener("click", function() { connectVirtual("tqt_pro"); });
+  $("btn-virtual-devkit").addEventListener("click", function() { connectVirtual("devkit"); });
+  if (location.protocol === "https:") $("vb-https-note").style.display = "block";
+  $("vb-reset").addEventListener("click", function() { if (vb) { vb.reset(); appendConsoleLine("虛擬板已重開", "c-sys"); } });
+  $("vb-leave").addEventListener("click", leaveVirtual);
+  $("vb-batt").addEventListener("input", function() { const v = Number(this.value); $("vb-batt-v").textContent = v.toFixed(2) + "V"; if (vb) vb.setBattery(v); });
+  $("vb-rssi").addEventListener("input", function() { const v = Number(this.value); $("vb-rssi-v").textContent = v + " dBm"; if (vb) vb.setRssi(v); });
+  $("vb-adc").addEventListener("input", function() { const v = Number(this.value); $("vb-adc-v").textContent = String(v); if (vb) vb.setAdc(Number($("vb-adc-pin").value), v); });
+  (function() {
+    const cv = $("vboard-canvas"); let held = null;
+    function pos(ev) { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * cv.width / r.width, (ev.clientY - r.top) * cv.height / r.height]; }
+    cv.addEventListener("pointerdown", function(ev) {
+      if (!vb || !vbArt) return; const [x, y] = pos(ev); const h = vbArt.hitTest(x, y); if (!h) return;
+      ev.preventDefault(); cv.setPointerCapture(ev.pointerId);
+      if (h.type === "button") { held = h.pin; vb.pressButton(h.pin, true); }
+      else if (h.type === "pin" && h.gpio !== null && h.gpio !== undefined) { const cur = vb.state.inputs[h.gpio]; vb.setInput(h.gpio, cur ? 0 : 1); appendConsoleLine("GPIO" + h.gpio + " 輸入 → " + (cur ? 0 : 1), "c-sys"); }
+      else if (h.type === "led") { vb.cmd({ op: "led", v: !vb.state.led }); }
+    });
+    const up = function(ev) { if (held !== null && vb) { vb.pressButton(held, false); held = null; } };
+    cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up); cv.addEventListener("pointerleave", up);
+  })();
+
+  $("btn-save-server").addEventListener("click", function() {
+    server = normAddr($("input-server").value);
+    token = $("input-token").value.trim();
+    sSet("server", server);
+    sSet("token", token);
+    $("teacher-token").value = token;
+    refreshDialogDevices();
+    if (activeTab === "teacher") refreshTeacherView();
+  });
+
+  $("btn-refresh-devices").addEventListener("click", function() {
+    refreshDialogDevices();
+  });
+
+  async function fetchServerDevices() {
+    if (!server) return [];
+    const res = await apiFetch(server + "/devices");
+    if (!res || !res.ok) return [];
+    try {
+      const list = await res.json();
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async function refreshDialogDevices() {
+    const sec = $("dlg-server-devices");
+    if (!server) {
+      sec.style.display = "none";
+      return;
+    }
+    sec.style.display = "block";
+    const list = await fetchServerDevices();
+    const tbody = $("dlg-devices-tbody");
+    tbody.innerHTML = "";
+    list.forEach(function(d) {
+      const tr = document.createElement("tr");
+      tr.className = "clickable-row";
+      [d.name || "-", d.board || "-", d.ip || "-", d.version || "-", (d.age != null ? d.age + " 秒前" : "-")].forEach(function(val) {
+        const td = document.createElement("td");
+        td.textContent = String(val);
+        tr.appendChild(td);
+      });
+      tr.addEventListener("click", function() {
+        const addr = d.ip ? ("http" + "://" + d.ip) : (d.name ? ("http" + "://" + d.name + ".local") : "");
+        if (addr) {
+          $("input-base").value = addr;
+          connectToBoard(addr);
+        }
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function isVersionOlder(v, target) {
+    if (!v || !target || v === target) return false;
+    const pa = String(v).split(".").map(Number);
+    const pb = String(target).split(".").map(Number);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const na = pa[i] || 0;
+      const nb = pb[i] || 0;
+      if (na < nb) return true;
+      if (na > nb) return false;
+    }
+    return String(v) < String(target);
+  }
+
+  async function refreshTeacherView() {
+    if (!server) {
+      $("teacher-no-server").style.display = "block";
+      $("teacher-main").style.display = "none";
+      return;
+    }
+    $("teacher-no-server").style.display = "none";
+    $("teacher-main").style.display = "flex";
+
+    const bRes = await apiFetch(server + "/bundle");
+    if (bRes && bRes.ok) {
+      try {
+        const bData = await bRes.json();
+        bundleVersion = bData.version || "";
+        $("bundle-version").textContent = bundleVersion || "-";
+      } catch (e) {}
+    }
+
+    const list = await fetchServerDevices();
+    const tbody = $("teacher-devices-tbody");
+    tbody.innerHTML = "";
+    list.forEach(function(d) {
+      const tr = document.createElement("tr");
+      tr.className = "clickable-row";
+      const tdName = document.createElement("td");
+      tdName.textContent = d.name || "-";
+      const tdBoard = document.createElement("td");
+      tdBoard.textContent = d.board || "-";
+      const tdIp = document.createElement("td");
+      tdIp.textContent = d.ip || "-";
+      const tdVer = document.createElement("td");
+      tdVer.textContent = d.version || "-";
+      if (bundleVersion && d.version && isVersionOlder(d.version, bundleVersion)) {
+        const badge = document.createElement("span");
+        badge.className = "badge-updatable";
+        badge.textContent = "可更新";
+        tdVer.appendChild(badge);
+      }
+      const tdSt = document.createElement("td");
+      tdSt.textContent = d.status === "running" ? "執行中" : "待命";
+      const tdAge = document.createElement("td");
+      tdAge.textContent = d.age != null ? d.age + " 秒前" : "-";
+      tr.appendChild(tdName);
+      tr.appendChild(tdBoard);
+      tr.appendChild(tdIp);
+      tr.appendChild(tdVer);
+      tr.appendChild(tdSt);
+      tr.appendChild(tdAge);
+      tr.addEventListener("click", function() {
+        if (d.ip) connectToBoard("http" + "://" + d.ip);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  $("teacher-token").addEventListener("input", function() {
+    token = $("teacher-token").value.trim();
+    $("input-token").value = token;
+    sSet("token", token);
+  });
+
+  $("btn-teacher-auth").addEventListener("click", async function() {
+    if (!server) return;
+    token = $("teacher-token").value.trim();
+    sSet("token", token);
+    const res = await apiFetch(server + "/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: token })
+    });
+    if (res && res.ok) {
+      const data = await res.json();
+      appendConsoleLine(data && data.ok ? "通行碼驗證成功" : "通行碼錯誤", "c-sys");
+    }
+  });
+
+  $("btn-fleet-update").addEventListener("click", async function() {
+    if (!server) return;
+    if (!confirm("確定要執行全班更新嗎？")) return;
+    const btn = $("btn-fleet-update");
+    const resBox = $("fleet-results");
+    token = $("teacher-token").value.trim();
+    sSet("token", token);
+    btn.disabled = true;
+    btn.textContent = "更新中…";
+    resBox.style.display = "block";
+    resBox.textContent = "正在更新全班板子，請稍候（約 30～90 秒）…";
+    const res = await apiFetch(server + "/fleet/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: token })
+    });
+    btn.disabled = false;
+    btn.textContent = "全班更新";
+    resBox.innerHTML = "";
+    if (!res) {
+      resBox.textContent = "❌ 網路連線失敗";
+      return;
+    }
+    try {
+      const data = await res.json();
+      if (data.error) {
+        resBox.textContent = "❌ " + data.error;
+        return;
+      }
+      const results = Array.isArray(data.results) ? data.results : [];
+      results.forEach(function(r) {
+        const line = document.createElement("div");
+        line.textContent = (r.ok ? "✅ " : "❌ ") + (r.name || "") + " (" + (r.ip || "") + ") " + (r.msg || "");
+        resBox.appendChild(line);
+      });
+    } catch (e) {
+      resBox.textContent = "❌ 解析更新結果失敗";
+    }
+  });
+
+  function waitForWsEvent(predicate, timeoutMs) {
+    return new Promise(function(resolve) {
+      let done = false;
+      const timer = setTimeout(function() {
+        if (done) return;
+        done = true;
+        const idx = wsListeners.indexOf(fn);
+        if (idx !== -1) wsListeners.splice(idx, 1);
+        resolve(null);
+      }, timeoutMs);
+      function fn(msg) {
+        if (done) return;
+        if (predicate(msg)) {
+          done = true;
+          clearTimeout(timer);
+          const idx = wsListeners.indexOf(fn);
+          if (idx !== -1) wsListeners.splice(idx, 1);
+          resolve(msg);
+        }
+      }
+      wsListeners.push(fn);
+    });
+  }
+
+  function sleepMs(ms) {
+    return new Promise(function(r) { setTimeout(r, ms); });
+  }
+
+  async function runSelfTest(targetBoard) {
+    const pre = $("selftest");
+    pre.classList.add("visible");
+    const lines = [];
+    let allPass = true;
+
+    function record(ok, name, detail) {
+      if (!ok) allPass = false;
+      const ln = (ok ? "PASS " : "FAIL ") + name + (detail ? " " + detail : "");
+      lines.push(ln);
+      pre.textContent = lines.join("\n");
+      window.__selftestResult = pre.textContent;
+    }
+
+    base = normAddr(targetBoard);
+    sSet("base", base);
+    $("input-base").value = base;
+    lastHelloMsg = null;
+
+    const helloPromise = waitForWsEvent(function(m) { return m.t === "hello"; }, 6000);
+    openWebSocket();
+
+    // 1. ws_hello
+    const helloMsg = lastHelloMsg || (await helloPromise);
+    record(!!helloMsg, "ws_hello", helloMsg ? (helloMsg.name || "ok") : "timeout");
+
+    // 2. info
+    const infoData = await fetchBoardInfo(base);
+    record(!!(infoData && infoData.name), "info", infoData && infoData.name ? infoData.name : "no name");
+
+    if (boardStatus === "running") {
+      await stopBoardCode();
+      await sleepMs(200);
+    }
+
+    // 3. run_hello + output_seen + sensor_seen
+    let sawOutHello = false;
+    let sawSensorSt = false;
+    const outListener = function(m) {
+      if (m.t === "out" && String(m.s || "").indexOf("selftest hello") !== -1) sawOutHello = true;
+      if (m.t === "sensor" && m.v && m.v.st == 1) sawSensorSt = true;
+    };
+    wsListeners.push(outListener);
+    const doneHelloPromise = waitForWsEvent(function(m) { return m.t === "done"; }, 10000);
+    await runCodeOnBoard(
+      "import lab\nprint('selftest hello')\nlab.display.text('selftest', 0, 0, lab.display.WHITE)\nlab.display.show()\nlab.send(st=1)\n",
+      "main.py"
+    );
+    const doneHello = await doneHelloPromise;
+    await sleepMs(100);
+    const idxOut = wsListeners.indexOf(outListener);
+    if (idxOut !== -1) wsListeners.splice(idxOut, 1);
+
+    const conHasHello = sawOutHello || $("console").textContent.indexOf("selftest hello") !== -1;
+    const sensorHasSt = sawSensorSt || sensorState.st == 1;
+    record(!!doneHello, "run_hello", doneHello ? "done" : "timeout");
+    record(conHasHello, "output_seen", conHasHello ? "selftest hello" : "missing");
+    record(sensorHasSt, "sensor_seen", "st=" + String(sensorState.st));
+
+    // 4. error_seen
+    let sawZeroDiv = false;
+    const errListener = function(m) {
+      if (m.t === "err" && String(m.s || "").indexOf("ZeroDivisionError") !== -1) sawZeroDiv = true;
+    };
+    wsListeners.push(errListener);
+    const doneErrPromise = waitForWsEvent(function(m) { return m.t === "done"; }, 10000);
+    await runCodeOnBoard("print('x')\n1/0\n", "main.py");
+    await doneErrPromise;
+    await sleepMs(100);
+    const idxErr = wsListeners.indexOf(errListener);
+    if (idxErr !== -1) wsListeners.splice(idxErr, 1);
+    const conHasZero = sawZeroDiv || $("console").textContent.indexOf("ZeroDivisionError") !== -1;
+    record(conHasZero, "error_seen", conHasZero ? "ZeroDivisionError" : "missing");
+
+    // 5. stop
+    const doneStopPromise = waitForWsEvent(function(m) { return m.t === "done"; }, 5000);
+    await runCodeOnBoard("import lab\nwhile lab.running():\n    lab.sleep(0.1)\n", "main.py");
+    await sleepMs(500);
+    const stopRes = await stopBoardCode();
+    await doneStopPromise;
+    record(!!(stopRes && stopRes.ok), "stop", stopRes && stopRes.ok ? "ok" : "fail");
+
+    // 6. cmd_sent
+    let cmdOk = true;
+    try {
+      sendWs({ t: "cmd", op: "led", v: true });
+      sendWs({ t: "cmd", op: "led", v: false });
+    } catch (e) {
+      cmdOk = false;
+    }
+    record(cmdOk, "cmd_sent", "ok");
+
+    // 7. paste_clean
+    const FENCE = "\u0060\u0060\u0060";
+    const rawPaste = "好的，這段程式會在螢幕顯示 Hello：\n\n" + FENCE + "python\nimport lab\nd = lab.display\nd.fill(d.BLACK)\nd.text(“Hello paste”, 10, 50, d.YELLOW)\nd.show()\nprint(“paste ok”)\n" + FENCE + "\n\n推送後主控台會印出 paste ok。";
+    $("paste").value = rawPaste;
+    const cleaned = doPasteClean();
+    const cleanPass = cleaned.indexOf("import lab") === 0 && cleaned.indexOf(FENCE) === -1 && cleaned.indexOf('"Hello paste"') !== -1;
+    record(cleanPass, "paste_clean", cleanPass ? "ok" : "mismatch");
+    const cleanMsg = $("clean-status").textContent;
+    record(cleanMsg.indexOf("已清理") === 0 && cleanMsg.indexOf("圍欄") !== -1 && cleanMsg.indexOf("全形引號") !== -1, "clean_feedback", cleanMsg);
+    $("paste").value = "import lab\nprint(1)\n";
+    doPasteClean();
+    record($("clean-status").textContent === "不需清理", "clean_feedback_noop", $("clean-status").textContent);
+
+    // guard_blocks：Gemini 裸機版程式（examples/gemini_bare_metal_bad.py 的縮簡）要被擋下、不執行
+    $("paste").value = "import network\nimport time\nfrom machine import Pin, SPI\nspi = SPI(1, baudrate=30000000, sck=Pin(3), mosi=Pin(2), miso=Pin(4))\nbl = Pin(10, Pin.OUT)\nwlan = network.WLAN(network.STA_IF)\nwlan.active(True)\nwlan.connect('YOUR_WIFI_SSID', 'YOUR_WIFI_PASSWORD')\nwhile True:\n    time.sleep(1)\n";
+    let sawStart = false;
+    const startListener = function(m) { if (m.t === "start") sawStart = true; };
+    wsListeners.push(startListener);
+    const guardRes = await doPasteRun();
+    await sleepMs(800);
+    const si = wsListeners.indexOf(startListener);
+    if (si !== -1) wsListeners.splice(si, 1);
+    const rulesHit = guardRes && guardRes.guard ? guardRes.findings.map(function(f) { return f.rule; }) : [];
+    const need = ["wifi", "while_true", "time_sleep", "display_driver", "reserved_pin"];
+    const guardPass = !!(guardRes && guardRes.guard) && !sawStart && need.every(function(r) { return rulesHit.indexOf(r) !== -1; }) && $("check-result").className === "warn";
+    record(guardPass, "guard_blocks", guardPass ? "blocked " + guardRes.findings.length + " findings, not run" : "rules=" + rulesHit.join(",") + " started=" + sawStart);
+    $("check-result").className = ""; $("check-result").innerHTML = "";
+
+    // 8. paste_check_ok
+    const chkOk = await checkCodeSyntax($("paste").value);
+    record(!!(chkOk && chkOk.ok === true), "paste_check_ok", chkOk && chkOk.ok ? "ok" : "fail");
+
+    // 9. paste_check_bad_line
+    $("paste").value = "import lab\nprint(1)\nif x\n    pass\n";
+    const chkBad = await checkCodeSyntax($("paste").value);
+    record(!!(chkBad && chkBad.ok === false && Number(chkBad.line) === 3), "paste_check_bad_line", chkBad ? "line=" + chkBad.line : "no resp");
+
+    // 10. paste_run
+    $("paste").value = FENCE + 'python\nimport lab\nprint(“paste ok”)\nlab.display.text("Hello paste", 10, 50, lab.display.YELLOW)\nlab.display.show()\n' + FENCE;
+    let sawPasteOk = false;
+    const pasteListener = function(m) {
+      if (m.t === "out" && String(m.s || "").indexOf("paste ok") !== -1) sawPasteOk = true;
+    };
+    wsListeners.push(pasteListener);
+    const donePastePromise = waitForWsEvent(function(m) { return m.t === "done"; }, 15000);
+    await doPasteRun();
+    const donePaste = await donePastePromise;
+    await sleepMs(100);
+    const idxPaste = wsListeners.indexOf(pasteListener);
+    if (idxPaste !== -1) wsListeners.splice(idxPaste, 1);
+    const pasteOutPass = sawPasteOk || $("console").textContent.indexOf("paste ok") !== -1;
+    record(!!(donePaste && pasteOutPass), "paste_run", donePaste && pasteOutPass ? "ok" : "fail");
+
+    lines.push(allPass ? "ALL_PASS" : "SOME_FAIL");
+    pre.textContent = lines.join("\n");
+    window.__selftestResult = pre.textContent;
+  }
+
+  async function init() {
+    const params = new URLSearchParams(location.search);
+    const isSelftest = params.get("selftest") === "1";
+    const boardParam = params.get("board");
+
+    if (isSelftest && boardParam) {
+      await runSelfTest(boardParam);
+      return;
+    }
+
+    if (/^https?:$/i.test(location.protocol)) {
+      try {
+        const res = await fetch(location.origin + "/info", { cache: "no-store" });
+        if (res && res.ok) {
+          const info = await res.json();
+          if (info && typeof info.name === "string" && info.name.indexOf("esp32lab-") === 0) {
+            base = location.origin;
+            boardName = info.name;
+            boardType = info.board || "generic";
+            boardStatus = info.status || "idle";
+            sSet("base", base);
+            addRecentBoard(base, boardName);
+            updateStatusUI();
+            openWebSocket();
+            return;
+          }
+        }
+      } catch (e) {}
+      if (!/github\.io$/.test(location.hostname)) {
+        server = location.origin;
+        sSet("server", server);
+        $("input-server").value = server;
+      }
+    }
+
+    const virtualParam = params.get("virtual");
+    if (virtualParam) {
+      await connectVirtual(virtualParam);
+    } else if (boardParam) {
+      await connectToBoard(boardParam);
+    } else if (base) {
+      await connectToBoard(base);
+    } else {
+      updateStatusUI();
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

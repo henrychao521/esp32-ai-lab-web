@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>虛擬板</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f4f5;--ink:#1c1917;--muted:#6b7280;--line:#d4d4d8}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--ink:#e7e5e4;--muted:#9a9ea8;--line:#3f3f46}}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 -apple-system,"PingFang TC",sans-serif;-webkit-text-size-adjust:100%}
+body{display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px;min-height:100dvh}
+canvas{display:block;max-width:100%;height:auto;touch-action:none}
+.ctl{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;color:var(--muted);font-size:13px;width:100%;max-width:420px}
+.ctl label{display:flex;align-items:center;gap:6px}.ctl input[type=range]{width:100px}
+#console{display:none;width:100%;max-width:420px;max-height:160px;overflow:auto;font:12px/1.4 ui-monospace,Menlo,monospace;background:#0b0d10;color:#e7e5e4;padding:6px 8px;border-radius:6px;white-space:pre-wrap}
+body.debug #console{display:block}
+.err{color:#f87171}.sys{color:#9a9ea8}
+</style>
+</head>
+<body>
+<canvas id="board" width="300" height="420" aria-label="虛擬板"></canvas>
+<div class="ctl">
+  <label>電池 <input id="batt" type="range" min="3.3" max="4.2" step="0.01" value="3.92"><span id="batt-v">3.92V</span></label>
+  <label>Wi-Fi <input id="rssi" type="range" min="-90" max="-30" step="1" value="-55"><span id="rssi-v">-55 dBm</span></label>
+  <label>ADC <select id="adc-pin"></select> <input id="adc" type="range" min="0" max="4095" step="1" value="2048"><span id="adc-v">2048</span></label>
+</div>
+<div id="console"></div>
+<script type="module">
+// 虛擬板獨立頁：給 App 的 WKWebView 用（JS 介面 window.VB，事件經 webkit.messageHandlers.vb 送出），也可直接在瀏覽器開（?debug=1 顯示主控台，?board=devkit 換板）。
+import { createVirtualBoard } from "./vboard.js";
+import { createBoardArt } from "./board-art.js";
+const params = new URLSearchParams(location.search);
+const kind = params.get("board") === "devkit" ? "devkit" : "tqt_pro";
+if (params.get("debug") === "1") document.body.classList.add("debug");
+const $ = (id) => document.getElementById(id);
+const con = $("console");
+function log(s, cls) { const d = document.createElement("div"); d.className = cls || ""; d.textContent = s; con.appendChild(d); while (con.childNodes.length > 300) con.removeChild(con.firstChild); con.scrollTop = con.scrollHeight; }
+function post(msg) {
+  try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.vb) window.webkit.messageHandlers.vb.postMessage(JSON.stringify(msg)); } catch (e) {}
+  window.dispatchEvent(new CustomEvent("vb:event", { detail: msg }));
+  if (msg.t === "out") log(msg.s.replace(/\n$/, ""));
+  else if (msg.t === "err") log(msg.s.replace(/\n$/, ""), "err");
+  else if (msg.t === "start") log("▶ " + msg.file, "sys");
+  else if (msg.t === "done") log(msg.stopped ? "■ 已停止" : (msg.ok ? "✓ 程式結束" : "✗ 程式因錯誤結束"), "sys");
+  else if (msg.t === "sensor") log("sensor " + JSON.stringify(msg.v), "sys");
+  else if (msg.t === "display") log("🖥 " + (msg.lines || []).join(" / "), "sys");
+}
+const cv = $("board");
+const art = createBoardArt(cv, { board: kind, scale: 1 });
+cv.width = art.layout.width; cv.height = art.layout.height;
+const screen = document.createElement("canvas"); screen.width = 128; screen.height = 128;
+let vb = null, raf = 0, name = "虛擬板";
+function draw() {
+  if (raf || !vb) return;
+  raf = requestAnimationFrame(() => {
+    raf = 0; const st = vb.state;
+    if (kind === "tqt_pro" && vb.takeScreenDirty()) screen.getContext("2d").putImageData(new ImageData(vb.screenRGBA(), 128, 128), 0, 0);
+    art.draw({ screen: kind === "tqt_pro" ? screen : null, led: st.led, buttons: st.buttons, pins: st.pins, servos: st.servos, adc: st.adc, battery: kind === "tqt_pro" ? st.battery : null, status: st.status, name });
+  });
+}
+vb = await createVirtualBoard({ board: kind, onEvent: (m) => { if (m.t === "hello") name = m.name; post(m); }, onState: draw });
+draw();
+(kind === "tqt_pro" ? [16, 17, 18, 48, 4] : [32, 33, 34, 35, 36, 39, 4, 16, 17]).forEach((p) => { const o = document.createElement("option"); o.value = p; o.textContent = "GPIO" + p; $("adc-pin").appendChild(o); });
+$("batt").addEventListener("input", function() { $("batt-v").textContent = Number(this.value).toFixed(2) + "V"; vb.setBattery(Number(this.value)); });
+$("rssi").addEventListener("input", function() { $("rssi-v").textContent = this.value + " dBm"; vb.setRssi(Number(this.value)); });
+$("adc").addEventListener("input", function() { $("adc-v").textContent = this.value; vb.setAdc(Number($("adc-pin").value), Number(this.value)); });
+let held = null;
+const pos = (ev) => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * cv.width / r.width, (ev.clientY - r.top) * cv.height / r.height]; };
+cv.addEventListener("pointerdown", (ev) => {
+  const [x, y] = pos(ev); const h = art.hitTest(x, y); if (!h) return;
+  ev.preventDefault(); cv.setPointerCapture(ev.pointerId);
+  if (h.type === "button") { held = h.pin; vb.pressButton(h.pin, true); }
+  else if (h.type === "pin" && h.gpio !== null && h.gpio !== undefined) { const cur = vb.state.inputs[h.gpio]; vb.setInput(h.gpio, cur ? 0 : 1); log("GPIO" + h.gpio + " 輸入 → " + (cur ? 0 : 1), "sys"); }
+  else if (h.type === "led") vb.cmd({ op: "led", v: !vb.state.led });
+});
+const up = () => { if (held !== null) { vb.pressButton(held, false); held = null; } };
+cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up); cv.addEventListener("pointerleave", up);
+// 給 App／測試頁的 JS 介面（和板子的 HTTP 端點一一對應）
+window.VB = {
+  ready: true, board: kind,
+  info: () => vb.info(),
+  run: (code, n) => vb.run(code, n || "main.py"),
+  check: (code) => vb.check(code),
+  stop: () => vb.stop(),
+  reset: () => vb.reset(),
+  cmd: (c) => vb.cmd(typeof c === "string" ? JSON.parse(c) : c),
+  pressButton: (pin, down) => vb.pressButton(pin, down),
+  setAdc: (g, v) => vb.setAdc(g, v), setBattery: (v) => vb.setBattery(v), setRssi: (v) => vb.setRssi(v),
+  screenPNG: () => { if (kind !== "tqt_pro") return null; if (vb.takeScreenDirty()) screen.getContext("2d").putImageData(new ImageData(vb.screenRGBA(), 128, 128), 0, 0); return screen.toDataURL("image/png"); },
+  state: () => vb.state,
+};
+post({ t: "ready", board: kind });
+</script>
+</body>
+</html>

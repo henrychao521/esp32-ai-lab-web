@@ -80,6 +80,9 @@ esp-web-install-button{--esp-tools-button-color:var(--accent);--esp-tools-button
 <p>板子重開後，螢幕（或序列埠）會顯示名稱 <code>esp32lab-xxxx.local</code> 與 IP。之後都不必再接 USB：
 同一個 Wi-Fi 的 iPad／手機／電腦用瀏覽器打開板子，就能寫程式、貼上 AI 的程式、看主控台、遙控。</p>
 <p><a id="openIde" class="btn" href="#" hidden target="_blank">打開 http://esp32lab-xxxx.local</a></p>
+<p><strong>沒有板子？</strong>先用瀏覽器裡的虛擬板練習，同一份程式之後直接推到真板子：
+<a href="ide/?virtual=tqt_pro">虛擬 T-QT Pro（有螢幕）</a>／<a href="ide/?virtual=devkit">虛擬 ESP32 DevKit</a>。
+限制：沒有真的 Wi-Fi 與相機、計時只是近似、外接元件只支援 LED、按鍵、ADC、伺服。</p>
 <p class="hint">網址在步驟 2 完成後會自動填上；也可以手動輸入 <code>http://esp32lab-xxxx.local</code>（mDNS 不通時改用 IP）。驗證：<code>/info</code> 應回傳 JSON；<code>/screen.bmp</code> 是目前畫面。
 教室伺服器（老師電腦）的 <code>http://老師IP:8765</code> 提供同一份 IDE 當備援，並有老師頁可一鍵更新全班板子。</p>
 </section>
