@@ -36,7 +36,7 @@ header b{margin-right:6px;font-size:15px}
 @keyframes burn{0%{transform:scale(2);color:#ff0;text-shadow:0 0 12px #f80}100%{transform:scale(1)}}
 .sim-part.buzzing::after{content:"♪";position:absolute;right:-10px;top:-10px;color:var(--accent);font-weight:700;animation:bz .4s infinite alternate}
 @keyframes bz{from{opacity:.3}to{opacity:1}}
-.sim-label{position:absolute;left:0;top:100%;font-size:10px;color:var(--muted);white-space:nowrap;pointer-events:none}
+.sim-label{position:absolute;left:50%;top:calc(100% + 3px);transform:translateX(-50%);font-size:10px;color:var(--ink);white-space:nowrap;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:0 4px;line-height:14px;opacity:.9}
 .sim-board,.sim-bb{cursor:move}
 svg.sim-wires{position:absolute;left:0;top:0;overflow:visible;width:1px;height:1px;pointer-events:none}
 svg.sim-wires circle.pin{fill:rgba(255,106,43,.15);stroke:rgba(255,106,43,.6);stroke-width:1;pointer-events:all;cursor:crosshair}
@@ -86,7 +86,8 @@ svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;
 .mistake li b{color:var(--bad)}
 .bottom{grid-area:bottom;border-top:2px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0;position:relative}
 .bottom .tabs{display:flex;border-bottom:1px solid var(--line);align-items:center}
-.bottom .tabs button{border:0;border-radius:0;border-bottom:3px solid transparent;background:transparent;min-height:34px;padding:0 12px;font-weight:600;font-size:13px}
+.bottom .tabs button{border:0;border-radius:0;border-bottom:3px solid transparent;background:transparent;min-height:34px;padding:0 12px;font-weight:600;font-size:13px;white-space:nowrap}
+.bottom .tabs{overflow-x:auto;scrollbar-width:none}
 .bottom .tabs button.active{border-bottom-color:var(--accent);color:var(--accent)}
 .bottom .tabs .badge{display:inline-block;min-width:16px;padding:0 5px;border-radius:9px;background:var(--bad);color:#fff;font-size:10px;margin-left:4px;vertical-align:middle}
 .bottom .tabs .badge:empty{display:none}
@@ -122,6 +123,8 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
  #btn-pal{display:inline-block}
  .desk{display:none!important}
  #minimap{display:none}
+ .bottom .tabs button{font-size:12px;padding:0 8px}
+ #engine-note{display:none}
 }
 </style>
 </head>
