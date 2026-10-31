@@ -115,23 +115,58 @@ svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;
 kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 5px;background:var(--bg)}
 #btn-pal{display:none}
 @media (max-width:900px){
- body{grid-template-rows:46px minmax(0,1fr) 42vh;grid-template-columns:1fr;grid-template-areas:"top" "canvas" "bottom"}
- .pal{display:none;position:fixed;left:0;top:46px;bottom:0;width:min(80vw,300px);z-index:15;box-shadow:4px 0 20px rgba(0,0,0,.3)}
+ body{grid-template-rows:auto minmax(0,1fr) var(--bottom-m,42vh);grid-template-columns:1fr;grid-template-areas:"top" "canvas" "bottom"}
+ body.big-bottom{--bottom-m:66vh}
+ header{flex-wrap:wrap;height:auto;padding:4px 8px;row-gap:4px;overflow:visible;white-space:normal;padding-top:calc(4px + env(safe-area-inset-top))}
+ header>b,header .sep,#engine-load{display:none!important}
+ header .brk{display:block;width:100%;height:0;order:5}
+ #btn-pal{display:inline-block;order:1}#board{order:2;max-width:104px}#engine{order:3;max-width:118px}#firmware{order:3;max-width:96px}#btn-more{display:inline-block!important;order:4;margin-left:auto}
+ #btn-run{order:6}#btn-pause{order:7}#btn-step{order:7}#btn-reset{order:8}header .status{order:9}#power-ind{order:9}#btn-push{order:10;margin-left:auto}
+ header select,header button{min-height:34px}
+ header .status{max-width:96px;overflow:hidden;white-space:nowrap}#status-text{overflow:hidden;text-overflow:ellipsis}
+ .pal{display:none;position:fixed;left:0;top:0;bottom:0;width:min(82vw,320px);z-index:31;box-shadow:4px 0 20px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
  .pal.open{display:flex}
- .side{display:none;position:fixed;right:0;top:46px;bottom:0;width:min(85vw,320px);z-index:15;box-shadow:-4px 0 20px rgba(0,0,0,.3)}
+ .side{display:none;position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;max-height:56vh;z-index:31;border-left:0;border-top:2px solid var(--line);border-radius:14px 14px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.35);padding:0 12px calc(10px + env(safe-area-inset-bottom));overflow:auto}
  .side.open{display:block}
- #btn-pal{display:inline-block}
+ .m-only{display:flex!important}
  .desk{display:none!important}
  #minimap{display:none}
- .bottom .tabs button{font-size:12px;padding:0 8px}
  #engine-note{display:none}
+ .bottom{padding-bottom:env(safe-area-inset-bottom)}
+ .bottom .tabs{padding-right:44px}
+ .bottom .tabs button{font-size:12px;padding:0 8px}
+ .bottom::before{content:"";position:absolute;right:38px;top:0;height:34px;width:30px;background:linear-gradient(90deg,transparent,var(--panel));pointer-events:none;z-index:2}
+ #btn-bigpanel{display:inline-block!important;position:absolute;right:4px;top:2px;z-index:3}
+ #editor-note{display:none}
+ .canvas-tools{display:none;bottom:52px}
+ .canvas-tools.open{display:flex}
+ #tools-toggle{display:inline-block!important}
+ #steps{max-width:min(320px,calc(100vw - 20px))}
+ #examples-close,#examples-dlg .hd .muted,#push-close,#teacher-close{display:none}
+ dialog .hd,dialog>div:first-child{padding-right:48px!important}
+ .sheet{max-height:72vh}
 }
+/* 抽屜／底部工作表共用（手機；桌機不顯示） */
+.m-only{display:none;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:1}
+.m-only b{flex:1}.m-only .grab{position:absolute;left:50%;top:4px;width:36px;height:4px;border-radius:2px;background:var(--line);transform:translateX(-50%)}
+.sheet-x{min-width:34px;font-size:16px}
+#scrim{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:30;display:none}#scrim.open{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:2px solid var(--line);border-radius:14px 14px 0 0;z-index:31;display:none;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.35);padding-bottom:env(safe-area-inset-bottom)}
+.sheet.open{display:flex}
+.sheet-body{overflow:auto;padding:8px 12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.more-item{display:flex;align-items:center;gap:8px;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--bg)}
+.more-item>button,.more-item>select{min-height:32px}.more-item button.icon{min-width:40px}.more-item span.lbl{font-size:13px;color:var(--ink)}
+.more-item.wide{grid-column:1/-1}
+#btn-more,#btn-bigpanel,#tools-toggle{display:none}
+#tools-toggle{position:absolute;right:10px;bottom:10px;z-index:3;background:var(--panel);min-width:36px;min-height:36px}
+dialog .dlg-x{position:absolute;right:8px;top:8px;z-index:2;min-width:34px;font-size:16px}
+dialog{position:relative}
 </style>
 </head>
 <body>
 <header>
   <b>電路模擬器</b>
-  <button id="btn-pal" class="icon" title="元件庫">☰ 元件</button>
+  <button id="btn-pal" class="icon" title="元件庫">☰ 元件</button><button id="btn-more" class="icon" title="更多功能">⋯</button><span class="brk"></span>
   <select id="board" title="板子"><option value="tqt_pro">T-QT Pro</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option><option value="xiao_esp32s3">XIAO ESP32S3</option></select>
   <select id="engine" title="執行引擎：快速＝秒開的 MicroPython wasm；真韌體＝未修改的 ESP32 韌體在 esp32sim 裡逐指令執行"><option value="micropython-wasm">快速引擎</option><option value="esp32sim">真韌體引擎（esp32sim）</option></select>
   <select id="firmware" title="要執行的程式：MicroPython 程式（編輯器）或 Arduino 已編譯映像（只有真韌體引擎）" style="display:none"><option value="">MicroPython</option><option value="arduino/t_qt_weather_clock.bin">Arduino：天氣時鐘</option></select>
@@ -167,6 +202,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <button id="btn-help" class="icon" title="說明與快捷鍵">?</button>
 </header>
 <nav class="pal" id="palette">
+  <div class="m-only"><span class="grab"></span><b>元件庫</b><button class="sheet-x icon" data-close="palette" title="關閉">✕</button></div>
   <div class="search"><input id="search" type="search" placeholder="搜尋元件…"></div>
   <div id="pal-body"></div>
 </nav>
@@ -176,6 +212,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
     <svg class="sim-wires" xmlns="http://www.w3.org/2000/svg"><g class="hi"></g><g class="wires"></g><g class="pins"></g><path class="temp"/></svg>
   </div>
   <div class="canvas-tools"><button id="z-in" class="icon">＋</button><button id="z-out" class="icon">－</button><button id="z-fit" class="icon" title="縮放到全部">⤢</button><button id="btn-side" class="icon" title="屬性">ⓘ</button></div>
+  <button id="tools-toggle" class="icon" title="縮放與屬性">⊕</button>
   <canvas id="minimap" width="150" height="100"></canvas>
   <div id="tooltip"></div>
   <div id="toasts"></div>
@@ -219,9 +256,12 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
     <div style="text-align:right;margin-top:10px"><button id="tour-close" class="primary">開始</button></div>
   </div></div>
 </div>
-<aside class="side" id="side"><div id="props" class="muted">點一個元件、一條線、板子或腳位，這裡會顯示說明與目前電壓。</div></aside>
+<aside class="side" id="side"><div class="m-only"><span class="grab"></span><b>屬性</b><button class="sheet-x icon" data-close="side" title="關閉">✕</button></div><div id="props" class="muted">點一個元件、一條線、板子或腳位，這裡會顯示說明與目前電壓。</div></aside>
+<div id="scrim"></div>
+<div id="sheet-more" class="sheet"><div class="m-only" style="display:flex"><span class="grab"></span><b>更多功能</b><button class="sheet-x icon" data-close="sheet-more" title="關閉">✕</button></div><div class="sheet-body" id="more-body"></div></div>
 <section class="bottom">
   <div id="resize"></div>
+  <button id="btn-bigpanel" class="icon" title="放大面板／縮小畫布">⬆</button>
   <div class="tabs">
     <button class="active" data-pane="editor">程式</button>
     <button data-pane="console">主控台<span class="badge" id="badge-con"></span></button>
@@ -306,8 +346,6 @@ function palUp(ev) {
   if (d.type === "__bb") sim.addBreadboard(wx - 160, wy - 90); else if (d.type === "__board") sim.focusPart("board"); else sim.addPart(d.type, wx, wy);
   if (window.innerWidth <= 900) $("palette").classList.remove("open");
 }
-$("btn-pal").addEventListener("click", () => { $("palette").classList.toggle("open"); $("side").classList.remove("open"); });
-$("btn-side").addEventListener("click", () => { $("side").classList.toggle("open"); $("palette").classList.remove("open"); });
 
 const con = $("console"); const sensors = {}; let conUnread = 0;
 const ts = () => new Date().toTimeString().slice(0, 8);
@@ -333,7 +371,7 @@ const sim = createSimulator({
     if ("undo" in s) { $("btn-undo").disabled = !s.undo; $("btn-redo").disabled = !s.redo; }
     if ("toast" in s) toast(s.toast.text, s.toast.kind);
     if ("view" in s || "bounds" in s) drawMinimap();
-    if ("engine" in s) { scopeAttach(); scope.hist = {}; scopePinsUI(); $("engine-note").textContent = s.engine === "micropython-wasm" ? "快速引擎：秒開；沒有精確時序與單步" : "真韌體引擎：未修改的 MicroPython 1.29 在 esp32sim 裡逐指令跑，時序＝實機；開機約 2 秒；超音波、DHT22 這類要引擎回應的感測器只有快速引擎支援"; $("btn-step").disabled = !s.capabilities?.step; $("firmware").style.display = s.capabilities?.arduino ? "" : "none"; if (!s.capabilities?.arduino) $("firmware").value = ""; $("engine").value = s.engineKind || s.engine; }
+    if ("engine" in s) { scopeAttach(); scope.hist = {}; scopePinsUI(); $("engine-note").textContent = s.engine === "micropython-wasm" ? "快速引擎：秒開；沒有精確時序與單步" : "真韌體引擎：未修改的 MicroPython 1.29 在 esp32sim 裡逐指令跑，時序＝實機；開機約 2 秒；超音波、DHT22 這類要引擎回應的感測器只有快速引擎支援"; $("btn-step").disabled = !s.capabilities?.step; $("firmware").dataset.avail = s.capabilities?.arduino ? "1" : "0"; const fwWrap = $("firmware").closest(".more-item"); if (fwWrap) fwWrap.style.display = s.capabilities?.arduino ? "" : "none"; else $("firmware").style.display = s.capabilities?.arduino ? "" : "none"; if (!s.capabilities?.arduino) $("firmware").value = ""; $("engine").value = s.engineKind || s.engine; }
     if ("board" in s) $("board").value = s.board;
   },
 });
@@ -461,6 +499,46 @@ $("push-go").addEventListener("click", async () => {
   let addr = $("push-addr").value.trim(); if (!addr) { $("push-result").textContent = "請填板子位址"; return; } localStorage.setItem("sim.pushAddr", addr); if (!/^https?:\/\//.test(addr)) addr = "http://" + addr;
   try { const r = await fetch(addr + "/run?name=sim.py", { method: "POST", headers: { "Content-Type": "text/plain" }, body: code }); const j = await r.json(); $("push-result").textContent = j.ok ? "已送到板子執行（輸出在板子的 IDE／App 主控台）" : "板子回：" + (j.msg || r.status); } catch (e) { $("push-result").textContent = "連不到板子：" + e.message; }
 });
+
+// ---------- 手機版面：主要動作列＋「更多」工作表、抽屜關閉機制（寬度 ≤ 900px） ----------
+(() => {
+  const mq = window.matchMedia("(max-width: 900px)");
+  const MORE = ["power-ind", "speed", "firmware", "btn-wiremode", "wire-color", "btn-del", "btn-undo", "btn-redo", "btn-rotate", "btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-clear", "btn-teacher", "btn-help"];
+  const home = {};   // id → { parent, next }：搬回桌機位置用
+  const LABEL = { "power-ind": "電源指示（LED 與模組總電流，估）", speed: "模擬速度", firmware: "要執行的程式", "wire-color": "線色", "btn-wiremode": "接線模式", "btn-del": "刪除所選", "btn-undo": "復原", "btn-redo": "重做", "btn-rotate": "旋轉", "btn-selall": "全選", "btn-align-l": "靠左對齊", "btn-align-t": "靠上對齊", "btn-grid": "格線吸附", "btn-fit": "縮放到全部", "btn-examples": "範例電路", "btn-save": "儲存到瀏覽器", "btn-export": "匯出 Wokwi", "btn-png": "匯出 PNG", "btn-import": "匯入", "btn-share": "分享網址", "btn-clear": "清空畫布", "btn-teacher": "老師模式", "btn-help": "說明與快捷鍵" };
+  function toMobile() {
+    const body = $("more-body"); if (body.children.length) return;
+    for (const id of MORE) { const el = $(id); if (!el) continue; home[id] = { parent: el.parentNode, next: el.nextSibling }; const w = document.createElement("div"); w.className = "more-item" + (el.tagName === "SELECT" || el.tagName === "SPAN" ? " wide" : ""); w.appendChild(el); const l = document.createElement("span"); l.className = "lbl"; l.textContent = LABEL[id] || el.title || ""; w.appendChild(l); body.appendChild(w); el.classList.remove("desk"); el.style.display = ""; }
+    $("firmware").closest(".more-item").style.display = $("firmware").dataset.avail === "1" ? "" : "none";
+  }
+  function toDesk() {
+    for (const id of [...MORE].reverse()) { const el = $(id); const h = home[id]; if (!el || !h) continue; if (h.next && h.next.parentNode === h.parent) h.parent.insertBefore(el, h.next); else h.parent.appendChild(el); if (["btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-clear", "btn-teacher"].includes(id)) el.classList.add("desk"); }
+    $("more-body").innerHTML = ""; closeAll();
+  }
+  const apply = () => (mq.matches ? toMobile() : toDesk());
+  mq.addEventListener("change", apply); apply();
+  // 工作表／抽屜：開一個就關其他；scrim 點了關；標頭下滑關；瀏覽器返回鍵關
+  const SHEETS = ["palette", "side", "sheet-more"];
+  function openSheet(id) { for (const s of SHEETS) $(s).classList.toggle("open", s === id); $("scrim").classList.toggle("open", mq.matches); if (mq.matches && !(history.state && history.state.sheet)) history.pushState({ sheet: id }, ""); }
+  function closeAll(fromPop) { for (const s of SHEETS) $(s).classList.remove("open"); $("scrim").classList.remove("open"); if (!fromPop && history.state && history.state.sheet) history.back(); }
+  window.closeSheets = closeAll;
+  $("scrim").addEventListener("click", () => closeAll());
+  window.addEventListener("popstate", () => closeAll(true));
+  document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => closeAll()));
+  document.querySelectorAll(".m-only").forEach((hd) => { let y0 = null; hd.addEventListener("pointerdown", (e) => { y0 = e.clientY; hd.setPointerCapture(e.pointerId); }); hd.addEventListener("pointermove", (e) => { if (y0 !== null && e.clientY - y0 > 40) { y0 = null; closeAll(); } }); hd.addEventListener("pointerup", (e) => { if (y0 !== null && e.clientY - y0 > 40) closeAll(); y0 = null; }); });
+  $("btn-more").addEventListener("click", () => ($("sheet-more").classList.contains("open") ? closeAll() : openSheet("sheet-more")));
+  $("btn-pal").addEventListener("click", () => ($("palette").classList.contains("open") ? closeAll() : openSheet("palette")), true);
+  $("btn-side").addEventListener("click", () => ($("side").classList.contains("open") ? closeAll() : openSheet("side")), true);
+  // 在更多工作表裡按了會開對話框／改變畫布的按鈕 → 先把工作表收起
+  for (const id of ["btn-examples", "btn-share", "btn-teacher", "btn-help", "btn-import", "btn-export", "btn-png", "btn-clear", "btn-fit"]) { const el = $(id); if (el) el.addEventListener("click", () => { if (mq.matches) setTimeout(() => closeAll(), 0); }); }
+  // 對話框：右上角 ✕、點背景關閉
+  document.querySelectorAll("dialog").forEach((d) => { const x = document.createElement("button"); x.className = "dlg-x icon"; x.textContent = "✕"; x.title = "關閉"; x.addEventListener("click", () => d.close()); d.appendChild(x); d.addEventListener("click", (e) => { if (e.target === d) d.close(); }); });
+  $("tour").addEventListener("click", (e) => { if (e.target === $("tour")) $("tour").style.display = "none"; });
+  // 放大面板／縮小畫布
+  $("btn-bigpanel").addEventListener("click", () => { const on = document.body.classList.toggle("big-bottom"); $("btn-bigpanel").textContent = on ? "⬇" : "⬆"; $("btn-bigpanel").title = on ? "縮小面板／放大畫布" : "放大面板／縮小畫布"; });
+  // 浮動列（縮放、屬性）可收合
+  $("tools-toggle").addEventListener("click", () => { const on = document.querySelector(".canvas-tools").classList.toggle("open"); $("tools-toggle").textContent = on ? "✕" : "⊕"; });
+})();
 // ---------- 內嵌在 IDE 時的訊息 ----------
 window.addEventListener("message", (ev) => { const m = ev.data || {}; if (m.t === "sim:setCode" && typeof m.code === "string") { setCode(m.code); toast("已載入 IDE 的程式"); } if (m.t === "sim:getCode") { ev.source.postMessage({ t: "sim:code", code: getCode() }, "*"); } if (m.t === "sim:board") { parentBoard = m; if (m.board && BOARDS[m.board] && m.board !== sim.doc.board) toast("IDE 連線的是 " + BOARDS[m.board].name + "，可從上方選單切換板子"); } });
 if (EMBED) { document.body.classList.add("embed"); window.parent.postMessage({ t: "sim:ready" }, "*"); }

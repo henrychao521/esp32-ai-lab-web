@@ -268,6 +268,7 @@ export function createSimulator(opts) {
     pointers.set(ev.pointerId, [ev.clientX, ev.clientY]);
     if (pointers.size === 2) { drag = { kind: "pinch", z0: view.z, d0: pinchDist(), c0: pinchCenter(), v0: { ...view } }; return; }
     const t = ev.target;
+    if (t.closest && t.closest("button,select,input,textarea,#steps")) { pointers.delete(ev.pointerId); return; }   // 浮動按鈕、步驟框：交給它們自己，不當成平移
     const wp = t.closest && t.closest("circle.wp");
     if (wp) { ev.preventDefault(); viewport.setPointerCapture(ev.pointerId); drag = { kind: "wp", wire: Number(wp.dataset.wire), pt: Number(wp.dataset.pt) }; return; }
     const pinEl = t.closest && t.closest("circle.pin");
