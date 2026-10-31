@@ -9,12 +9,75 @@ export const ENGINES = {
 export async function createEngine(kind = "micropython-wasm", opts = {}) {
   if (kind === "micropython-wasm") return createWasmEngine(opts);
   if (kind === "esp32sim") {
-    const mod = await import(new URL(ENGINES.esp32sim.module, import.meta.url).href);
-    const e = await mod.createEsp32simEngine(opts);
+    const base = new URL(ENGINES.esp32sim.module, import.meta.url);
+    const mod = await import(base.href);
+    // 首次載入：wasm 4.1 MB＋ROM 0.9 MB＋韌體 1.8 MB，先用串流抓下來回報進度（opts.onProgress(done, total, label)），再以 blob URL 交給引擎 B。
+    // 韌體與 Arduino 映像的位置以 sim/ 為準（Pages 與 App 都是 ../firmware、../sim-engine/arduino），不用引擎 B 預設的 ../web/firmware。
+    const FW_BASE = typeof document === "undefined" ? "../web/firmware/" : "../firmware/";   // 網頁（Pages／伺服器／App）在 /firmware；Node 直接讀 repo 的 web/firmware
+    const chip = { devkit: "esp32" }[opts.board] || "esp32s3";
+    const romName = { esp32: "esp32_rev300_rom.elf", esp32s3: "esp32s3_rev0_rom.elf" }[chip];
+    const fwId = opts.board === "devkit" ? "micropython-esp32" : "micropython-esp32s3";
+    const files = {
+      wasm: new URL("./esp32sim.wasm", base), rom: new URL("./rom/" + romName, base),
+      fw: new URL(FW_BASE + fwId + ".bin", import.meta.url),
+    };
+    const blobs = await preloadAll(files, opts.onProgress);
+    const e = await mod.createEsp32simEngine({
+      ...opts, wasmUrl: blobs.wasm, i2c: [],   // I2C 位址由元件層 registerI2CDevice 登記；不要引擎 B 的預設 21 個位址
+      romUrl: (c) => (c === chip ? blobs.rom : new URL("./rom/" + { esp32: "esp32_rev300_rom.elf", esp32s3: "esp32s3_rev0_rom.elf" }[c], base).href),
+      firmwareUrl: (id) => (id === fwId ? blobs.fw : new URL(FW_BASE + id + ".bin", import.meta.url).href),
+      arduinoUrl: (id) => new URL(id, base).href,
+      worker: typeof Worker !== "undefined" && location.protocol !== "vboard:",   // App 的自訂 scheme 不開 Worker，改同執行緒
+    });
     if (e.apiVersion !== API_VERSION) throw new Error("引擎 B 的 apiVersion 不符：" + e.apiVersion);
-    return e;
+    return hideInternalPins(e, opts.board || "tqt_pro");
   }
   throw new Error("未知的引擎：" + kind);
+}
+
+
+/** 串流下載多個檔案並回報總進度；回傳 {key: blobURL}。已抓過的（同頁）直接重用。 */
+const preloadCache = {};
+async function preloadAll(files, onProgress) {
+  const keys = Object.keys(files), sizes = {}, done = {}, out = {};
+  const report = (label) => { if (!onProgress) return; const t = keys.reduce((a, k) => a + (sizes[k] || 0), 0), d = keys.reduce((a, k) => a + (done[k] || 0), 0); onProgress(d, t, label); };
+  await Promise.all(keys.map(async (k) => {
+    const href = files[k].href;
+    if (href.startsWith("file:") || typeof document === "undefined") { out[k] = href; return; }   // Node（契約測試）：引擎 B 自己讀檔
+    if (preloadCache[href]) { out[k] = preloadCache[href]; return; }
+    const r = await fetch(href); if (!r.ok) throw new Error(href + ": " + r.status);
+    sizes[k] = Number(r.headers.get("content-length")) || 0; done[k] = 0;
+    const chunks = []; const reader = r.body.getReader();
+    for (;;) { const { value, done: fin } = await reader.read(); if (fin) break; chunks.push(value); done[k] += value.length; report(k); }
+    if (!sizes[k]) sizes[k] = done[k];
+    const type = href.endsWith(".wasm") ? "application/wasm" : "application/octet-stream";
+    out[k] = preloadCache[href] = URL.createObjectURL(new Blob(chunks, { type })); report(k);
+  }));
+  return out;
+}
+
+
+/** 真韌體會回報板子自己用掉的腳位（螢幕 SPI、背光、UART0、flash）；畫布只看得到排針上的 GPIO，這些一律不顯示。 */
+const HIDDEN_PINS = {
+  tqt_pro: [1, 2, 3, 5, 6, 8, 10, 43, 44],           // GC9107 SPI＋DC/RST、背光、UART0
+  tdisplay_s3: [43, 44],
+  xiao_esp32s3: [43, 44],
+  esp32s3_devkitc: [43, 44],
+  devkit: [1, 3, 6, 7, 8, 9, 10, 11],                 // UART0、flash
+  lab_generic: [],
+};
+function hideInternalPins(e, board) {
+  const hidden = new Set(HIDDEN_PINS[board] || []);
+  if (!hidden.size) return e;
+  const pins = e.pins.bind(e), on = e.on.bind(e);
+  return new Proxy(e, {
+    get(t, k) {
+      if (k === "pins") return () => { const p = pins(); for (const g of hidden) delete p[g]; return p; };
+      if (k === "on") return (name, cb) => (["pin", "pinmode", "pwm"].includes(name) ? on(name, (g, ...rest) => { if (!hidden.has(g)) cb(g, ...rest); }) : on(name, cb));
+      const v = t[k]; return typeof v === "function" ? v.bind(t) : v;
+    },
+    set(t, k, v) { t[k] = v; return true; },
+  });
 }
 
 /** 小型事件匯流排 */

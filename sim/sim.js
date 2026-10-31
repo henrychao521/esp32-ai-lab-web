@@ -31,6 +31,7 @@ export function createSimulator(opts) {
   let cards = null;                 // part_cards.json（說明小卡與腳位說明）
   const partRuntime = {};           // 元件層的執行期狀態（解碼器畫面、燈條顏色、步進角度）
   const attached = {};              // partId → detach()
+  let screenDirty = false; const takeDirty = () => { const d = screenDirty; screenDirty = false; return d; };
   const wiringListeners = new Set();
 
   // ---------- DOM ----------
@@ -256,7 +257,7 @@ export function createSimulator(opts) {
       if (a.led) { const c = boardEl.querySelector(".bled"); const lv = level(a.led.gpio); const on = lv === null ? false : (a.led.inverted ? lv === 0 : lv === 1); c.setAttribute("fill", on ? "#ff3" : "#553"); }
       for (const b of boardEl.querySelectorAll(".bbtn")) b.setAttribute("fill", pressedButtons.has(Number(b.dataset.gpio)) ? "#777" : "#333");
       const cv = boardEl.querySelector(".sim-screen");
-      if (cv && engine.capabilities.screen && engine.takeScreenDirty()) cv.getContext("2d").putImageData(new ImageData(engine.screenRGBA(), 128, 128), 0, 0);
+      if (cv && engine.capabilities.screen && (engine.takeScreenDirty ? engine.takeScreenDirty() : takeDirty())) { const rgba = engine.screenRGBA(); if (rgba) cv.getContext("2d").putImageData(new ImageData(rgba instanceof Uint8ClampedArray ? rgba : new Uint8ClampedArray(rgba.buffer || rgba), 128, 128), 0, 0); }
     }
   }
 
@@ -486,18 +487,23 @@ export function createSimulator(opts) {
     get engine() { return engine; }, get vb() { return engine && engine._vb; },
     async attach(kind, engineKind) {
       if (engine) { try { await engine.stop(); } catch (e) {} }
-      engine = await createEngine(engineKind || opts.engine || "micropython-wasm", { board: kind || doc.board });
+      for (const id of Object.keys(attached)) { attached[id](); delete attached[id]; delete partRuntime[id]; }   // 換引擎：元件層全部重新登記到新引擎
+      engine = await createEngine(engineKind || opts.engine || "micropython-wasm", { board: kind || doc.board, onProgress: opts.onProgress });
       pinState = engine.pins();
       const touch = (g) => (pinState[g] = pinState[g] || { mode: "in", level: 0, pull: 0, pwm: null });
       engine.on("pinmode", (g, mode, pull) => { const s = touch(g); s.mode = mode; s.pull = pull; tick(); });
       engine.on("pin", (g, level) => { touch(g).level = level; tick(); });
       engine.on("pwm", (g, hz, duty) => { touch(g).pwm = hz > 0 ? { freq: hz, duty16: Math.round(duty * 65535) } : null; tick(); });
       engine.on("state", (st) => { running = st === "running"; onStatus({ running, engineState: st }); });
-      engine.on("console", (m) => onEvent(m));
-      engine.on("screen", () => applyState());
-      onStatus({ engine: engine.kind, capabilities: engine.capabilities }); syncAttachments(); tick(); return engine;
+      let bootQuiet = engine.kind === "esp32sim";   // 真韌體開機期間（ROM 訊息、raw REPL 回應）不進主控台，第一個 start 之後才顯示
+      engine.on("console", (m) => { if (m.t === "start") bootQuiet = false; if (bootQuiet && m.t === "out") return; onEvent(m); });
+      engine._setBootQuiet = (v) => { bootQuiet = v && engine.kind === "esp32sim"; };
+      engine.on("screen", () => { screenDirty = true; applyState(); });
+      onStatus({ engine: engine.kind, capabilities: engine.capabilities, engineKind: engineKind || opts.engine || "micropython-wasm" }); syncAttachments(); tick(); return engine;
     },
-    async run(code, name) { if (!engine) await api.attach(); if (shortNets.length) { toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } burned = new Set(); stoppedForShort = false; const r = await engine.boot({ program: code, name: name || "main.py", board: doc.board }); if (r.ok) { running = true; onStatus({ running }); } return r; },
+    async run(code, name) { if (!engine) await api.attach(); if (shortNets.length) { toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } burned = new Set(); stoppedForShort = false; if (engine._setBootQuiet) engine._setBootQuiet(true); const r = await engine.boot({ program: code, name: name || "main.py", board: doc.board }); if (r.ok) { running = true; onStatus({ running }); } return r; },
+    /** 直接開機跑一個韌體映像（Arduino 合併 bin；只有引擎 B）：id 相對 sim-engine/，例如 "arduino/t_qt_weather_clock.bin" */
+    async runFirmware(id) { if (!engine) await api.attach(); if (!engine.capabilities.arduino) { toast("快速引擎不能跑 Arduino 映像，請切到真韌體引擎", "warn"); return { ok: false, msg: "engine" }; } burned = new Set(); stoppedForShort = false; if (engine._setBootQuiet) engine._setBootQuiet(false); const r = await engine.boot({ firmware: "arduino:" + id, board: doc.board, fresh: true }); if (r.ok) { running = true; onStatus({ running }); } return r; },
     async stop() { if (!engine) return true; const ok = await engine.stop(); running = false; onStatus({ running }); return ok; },
     pause() { if (engine) engine.pause(); },
     step() { if (engine) engine.step(); },

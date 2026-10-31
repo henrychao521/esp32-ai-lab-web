@@ -133,7 +133,9 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <b>電路模擬器</b>
   <button id="btn-pal" class="icon" title="元件庫">☰ 元件</button>
   <select id="board" title="板子"><option value="tqt_pro">T-QT Pro</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option><option value="xiao_esp32s3">XIAO ESP32S3</option></select>
-  <select id="engine" title="執行引擎"><option value="micropython-wasm">快速引擎</option><option value="esp32sim" disabled>真韌體引擎（等 sim-engine 交付）</option></select>
+  <select id="engine" title="執行引擎：快速＝秒開的 MicroPython wasm；真韌體＝未修改的 ESP32 韌體在 esp32sim 裡逐指令執行"><option value="micropython-wasm">快速引擎</option><option value="esp32sim">真韌體引擎（esp32sim）</option></select>
+  <select id="firmware" title="要執行的程式：MicroPython 程式（編輯器）或 Arduino 已編譯映像（只有真韌體引擎）" style="display:none"><option value="">MicroPython</option><option value="arduino/t_qt_weather_clock.bin">Arduino：天氣時鐘</option></select>
+  <span id="engine-load" class="status" style="display:none"></span>
   <span class="sep"></span>
   <button id="btn-run" class="primary">▶ 執行</button>
   <button id="btn-pause" class="icon" title="暫停" disabled>❚❚</button>
@@ -243,7 +245,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <div class="pane" id="pane-scope"><div class="pane-col">
     <div class="bar" style="border-top:0;border-bottom:1px solid var(--line)"><span>腳位（最多 4 支）：</span><span id="scope-pins"></span><span style="flex:1"></span><label>時間窗 <select id="scope-win"><option value="2">2 秒</option><option value="5" selected>5 秒</option><option value="10">10 秒</option></select></label><button id="scope-clear">清除</button></div>
     <canvas id="scope" style="flex:1;min-height:0;width:100%;background:var(--term)"></canvas>
-    <div class="bar"><span class="muted">快速引擎：由腳位變化事件畫數位波形；PWM 腳顯示工作比。真韌體引擎會有 VCD 精確時序。</span></div>
+    <div class="bar"><span class="muted">快速引擎：由腳位變化事件畫數位波形；PWM 腳顯示工作比。真韌體引擎：時間軸是模擬時脈（µs），邊緣時間＝實機。</span></div>
   </div></div>
   <div class="pane" id="pane-serial"><div class="pane-col"><div id="serial" style="flex:1;min-height:0;overflow:auto;background:var(--term);color:var(--term-ink);font:12px/1.45 ui-monospace,Menlo,monospace;padding:6px 10px;white-space:pre-wrap"></div>
     <div class="bar"><input id="serial-in" type="text" placeholder="送到板子（真韌體引擎才會收到）" style="flex:1"><button id="serial-send">送出</button><label><input id="serial-ts" type="checkbox"> 時間戳</label></div></div></div>
@@ -253,6 +255,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
 <script type="module" src="./relay-element.js"></script>
 <script type="module">
 import { createSimulator, WIRE_COLORS } from "./sim.js";
+import { ENGINES } from "./engine.js";
 import { CATALOG, BOARD_ART } from "./catalog.js";
 import { BOARDS } from "./circuit.js";
 import * as CM from "./vendor/codemirror.bundle.js";
@@ -312,6 +315,7 @@ function log(s, cls) { const d = document.createElement("div"); d.className = "l
 
 let cards = null;
 const sim = createSimulator({
+  onProgress: (done, total, label) => { const el = $("engine-load"); el.style.display = ""; const mb = (n) => (n / 1048576).toFixed(1); el.textContent = total ? `載入真韌體引擎 ${mb(done)} / ${mb(total)} MB（${Math.round(done / total * 100)}%）` : `載入真韌體引擎 ${mb(done)} MB…`; if (total && done >= total) setTimeout(() => { el.textContent = "引擎開機中…"; }, 50); },
   root: document.body, board: q.get("board") || "tqt_pro",
   onEvent: (m) => {
     if (m.t === "out") { log(m.s.replace(/\n$/, "")); serialLog(m.s.replace(/\n$/, "")); }
@@ -329,7 +333,7 @@ const sim = createSimulator({
     if ("undo" in s) { $("btn-undo").disabled = !s.undo; $("btn-redo").disabled = !s.redo; }
     if ("toast" in s) toast(s.toast.text, s.toast.kind);
     if ("view" in s || "bounds" in s) drawMinimap();
-    if ("engine" in s) { scopeAttach(); scope.hist = {}; scopePinsUI(); $("engine-note").textContent = s.engine === "micropython-wasm" ? "快速引擎：秒開；沒有精確時序與單步" : "真韌體引擎"; $("btn-step").disabled = !s.capabilities?.step; }
+    if ("engine" in s) { scopeAttach(); scope.hist = {}; scopePinsUI(); $("engine-note").textContent = s.engine === "micropython-wasm" ? "快速引擎：秒開；沒有精確時序與單步" : "真韌體引擎：未修改的 MicroPython 1.29 在 esp32sim 裡逐指令跑，時序＝實機；開機約 2 秒；超音波、DHT22 這類要引擎回應的感測器只有快速引擎支援"; $("btn-step").disabled = !s.capabilities?.step; $("firmware").style.display = s.capabilities?.arduino ? "" : "none"; if (!s.capabilities?.arduino) $("firmware").value = ""; $("engine").value = s.engineKind || s.engine; }
     if ("board" in s) $("board").value = s.board;
   },
 });
@@ -338,7 +342,15 @@ fetch("part_cards.json").then((r) => (r.ok ? r.json() : null)).then((c) => { if 
 
 $("board").value = sim.doc.board;
 $("board").addEventListener("change", function() { sim.setBoard(this.value); });
-$("btn-run").addEventListener("click", async () => { const code = getCode(); saveLocal(); const r = await sim.run(code); if (!r.ok) { log("無法執行：" + (r.msg || "") + (r.line ? "（第 " + r.line + " 行）" : ""), "err"); showPane("console"); } });
+$("engine").addEventListener("change", async function() {
+  const kind = this.value; if (sim.engine && sim.engine.kind === kind) return;
+  $("engine").disabled = true; $("btn-run").disabled = true;
+  try { await sim.attach(sim.doc.board, kind); log(kind === "esp32sim" ? "真韌體引擎就緒：MicroPython " + (sim.engine.info().version || "1.29") + " 在 esp32sim 裡執行" : "快速引擎就緒", "sys"); }
+  catch (e) { log("引擎載入失敗：" + e.message, "err"); toast("引擎載入失敗，退回快速引擎", "bad"); try { await sim.attach(sim.doc.board, "micropython-wasm"); } catch (e2) {} }
+  $("engine").disabled = false; $("btn-run").disabled = false; $("engine-load").style.display = "none";
+});
+$("firmware").addEventListener("change", function() { if (this.value) { toast("Arduino C 要在電腦上編譯，這裡只能執行已編譯的映像；按 ▶ 執行開機", "info"); log("已選 Arduino 映像：" + this.options[this.selectedIndex].text + "。Arduino C 要在電腦上編譯，這裡只能執行。", "sys"); } });
+$("btn-run").addEventListener("click", async () => { if ($("firmware").value) { const r = await sim.runFirmware($("firmware").value); if (!r.ok) log("無法開機：" + (r.msg || ""), "err"); else log("Arduino 映像開機中（無 REPL、無 lab 模組；主控台只有韌體自己的輸出）", "sys"); return; } const code = getCode(); saveLocal(); const r = await sim.run(code); if (!r.ok) { log("無法執行：" + (r.msg || "") + (r.line ? "（第 " + r.line + " 行）" : ""), "err"); showPane("console"); } });
 $("btn-pause").addEventListener("click", () => sim.stop());
 $("btn-step").addEventListener("click", () => sim.step());
 $("btn-reset").addEventListener("click", () => { sim.reset(); log("板子已重置", "sys"); });
@@ -552,7 +564,7 @@ const SNIPPETS = {
 for (const k of Object.keys(SNIPPETS)) { const o = document.createElement("option"); o.value = k; o.textContent = k; $("snippets").appendChild(o); }
 $("snippets").addEventListener("change", function() { if (SNIPPETS[this.value]) setCode(SNIPPETS[this.value]); this.value = ""; });
 let saveT = 0; function scheduleSave() { clearTimeout(saveT); saveT = setTimeout(saveLocal, 800); }
-function saveLocal() { try { localStorage.setItem("sim.doc", JSON.stringify(sim.save())); localStorage.setItem("sim.code", getCode()); } catch (e) {} }
+function saveLocal() { try { localStorage.setItem("sim.doc", JSON.stringify(sim.save())); localStorage.setItem("sim.code", getCode()); if (sim.engine) localStorage.setItem("sim.engine", sim.engine.kind); } catch (e) {} }
 
 function renderProps(s) {
   const el = $("props"); el.innerHTML = "";
@@ -730,7 +742,8 @@ async function decompress(b64) { const bin = atob(b64.replace(/-/g, "+").replace
   setCode(sharedCode || (q.get("fresh") !== "1" && localStorage.getItem("sim.code")) || SNIPPETS[Object.keys(SNIPPETS)[0]]);
   if (!localStorage.getItem("sim.toured") && !q.get("notour")) $("tour").style.display = "flex";
   window.addEventListener("beforeunload", saveLocal);
-  try { await sim.attach(); log("模擬器就緒（" + sim.engine.info().version + "）", "sys"); } catch (e) { log("MicroPython 載入失敗：" + e.message, "err"); }
+  const engineQ = q.get("engine") || (localStorage.getItem("sim.engine") || "micropython-wasm"); $("engine").value = ENGINES[engineQ] ? engineQ : "micropython-wasm";
+  try { await sim.attach(sim.doc.board, $("engine").value); $("engine-load").style.display = "none"; log("模擬器就緒（" + (sim.engine.kind === "esp32sim" ? "真韌體引擎 esp32sim" : sim.engine.info().version) + "）", "sys"); } catch (e) { log("MicroPython 載入失敗：" + e.message, "err"); }
   if (await loadAssignmentFromHash()) toast("已載入作業");
   sim.fit();
 })();
