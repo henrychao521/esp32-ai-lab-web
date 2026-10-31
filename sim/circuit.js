@@ -30,6 +30,15 @@ export const PARTS = {
   servo: { pins: ["GND", "V+", "PWM"], label: "伺服馬達", attrs: {} },
   "led-bar-graph": { pins: ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10"], label: "LED 長條", attrs: { color: "red" } },
   "rgb-led": { pins: ["R", "COM", "G", "B"], label: "RGB LED", attrs: {} },
+  ssd1306: { pins: ["DATA", "CLK", "DC", "RST", "CS", "3V3", "VIN", "GND"], label: "OLED SSD1306", attrs: {}, i2c: 0x3C },
+  lcd1602: { pins: ["GND", "VCC", "SDA", "SCL"], label: "LCD1602（I2C）", attrs: {}, i2c: 0x27 },
+  "hc-sr04": { pins: ["VCC", "TRIG", "ECHO", "GND"], label: "超音波 HC-SR04", attrs: {} },
+  dht22: { pins: ["VCC", "SDA", "NC", "GND"], label: "溫濕度 DHT22", attrs: {} },
+  "neopixel-strip": { pins: ["GND", "VCC", "DIN", "DOUT"], label: "NeoPixel 燈條（8 顆）", attrs: {} },
+  pir: { pins: ["VCC", "OUT", "GND"], label: "PIR 人體感測", attrs: {} },
+  relay: { pins: ["VCC", "GND", "IN", "NO", "COM", "NC"], label: "繼電器模組", attrs: {} },
+  stepper: { pins: ["A-", "A+", "B+", "B-"], label: "步進馬達", attrs: {} },
+  joystick: { pins: ["VCC", "VERT", "HORZ", "SEL", "GND"], label: "搖桿", attrs: {} },
 };
 
 /** 板子腳位：名稱 → {gpio | power}；usable／reserved 來自 agent/lab/boards.py（tools/build_sim_boards.py 可重產）。 */
@@ -126,6 +135,9 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     addR(nd, -1, 1e6);
   }
 
+  // 上一輪的節點電壓（繼電器、感測模組要看 IN／VCC 有沒有電，差一個 tick 可接受）
+  const prevV = io.prevV || {};
+  const V0 = (nd) => { if (nd === undefined || nd < 0) return 0; for (const [r, i] of idx) if (i === nd) return prevV[r] ?? 0; return 0; };
   // 元件（LED 之外的線性部分）
   const ledList = [];   // {part, pinA, pinC, color, key}
   const partState = {};
@@ -148,6 +160,25 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       case "servo": addR(a("V+"), a("GND"), 100); addR(a("PWM"), -1, 1e5); break;
       case "led-bar-graph": for (let i = 1; i <= 10; i++) ledList.push({ part: id, key: id + ":" + i, A: a("A" + i), C: a("C" + i), color: (p.attrs?.color || "red").toLowerCase() }); break;
       case "rgb-led": for (const c of ["R", "G", "B"]) ledList.push({ part: id, key: id + ":" + c, A: a(c), C: a("COM"), color: { R: "red", G: "green", B: "blue" }[c] }); break;
+      // 模組：供電腳之間放一個負載（算得出有沒有供電），訊號腳高阻抗
+      case "ssd1306": addR(a("3V3"), a("GND"), 330); addR(a("VIN"), a("GND"), 330); for (const q of ["DATA", "CLK"]) addR(a(q), -1, 1e6); break;
+      case "lcd1602": addR(a("VCC"), a("GND"), 200); for (const q of ["SDA", "SCL"]) addR(a(q), -1, 1e6); break;
+      case "hc-sr04": addR(a("VCC"), a("GND"), 330); addR(a("TRIG"), -1, 1e6); { const pv = V0(a("VCC")) - V0(a("GND")); const lv = (u.echoLevel || 0) && pv > 2.5 ? Math.min(pv, 3.3) : 0; addV(a("ECHO"), -1, lv, 100, "mod:" + id); } break;
+      case "dht22": addR(a("VCC"), a("GND"), 5000); addR(a("SDA"), -1, 1e6); break;
+      case "neopixel-strip": addR(a("VCC"), a("GND"), 60); addR(a("DIN"), -1, 1e6); break;
+      case "pir": addR(a("VCC"), a("GND"), 2000); { const pv = V0(a("VCC")) - V0(a("GND")); addV(a("OUT"), -1, u.motion && pv > 2.5 ? 3.3 : 0, 100, "mod:" + id); } break;
+      case "relay": {
+        addR(a("VCC"), a("GND"), 70); addR(a("IN"), -1, 1e5);
+        const powered = V0(a("VCC")) - V0(a("GND")) > 2.5, energized = powered && (V0(a("IN")) - V0(a("GND")) > 1.5);
+        addR(a("COM"), energized ? a("NO") : a("NC"), 0.1); break;   // 常閉／常開由 IN 決定（用上一輪電壓，差一個 tick）
+      }
+      case "stepper": addR(a("A+"), a("A-"), 30); addR(a("B+"), a("B-"), 30); break;
+      case "joystick": {
+        const total = 10000; const fx = Math.max(0, Math.min(1, (u.x ?? 0) * 0.5 + 0.5)), fy = Math.max(0, Math.min(1, (u.y ?? 0) * 0.5 + 0.5));
+        addR(a("GND"), a("HORZ"), Math.max(1, total * fx)); addR(a("HORZ"), a("VCC"), Math.max(1, total * (1 - fx)));
+        addR(a("GND"), a("VERT"), Math.max(1, total * fy)); addR(a("VERT"), a("VCC"), Math.max(1, total * (1 - fy)));
+        if (u.pressed) addR(a("SEL"), a("GND"), 0.1); break;
+      }
     }
   }
 
@@ -215,6 +246,9 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       if (p.type === "pushbutton" && pin.endsWith(".r")) continue;
       if (p.type === "photoresistor-sensor" && pin === "DO") continue;
       if (p.type === "slide-switch" && (pin === "1" || pin === "3")) continue;
+      if (["DC", "RST", "CS", "VIN", "NC", "DOUT", "NO", "NC"].includes(pin) || (p.type === "ssd1306" && pin === "3V3" && (N.nets[N.find(id + ":VIN")] || []).length > 1)) continue;
+      if (p.type === "relay" && (pin === "NO" || pin === "NC")) continue;
+      if (p.type === "joystick" && pin === "SEL") continue;
       const members = N.nets[N.find(id + ":" + pin)] || [];
       const others = members.filter((m) => !m.startsWith(id + ":") && !m.startsWith("bb:"));
       if (others.length === 0) warn("OPEN", id, `${id} 的 ${pin} 沒接到東西`, "為什麼：電流要有完整回路，一隻腳懸空等於斷路，整個元件不會動作。", "怎麼改：把這隻腳接線到板子腳位或其他元件（插麵包板時，同一欄的 5 個孔是相通的）。");
@@ -250,6 +284,14 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       case "photoresistor-sensor": st.v = vp("AO"); st.powered = vp("VCC") - vp("GND") > 2.5; break;
       case "pushbutton": st.pressed = !!u.pressed; break;
       case "slide-switch": st.value = u.value ? 1 : 0; break;
+      case "ssd1306": st.powered = (vp("3V3") - vp("GND") > 2.5) || (vp("VIN") - vp("GND") > 2.5); break;
+      case "lcd1602": case "hc-sr04": case "dht22": case "neopixel-strip": case "pir": case "joystick": st.powered = vp("VCC") - vp("GND") > 2.5; break;
+      case "stepper": st.a = vp("A+") - vp("A-"); st.b = vp("B+") - vp("B-"); break;
+      case "relay": st.powered = vp("VCC") - vp("GND") > 2.5; st.energized = st.powered && (vp("IN") - vp("GND") > 1.5); break;
+    }
+    if (st.powered === false && ["ssd1306", "lcd1602", "hc-sr04", "dht22", "neopixel-strip", "pir", "relay", "joystick"].includes(p.type)) {
+      const hasAnyWire = PARTS[p.type].pins.some((pin) => (N.nets[N.find(id + ":" + pin)] || []).some((m) => !m.startsWith(id + ":") && !m.startsWith("bb:")));
+      if (hasAnyWire) warn("MODULE_NO_POWER", id, `${id} 沒有供電`, "為什麼：這類模組要有 VCC（3.3 V 或 5 V，看模組）和 GND 才會動，只接訊號線程式會讀不到或畫面不亮。", `怎麼改：${p.type === "hc-sr04" || p.type === "relay" ? "VCC 接 5V" : "VCC 接 3V3"}、GND 接 GND，再接訊號線。`);
     }
   }
 

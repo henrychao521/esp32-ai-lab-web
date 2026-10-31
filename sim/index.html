@@ -50,6 +50,18 @@ svg.sim-wires path.wire{fill:none;stroke-width:3;stroke-linecap:round;stroke-lin
 svg.sim-wires path.wire.selected{stroke-width:5;filter:drop-shadow(0 0 3px var(--accent))}
 svg.sim-wires path.wire.short{stroke:#f00;stroke-width:5;animation:shortblink .5s infinite alternate}
 @keyframes shortblink{from{opacity:1}to{opacity:.35}}
+svg.sim-wires path.wire.hl{stroke-width:6;filter:drop-shadow(0 0 4px #ff6a2b);animation:hlblink .7s infinite alternate}
+svg.sim-wires path.wire.dim{opacity:.25}
+@keyframes hlblink{from{opacity:1}to{opacity:.5}}
+#examples-dlg{border:0;border-radius:12px;padding:0;max-width:760px;width:94vw;background:var(--panel);color:var(--ink);box-shadow:0 10px 40px rgba(0,0,0,.4)}
+#examples-dlg::backdrop{background:rgba(0,0,0,.45)}
+#examples-dlg .hd{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}
+#examples-dlg .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;padding:14px 16px;max-height:70vh;overflow:auto}
+.ex-card{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.ex-card:hover{border-color:var(--accent)}
+.ex-card b{font-size:14px}.ex-card .lv{font-size:11px;color:var(--accent)}.ex-card .sm{font-size:12px;color:var(--muted)}
+#steps{display:none;position:absolute;left:10px;top:10px;z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px}
+#steps b{display:block;margin-bottom:4px}#steps .nav{display:flex;gap:6px;margin-top:8px;align-items:center}#steps .muted{font-size:12px}
 svg.sim-wires path.temp{fill:none;stroke:var(--accent);stroke-width:3;stroke-dasharray:6 4;display:none}
 svg.sim-wires circle.wp{fill:#fff;stroke:var(--accent);stroke-width:2;pointer-events:all;cursor:move}
 svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;stroke:var(--bg);stroke-width:3px;pointer-events:none}
@@ -126,6 +138,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <button id="btn-reset" class="icon" title="重置板子">⟲</button>
   <select id="speed" title="模擬速度"><option value="1">即時</option><option value="0.5">0.5×</option><option value="0.25">0.25×</option></select>
   <span class="status"><span id="dot" class="dot"></span><span id="status-text">未啟動</span></span>
+  <span class="status" id="power-ind" title="電源指示：LED 與模組的總電流（估）">⚡ 0 mA</span>
   <span class="sep"></span>
   <button id="btn-wiremode" class="icon" title="接線模式：執行中也只拉線不操作元件">⌁ 接線</button>
   <select id="wire-color" title="線色"><option value="0">紅線</option><option value="1">黑線</option><option value="2">綠線</option><option value="3">藍線</option><option value="4">橘線</option><option value="5">紫線</option><option value="6">灰線</option><option value="7">白線</option></select>
@@ -159,6 +172,8 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <canvas id="minimap" width="150" height="100"></canvas>
   <div id="tooltip"></div>
   <div id="toasts"></div>
+  <div id="steps"><b id="steps-title"></b><div id="steps-text"></div><div class="nav"><button id="steps-prev" class="icon">‹</button><span id="steps-pos" class="muted"></span><button id="steps-next" class="icon">›</button><span style="flex:1"></span><button id="steps-close" class="icon">✕</button></div></div>
+  <dialog id="examples-dlg"><div class="hd"><b>範例電路</b><span class="muted">點一個：電路、程式、接線步驟一起載入</span><span style="flex:1"></span><button id="examples-close">關閉</button></div><div class="grid" id="examples-grid"></div></dialog>
   <div id="tour"><div class="box">
     <h3>第一次用？三步驟</h3>
     <ol><li>左邊<b>元件庫</b>點一下或拖進畫布；把元件腳放到麵包板孔上會自動插進去（同一欄 5 孔相通）。</li>
@@ -175,6 +190,8 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
     <button class="active" data-pane="editor">程式</button>
     <button data-pane="console">主控台<span class="badge" id="badge-con"></span></button>
     <button data-pane="measure">量測</button>
+    <button data-pane="scope">示波器</button>
+    <button data-pane="serial">序列埠</button>
     <button data-pane="issues">問題<span class="badge" id="badge-issues"></span></button>
     <span style="flex:1"></span>
     <span class="status" id="engine-note" style="padding-right:10px"></span>
@@ -189,9 +206,17 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
     <div id="power" class="muted"></div>
     <table><thead><tr><th>網路（相連的腳位）</th><th>電壓</th></tr></thead><tbody id="nets"></tbody></table>
   </div></div></div>
+  <div class="pane" id="pane-scope"><div class="pane-col">
+    <div class="bar" style="border-top:0;border-bottom:1px solid var(--line)"><span>腳位（最多 4 支）：</span><span id="scope-pins"></span><span style="flex:1"></span><label>時間窗 <select id="scope-win"><option value="2">2 秒</option><option value="5" selected>5 秒</option><option value="10">10 秒</option></select></label><button id="scope-clear">清除</button></div>
+    <canvas id="scope" style="flex:1;min-height:0;width:100%;background:var(--term)"></canvas>
+    <div class="bar"><span class="muted">快速引擎：由腳位變化事件畫數位波形；PWM 腳顯示工作比。真韌體引擎會有 VCD 精確時序。</span></div>
+  </div></div>
+  <div class="pane" id="pane-serial"><div class="pane-col"><div id="serial" style="flex:1;min-height:0;overflow:auto;background:var(--term);color:var(--term-ink);font:12px/1.45 ui-monospace,Menlo,monospace;padding:6px 10px;white-space:pre-wrap"></div>
+    <div class="bar"><input id="serial-in" type="text" placeholder="送到板子（真韌體引擎才會收到）" style="flex:1"><button id="serial-send">送出</button><label><input id="serial-ts" type="checkbox"> 時間戳</label></div></div></div>
   <div class="pane" id="pane-issues"><div class="pane-col"><div class="pane-body" id="issues"></div></div></div>
 </section>
 <script src="vendor/wokwi-elements.bundle.min.js"></script>
+<script type="module" src="./relay-element.js"></script>
 <script type="module">
 import { createSimulator, WIRE_COLORS } from "./sim.js";
 import { CATALOG, BOARD_ART } from "./catalog.js";
@@ -201,8 +226,8 @@ const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const CATS = [
   ["板子", ["__board"]], ["基本", ["resistor", "led", "rgb-led", "led-bar-graph", "__bb"]], ["輸入", ["pushbutton", "slide-switch", "potentiometer", "photoresistor-sensor"]],
-  ["輸出", ["buzzer", "servo"]], ["顯示（下一期）", ["soon:OLED SSD1306", "soon:LCD1602"]], ["感測（下一期）", ["soon:HC-SR04 超音波", "soon:DHT22 溫濕度", "soon:PIR 人體"]],
-  ["致動（下一期）", ["soon:繼電器", "soon:步進馬達", "soon:NeoPixel"]], ["通訊（下一期）", ["soon:搖桿", "soon:UART 監視"]],
+  ["輸出", ["buzzer", "servo"]], ["顯示", ["ssd1306", "lcd1602"]], ["感測", ["hc-sr04", "dht22", "pir"]],
+  ["致動", ["relay", "stepper", "neopixel-strip"]], ["通訊／控制", ["joystick"]],
 ];
 function buildPalette(filter = "") {
   const body = $("pal-body"); body.innerHTML = "";
@@ -255,7 +280,7 @@ let cards = null;
 const sim = createSimulator({
   root: document.body, board: q.get("board") || "tqt_pro",
   onEvent: (m) => {
-    if (m.t === "out") log(m.s.replace(/\n$/, ""));
+    if (m.t === "out") { log(m.s.replace(/\n$/, "")); serialLog(m.s.replace(/\n$/, "")); }
     else if (m.t === "err") { log(m.s.replace(/\n$/, ""), "err"); showPane("console"); }
     else if (m.t === "start") log("▶ 開始執行 " + m.file, "sys");
     else if (m.t === "done") log(m.stopped ? "■ 已停止" : (m.ok ? "✓ 程式結束" : "✗ 程式因錯誤結束"), "sys");
@@ -270,7 +295,7 @@ const sim = createSimulator({
     if ("undo" in s) { $("btn-undo").disabled = !s.undo; $("btn-redo").disabled = !s.redo; }
     if ("toast" in s) toast(s.toast.text, s.toast.kind);
     if ("view" in s || "bounds" in s) drawMinimap();
-    if ("engine" in s) { $("engine-note").textContent = s.engine === "micropython-wasm" ? "快速引擎：秒開；沒有精確時序與單步" : "真韌體引擎"; $("btn-step").disabled = !s.capabilities?.step; }
+    if ("engine" in s) { scopeAttach(); scope.hist = {}; scopePinsUI(); $("engine-note").textContent = s.engine === "micropython-wasm" ? "快速引擎：秒開；沒有精確時序與單步" : "真韌體引擎"; $("btn-step").disabled = !s.capabilities?.step; }
     if ("board" in s) $("board").value = s.board;
   },
 });
@@ -303,7 +328,27 @@ $("btn-import").addEventListener("click", () => { const i = document.createEleme
 $("btn-share").addEventListener("click", async () => { const data = { d: sim.save(), c: getCode() }; const s = await compress(JSON.stringify(data)); const url = location.origin + location.pathname + "#s=" + s; try { await navigator.clipboard.writeText(url); toast("分享網址已複製（" + Math.round(url.length / 1024) + " KB）"); } catch { prompt("分享網址", url); } });
 $("btn-help").addEventListener("click", () => { $("tour").style.display = "flex"; });
 $("tour-close").addEventListener("click", () => { $("tour").style.display = "none"; localStorage.setItem("sim.toured", "1"); });
-$("btn-examples").addEventListener("click", () => { showPane("editor"); $("snippets").focus(); toast("先用「程式範例…」；完整的電路＋程式一鍵載入在下一期"); });
+// ---------- 範例電路（sim/examples.json）＋步驟式接線提示 ----------
+let EXAMPLES = []; let stepState = null;
+fetch("examples.json").then((r) => r.json()).then((arr) => { EXAMPLES = arr; const g = $("examples-grid"); g.innerHTML = ""; for (const ex of arr) { const d = document.createElement("div"); d.className = "ex-card"; d.innerHTML = `<b></b><span class="lv"></span><span class="sm"></span>`; d.querySelector("b").textContent = ex.title; d.querySelector(".lv").textContent = ex.level + " · " + Object.keys(ex.parts).length + " 個元件 · " + ex.wires.length + " 條線"; d.querySelector(".sm").textContent = ex.summary; d.addEventListener("click", () => { loadExample(ex); $("examples-dlg").close(); }); g.appendChild(d); } }).catch(() => {});
+$("btn-examples").addEventListener("click", () => { if (!EXAMPLES.length) { toast("範例清單載入中…"); return; } $("examples-dlg").showModal(); });
+$("examples-close").addEventListener("click", () => $("examples-dlg").close());
+function loadExample(ex) {
+  sim.stop();
+  sim.load({ board: ex.board, parts: JSON.parse(JSON.stringify(ex.parts)), wires: ex.wires.map((w) => ({ ...w, pts: [] })), boardPos: { x: 60, y: 40 }, breadboard: ex.breadboard || null });
+  if (ex.board) $("board").value = ex.board; setCode(ex.code); sim.fit(); showPane("editor");
+  stepState = { ex, i: 0 }; renderStep(); toast("已載入「" + ex.title + "」。預期：" + ex.expect);
+}
+function renderStep() {
+  const box = $("steps"); if (!stepState) { box.style.display = "none"; sim.highlightWires([]); return; }
+  const { ex, i } = stepState; const st = ex.steps[i]; box.style.display = "block";
+  $("steps-title").textContent = ex.title + "：接線步驟 " + (i + 1) + "/" + ex.steps.length; $("steps-text").textContent = st.text; $("steps-pos").textContent = (i + 1) + " / " + ex.steps.length;
+  $("steps-prev").disabled = i === 0; $("steps-next").textContent = i === ex.steps.length - 1 ? "完成" : "›";
+  sim.highlightWires(st.wires);
+}
+$("steps-prev").addEventListener("click", () => { if (stepState && stepState.i > 0) { stepState.i--; renderStep(); } });
+$("steps-next").addEventListener("click", () => { if (!stepState) return; if (stepState.i < stepState.ex.steps.length - 1) { stepState.i++; renderStep(); } else { const ex = stepState.ex; stepState = null; renderStep(); toast("接線完成！按 ▶ 執行。試試改這裡：" + (ex.try || []).join("；")); } });
+$("steps-close").addEventListener("click", () => { stepState = null; renderStep(); });
 document.addEventListener("keydown", (e) => {
   const inEditor = e.target.closest && (e.target.closest("#cm") || ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName));
   if (inEditor) return;
@@ -316,7 +361,7 @@ document.addEventListener("keydown", (e) => {
 });
 (() => { let d = null; $("resize").addEventListener("pointerdown", (e) => { d = { y: e.clientY, h: parseInt(getComputedStyle(document.body).getPropertyValue("--bottom-h")) || 260 }; $("resize").setPointerCapture(e.pointerId); }); $("resize").addEventListener("pointermove", (e) => { if (!d) return; document.body.style.setProperty("--bottom-h", Math.max(120, Math.min(window.innerHeight - 200, d.h + d.y - e.clientY)) + "px"); }); $("resize").addEventListener("pointerup", () => { d = null; }); })();
 for (const b of document.querySelectorAll(".bottom .tabs button[data-pane]")) b.addEventListener("click", () => showPane(b.dataset.pane));
-function showPane(name) { for (const b of document.querySelectorAll(".bottom .tabs button[data-pane]")) b.classList.toggle("active", b.dataset.pane === name); for (const p of document.querySelectorAll(".bottom .pane")) p.classList.toggle("active", p.id === "pane-" + name); if (name === "console") { conUnread = 0; $("badge-con").textContent = ""; } if (name === "measure") renderMeasure(); }
+function showPane(name) { if (name === "scope") scopePinsUI(); for (const b of document.querySelectorAll(".bottom .tabs button[data-pane]")) b.classList.toggle("active", b.dataset.pane === name); for (const p of document.querySelectorAll(".bottom .pane")) p.classList.toggle("active", p.id === "pane-" + name); if (name === "console") { conUnread = 0; $("badge-con").textContent = ""; } if (name === "measure") renderMeasure(); }
 
 let guardRules = null;
 fetch("guard_rules.json").then((r) => r.json()).then((g) => { guardRules = g; editor.dispatch({ changes: { from: 0, to: 0, insert: "" } }); }).catch(() => {});
@@ -367,6 +412,14 @@ function renderProps(s) {
     for (const [k, opts] of Object.entries(c.attrOptions || {})) { const sel2 = document.createElement("select"); for (const o of opts) { const op = document.createElement("option"); op.value = o; op.textContent = (k === "value" ? "電阻值 " : k === "color" ? "顏色 " : k + " ") + o + (k === "value" ? " Ω" : ""); if (String(p.attrs[k]) === o) op.selected = true; sel2.appendChild(op); } sel2.addEventListener("change", () => sim.setAttr(id, k, sel2.value)); el.appendChild(sel2); }
     const r = sim.result?.parts?.[id];
     if (r) { const st = document.createElement("div"); st.className = "muted"; st.textContent = "狀態：" + describeState(p.type, r); el.appendChild(st); }
+    const u = sim.ui[id] = sim.ui[id] || {};
+    const slider = (label, key, min, max, step, def, unit) => { const row = document.createElement("div"); row.className = "row"; const lab = document.createElement("span"); lab.textContent = label; const inp = document.createElement("input"); inp.type = "range"; inp.min = min; inp.max = max; inp.step = step; inp.value = u[key] ?? def; inp.style.flex = "1"; const val = document.createElement("span"); val.className = "muted"; val.textContent = inp.value + unit; inp.addEventListener("input", () => { u[key] = Number(inp.value); val.textContent = inp.value + unit; sim.tick(); }); row.append(lab, inp, val); el.appendChild(row); };
+    if (p.type === "hc-sr04") slider("距離", "distance", 2, 400, 1, 100, " cm");
+    if (p.type === "dht22") { slider("溫度", "temperature", -10, 50, 0.5, 25, " °C"); slider("濕度", "humidity", 0, 100, 1, 60, " %"); }
+    if (p.type === "photoresistor-sensor") slider("光線", "light", 0, 1, 0.01, 0.5, "");
+    if (p.type === "potentiometer") slider("旋鈕", "value", 0, 1, 0.01, 0.5, "");
+    if (p.type === "pir") { const b = document.createElement("button"); b.textContent = "模擬有人經過（2.5 秒）"; b.addEventListener("click", () => { u.motion = true; sim.tick(); setTimeout(() => { u.motion = false; sim.tick(); }, 2500); }); el.appendChild(b); }
+    if (p.type === "joystick") { slider("水平 X", "x", -1, 1, 0.05, 0, ""); slider("垂直 Y", "y", -1, 1, 0.05, 0, ""); const b = document.createElement("button"); b.textContent = u.pressed ? "放開按鈕" : "按住按鈕"; b.addEventListener("click", () => { u.pressed = !u.pressed; sim.tick(); renderProps(s); }); el.appendChild(b); }
     const h4 = document.createElement("h4"); h4.textContent = "腳位與目前電壓"; el.appendChild(h4);
     const tb = document.createElement("table");
     for (const pin of c.pins) { const inf = sim.pinInfo(id + ":" + pin); const tr = document.createElement("tr"); tr.innerHTML = `<td><b>${esc(pin)}</b></td><td>${esc(inf.desc || "")}${p.snaps?.[pin] ? `<div class="muted">插在 ${esc(p.snaps[pin])}</div>` : ""}</td><td class="v">${fmtV(inf.volt)}</td>`; tb.appendChild(tr); }
@@ -405,7 +458,11 @@ function describeState(type, r) {
     case "buzzer": return r.on ? "響" : "靜音"; case "servo": return (r.powered ? "" : "沒供電，") + "角度 " + r.angle + "°";
     case "led-bar-graph": return "亮 " + (r.values || []).filter(Boolean).length + " 段"; case "rgb-led": return `R ${Math.round((r.r || 0) * 100)}% G ${Math.round((r.g || 0) * 100)}% B ${Math.round((r.b || 0) * 100)}%`;
     case "potentiometer": return "SIG " + fmtV(r.v); case "photoresistor-sensor": return (r.powered ? "" : "沒供電，") + "AO " + fmtV(r.v);
-    case "pushbutton": return r.pressed ? "按下" : "放開"; case "slide-switch": return r.value ? "撥到 3" : "撥到 1"; default: return "";
+    case "pushbutton": return r.pressed ? "按下" : "放開"; case "slide-switch": return r.value ? "撥到 3" : "撥到 1";
+    case "relay": return (r.powered ? "" : "沒供電，") + (r.energized ? "吸合（COM–NO 通）" : "放開（COM–NC 通）");
+    case "ssd1306": case "lcd1602": case "hc-sr04": case "dht22": case "neopixel-strip": case "pir": case "joystick": return r.powered ? "有供電" : "沒供電";
+    case "stepper": { const rt = sim.partRuntime[Object.keys(sim.doc.parts).find((k) => sim.doc.parts[k] === sim.doc.parts[sim.selected])]; return "角度 " + Math.round(rt?.angle ?? 0) + "°（" + (rt?.steps ?? 0) + " 半步）"; }
+    default: return "";
   }
 }
 const fmtV = (v) => (v === null || v === undefined ? "—" : v.toFixed(2) + " V");
@@ -436,6 +493,55 @@ function renderIssues(ws) {
   if (!ws.length) { el.innerHTML = '<div class="muted">沒有問題。接線有狀況時會列在這裡，點一下會跳到那個元件。</div>'; return; }
   for (const w of ws) { const d = document.createElement("div"); d.className = "issue " + (w.severity || "warning"); d.innerHTML = `<b></b><span class="why"></span><span class="fix"></span>`; d.querySelector("b").textContent = (w.severity === "error" ? "✖ " : "⚠ ") + w.brief; d.querySelector(".why").textContent = w.why || ""; d.querySelector(".fix").textContent = w.fix || ""; d.addEventListener("click", () => sim.focusPart(w.part && w.part !== "board" ? w.part : "board")); el.appendChild(d); }
 }
+
+// ---------- 電源指示 ----------
+function updatePower() {
+  const r = sim.result; if (!r) return; let total = 0;
+  for (const [id, p] of Object.entries(r.parts)) { for (const l of Object.values(p.leds || {})) total += l.i || 0; const type = sim.doc.parts[id]?.type; if (p.powered) total += ({ ssd1306: 0.02, lcd1602: 0.03, "hc-sr04": 0.015, dht22: 0.002, "neopixel-strip": 0.06 * ((sim.partRuntime[id]?.colors || []).filter((c) => c.some((v) => v > 0)).length), pir: 0.001, relay: p.energized ? 0.07 : 0.005, joystick: 0.001 }[type] || 0); if (type === "servo" && p.powered) total += 0.1; }
+  const mA = total * 1000; const el = $("power-ind"); el.textContent = "⚡ " + mA.toFixed(0) + " mA"; el.style.color = mA > 500 ? "var(--bad)" : mA > 300 ? "var(--warn)" : ""; el.title = "電源指示：LED 與模組的總電流（估）。USB 供電約 500 mA；超過板子會重開。" + (mA > 500 ? " 已超過！" : "");
+}
+setInterval(updatePower, 500);
+
+// ---------- 示波器／邏輯分析（腳位變化事件） ----------
+const scope = { pins: [], hist: {}, t0: performance.now() };
+function scopeAttach() {
+  if (!sim.engine) return;
+  sim.engine.on("pin", (g, lv, tUs) => { (scope.hist[g] = scope.hist[g] || []).push([tUs / 1000, lv]); if (scope.hist[g].length > 5000) scope.hist[g].shift(); });
+  sim.engine.on("pwm", (g, hz, duty) => { (scope.hist[g] = scope.hist[g] || []).push([sim.engine.time() / 1000, duty > 0 ? 0.5 + duty / 2 : 0, "pwm", hz, duty]); });
+}
+function scopePinsUI() {
+  const el = $("scope-pins"); el.innerHTML = "";
+  const gpios = [...new Set([...Object.keys(sim.engine ? sim.engine.pins() : {}), ...Object.keys(scope.hist)].map(Number))].sort((a, b) => a - b);
+  for (const g of gpios) { const b = document.createElement("button"); b.className = "icon" + (scope.pins.includes(g) ? " on" : ""); b.textContent = "GPIO" + g; b.addEventListener("click", () => { if (scope.pins.includes(g)) scope.pins = scope.pins.filter((x) => x !== g); else if (scope.pins.length < 4) scope.pins.push(g); scopePinsUI(); }); el.appendChild(b); }
+  if (!gpios.length) el.innerHTML = '<span class="muted">執行程式後這裡會列出用到的腳位</span>';
+}
+function drawScope() {
+  const cv = $("scope"); if (!$("pane-scope").classList.contains("active")) return; const W = cv.clientWidth, H = cv.clientHeight; if (cv.width !== W * 2) { cv.width = W * 2; cv.height = H * 2; }
+  const ctx = cv.getContext("2d"); ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, W, H);
+  const win = Number($("scope-win").value) * 1000, now = sim.engine ? sim.engine.time() / 1000 : 0; const t0 = now - win;
+  const n = Math.max(1, scope.pins.length), rowH = H / n;
+  ctx.strokeStyle = "#333"; for (let i = 1; i <= 5; i++) { const x = (W * i) / 5; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  scope.pins.forEach((g, i) => {
+    const y0 = i * rowH + 6, y1 = (i + 1) * rowH - 10; const pts = (scope.hist[g] || []).filter((p) => p[0] >= t0 - win);
+    ctx.fillStyle = "#9a9ea8"; ctx.font = "11px sans-serif"; ctx.fillText("GPIO" + g, 4, y0 + 10);
+    ctx.strokeStyle = ["#2a7", "#27d", "#e90", "#a3c"][i]; ctx.lineWidth = 2; ctx.beginPath();
+    let last = null;
+    const st = sim.engine ? sim.engine.pins()[g] : null; const cur = st ? (st.pwm ? 0.5 + st.pwm.duty / 2 : st.level) : 0;
+    const level0 = pts.length ? pts[0][1] : cur;
+    ctx.moveTo(0, y1 - level0 * (y1 - y0)); last = level0;
+    for (const p of pts) { const x = Math.max(0, ((p[0] - t0) / win) * W); ctx.lineTo(x, y1 - last * (y1 - y0)); ctx.lineTo(x, y1 - p[1] * (y1 - y0)); last = p[1]; if (p[2] === "pwm") { ctx.fillStyle = "#e90"; ctx.fillText(`PWM ${p[3]} Hz ${Math.round(p[4] * 100)}%`, Math.min(W - 110, x + 2), y0 + 10); } }
+    ctx.lineTo(W, y1 - last * (y1 - y0)); ctx.stroke();
+  });
+  ctx.fillStyle = "#6b7280"; ctx.font = "10px sans-serif"; for (let i = 0; i <= 5; i++) ctx.fillText(((t0 + (win * i) / 5) / 1000).toFixed(1) + "s", (W * i) / 5 + 2, H - 2);
+}
+let scopeKey = "";
+setInterval(() => { drawScope(); if ($("pane-scope").classList.contains("active")) { const key = Object.keys(sim.engine ? sim.engine.pins() : {}).join(",") + "|" + scope.pins.join(","); if (key !== scopeKey) { scopeKey = key; scopePinsUI(); } } }, 100);
+$("scope-clear").addEventListener("click", () => { scope.hist = {}; });
+// ---------- 序列埠監視器 ----------
+const serial = $("serial");
+function serialLog(s, cls) { const d = document.createElement("div"); d.className = cls || ""; d.textContent = ($("serial-ts").checked ? ts() + " " : "") + s; serial.appendChild(d); while (serial.childNodes.length > 1000) serial.removeChild(serial.firstChild); serial.scrollTop = serial.scrollHeight; }
+$("serial-send").addEventListener("click", () => { const v = $("serial-in").value; if (!v) return; serialLog("> " + v, "sys"); if (sim.engine) sim.engine.uartWrite(v + "\n"); if (sim.engine && !sim.engine.capabilities.uart) toast("快速引擎沒有序列埠輸入；真韌體引擎才會收到", "warn"); $("serial-in").value = ""; });
+$("serial-in").addEventListener("keydown", (e) => { if (e.key === "Enter") $("serial-send").click(); });
 
 function drawMinimap() {
   if (!window.sim) return;   // createSimulator 初始化時就會呼叫，sim 還沒指定

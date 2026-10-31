@@ -1,0 +1,252 @@
+{
+ "parts": {
+  "led": {
+   "name": "LED", "summary": "發光二極體：只讓電流單向通過，通電就亮，一定要串限流電阻。",
+   "how": ["長腳（A，正極）那一側接 GPIO 或 3V3，中間一定串 220 Ω～1 kΩ 電阻", "短腳（C，負極）接板子的 GND", "程式用 Pin(n, Pin.OUT) 輸出 1 亮、0 滅"],
+   "mistakes": [
+    {"what": "沒有串電阻", "why": "LED 導通後電壓被夾在約 1.8～3 V，電流只受腳位內阻限制，會超過 30 mA 燒掉", "fix": "串 220 Ω（3.3 V 時約 7 mA，夠亮又安全）"},
+    {"what": "接反了不亮", "why": "二極體只讓電流從長腳流向短腳，反向不導通", "fix": "把 LED 轉 180°，長腳接正、短腳接 GND"},
+    {"what": "兩顆 LED 共用一顆電阻", "why": "並聯時順向壓降低的那顆會搶走大部分電流，另一顆很暗", "fix": "每顆 LED 各串一顆電阻"}
+   ],
+   "pins": {"A": "長腳，正極（陽極），接高電位那一側", "C": "短腳，負極（陰極），接 GND"},
+   "code": "import lab\nfrom machine import Pin\nled = Pin(16, Pin.OUT)\nwhile lab.running():\n    led.value(1)\n    lab.sleep(0.5)\n    led.value(0)\n    lab.sleep(0.5)\n",
+   "specs": "順向壓降紅約 1.8 V、綠 2.2 V、藍／白 3.0 V；建議 5～12 mA，上限 30 mA"
+  },
+  "resistor": {
+   "name": "電阻", "summary": "限制電流、分壓；沒有方向，兩端可互換。",
+   "how": ["串在 GPIO 和 LED 之間當限流電阻（220 Ω～1 kΩ）", "按鍵接 3V3 時用 10 kΩ 接 GND 當下拉電阻", "色碼：紅紅棕＝220 Ω、橙橙棕＝330 Ω、棕黑紅＝1 kΩ、棕黑橙＝10 kΩ"],
+   "mistakes": [
+    {"what": "電阻值太小", "why": "電流變大，LED 或腳位超過上限（腳位 40 mA）", "fix": "LED 用 220 Ω 以上"},
+    {"what": "電阻值太大", "why": "電流只有零點幾 mA，LED 幾乎看不見", "fix": "LED 用 1 kΩ 以下"},
+    {"what": "以為電阻有方向", "why": "電阻是純電阻元件，沒有極性", "fix": "兩端隨便接都可以"}
+   ],
+   "pins": {"1": "一端（沒有方向）", "2": "另一端（沒有方向）"},
+   "code": "import lab\nfrom machine import Pin\nled = Pin(16, Pin.OUT)   # G16 → 220Ω → LED → GND\nwhile lab.running():\n    led.value(1)\n    lab.sleep(0.2)\n    led.value(0)\n    lab.sleep(0.8)\n",
+   "specs": "常用 1/4 W；I = V / R，例如 (3.3 − 1.8) V ÷ 220 Ω ≈ 6.8 mA"
+  },
+  "pushbutton": {
+   "name": "按鍵", "summary": "按下時兩組腳接通，放開斷開；配合內部上拉讀 0／1。",
+   "how": ["1.l（或 1.r）接 GPIO，2.l（或 2.r）接 GND", "程式用 Pin(n, Pin.IN, Pin.PULL_UP)：沒按讀到 1，按下讀到 0", "左右同一號的腳內部相通（1.l＝1.r），跨接麵包板溝槽時要注意"],
+   "mistakes": [
+    {"what": "另一側沒接 GND，讀值亂跳", "why": "沒按時 GPIO 懸空（浮接），電位不定", "fix": "另一側接 GND 並開內部上拉，或接 3V3 加 10 kΩ 下拉"},
+    {"what": "接到 1.l 和 1.r", "why": "這兩腳本來就相通，按不按都一樣", "fix": "改接 1 與 2 兩組（例如 1.l 和 2.l）"},
+    {"what": "按一下算好幾次", "why": "機械彈跳，幾毫秒內通斷多次", "fix": "讀到按下後 lab.sleep(0.02) 再確認，或等放開再算一次"}
+   ],
+   "pins": {"1.l": "第一組，左腳（和 1.r 相通），接 GPIO", "1.r": "第一組，右腳（和 1.l 相通）", "2.l": "第二組，左腳（和 2.r 相通），接 GND", "2.r": "第二組，右腳（和 2.l 相通）"},
+   "code": "import lab\nfrom machine import Pin\nbtn = Pin(17, Pin.IN, Pin.PULL_UP)\nled = Pin(16, Pin.OUT)\nwhile lab.running():\n    led.value(1 if btn.value() == 0 else 0)\n    lab.sleep(0.02)\n",
+   "specs": "12 mm 輕觸開關，接觸電阻 < 0.1 Ω，額定 50 mA"
+  },
+  "slide-switch": {
+   "name": "滑動開關", "summary": "三腳單刀雙擲：中間腳依位置接到左邊或右邊的腳。",
+   "how": ["中間腳 2 接 GPIO（輸入）", "一邊 1 接 GND、另一邊 3 接 3V3，撥動就在 0 和 1 之間切換", "也可以只接 2 與 GND，程式開內部上拉"],
+   "mistakes": [
+    {"what": "1 和 3 直接接 3V3 與 GND 又把 2 接 GPIO 當輸出", "why": "GPIO 輸出會跟電源打架，腳位過流", "fix": "開關接 GPIO 時程式要設成輸入"},
+    {"what": "只接一邊", "why": "撥到沒接的那邊時 GPIO 浮接", "fix": "兩邊都接，或開內部上拉"}
+   ],
+   "pins": {"1": "一側接點", "2": "中間共用腳（接 GPIO）", "3": "另一側接點"},
+   "code": "import lab\nfrom machine import Pin\nsw = Pin(16, Pin.IN)   # 2→G16、1→GND、3→3V3\nwhile lab.running():\n    print('開關', sw.value())\n    lab.sleep(0.3)\n",
+   "specs": "SPDT，額定 0.3 A 50 V"
+  },
+  "potentiometer": {
+   "name": "可變電阻", "summary": "旋鈕分壓器：轉動改變中間腳的電壓，程式用 ADC 讀 0～4095。",
+   "how": ["VCC 接 3V3、GND 接 GND（兩端互換只是方向相反）", "SIG（中間腳）接有 ADC 的腳位，程式 ADC(Pin(n), atten=ADC.ATTN_11DB)", "read() 得 0～4095，對應 0～3.3 V"],
+   "mistakes": [
+    {"what": "VCC 接 5V", "why": "中間腳最高會到 5 V，超過 ESP32 腳位耐壓", "fix": "VCC 一律接 3V3"},
+    {"what": "SIG 接到沒有 ADC 的腳", "why": "那支腳只能讀 0／1，讀不到連續值", "fix": "改接 ADC 腳位（本模擬器允許 G16～G48 當 ADC，實機要查板子）"},
+    {"what": "只接 SIG 和 GND", "why": "沒有分壓，讀值永遠 0", "fix": "VCC 也要接"}
+   ],
+   "pins": {"GND": "一端接 GND", "SIG": "中間腳，輸出分壓，接 ADC 腳位", "VCC": "一端接 3V3"},
+   "code": "import lab\nfrom machine import Pin, ADC\npot = ADC(Pin(18), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    v = pot.read()\n    print('ADC', v, '電壓 %.2f V' % (v / 4095 * 3.3))\n    lab.sleep(0.2)\n",
+   "specs": "10 kΩ 線性；ATTN_11DB 可量 0～3.3 V"
+  },
+  "photoresistor-sensor": {
+   "name": "光敏模組", "summary": "光敏電阻加分壓電路：越亮 AO 電壓越高（本模組），用 ADC 讀光線。",
+   "how": ["VCC 接 3V3、GND 接 GND", "AO（類比輸出）接 ADC 腳位", "DO 是比較器的數位輸出（模擬器不支援），可以不接"],
+   "mistakes": [
+    {"what": "接 DO 卻想讀連續值", "why": "DO 只有 0／1，門檻由模組上的可變電阻決定", "fix": "改讀 AO"},
+    {"what": "沒接 VCC", "why": "分壓電路沒電，AO 永遠 0", "fix": "VCC 接 3V3"},
+    {"what": "門檻寫死", "why": "教室和戶外亮度差很多", "fix": "先印出讀值再決定門檻，或用可變電阻調"}
+   ],
+   "pins": {"VCC": "電源 3V3", "GND": "接 GND", "DO": "數位輸出（模擬器不支援，可不接）", "AO": "類比輸出，越亮電壓越高，接 ADC"},
+   "code": "import lab\nfrom machine import Pin, ADC\nldr = ADC(Pin(18), atten=ADC.ATTN_11DB)\nled = Pin(16, Pin.OUT)\nwhile lab.running():\n    v = ldr.read()\n    led.value(1 if v < 1500 else 0)\n    print('光線', v)\n    lab.sleep(0.2)\n",
+   "specs": "LDR 亮約 1 kΩ、暗約 200 kΩ，與 10 kΩ 分壓"
+  },
+  "buzzer": {
+   "name": "蜂鳴器", "summary": "有源蜂鳴器通電就響；用 PWM 改頻率可以變音高（無源蜂鳴器）。",
+   "how": ["腳 1 經 220 Ω 電阻接 GPIO，腳 2 接 GND", "程式 Pin 輸出 1 就響；或 PWM(Pin(n), freq=262) 做音階", "大聲或長時間使用建議用電晶體驅動"],
+   "mistakes": [
+    {"what": "直接接 GPIO 沒串電阻", "why": "蜂鳴器線圈電阻只有十幾歐姆，電流超過腳位 40 mA", "fix": "串 220 Ω 或用電晶體"},
+    {"what": "PWM 頻率設 1000 以上還想當音階", "why": "音階頻率在 262～1047 Hz 之間", "fix": "依音符表設 freq"},
+    {"what": "接反", "why": "有源蜂鳴器有極性（＋腳較長）", "fix": "＋接電阻那一側、－接 GND"}
+   ],
+   "pins": {"1": "正極（＋），經電阻接 GPIO", "2": "負極（−），接 GND"},
+   "code": "import lab\nfrom machine import Pin, PWM\nbz = PWM(Pin(16), freq=440)\nwhile lab.running():\n    bz.duty_u16(32768)\n    lab.sleep(0.2)\n    bz.duty_u16(0)\n    lab.sleep(0.3)\n",
+   "specs": "5 V 有源蜂鳴器約 30 mA；3.3 V 也能響但較小聲"
+  },
+  "servo": {
+   "name": "伺服馬達", "summary": "SG90：收到 50 Hz 的 PWM，脈寬 0.5～2.5 ms 決定 0～180 度的位置。",
+   "how": ["V+（紅）接 5V、GND（棕）接 GND", "PWM（橘）接 GPIO，程式 PWM(Pin(n), freq=50)", "角度→duty_u16：int((0.5 + 角度/180*2) / 20 * 65535)"],
+   "mistakes": [
+    {"what": "V+ 接 3V3", "why": "馬達力量不夠，轉不動或抖動", "fix": "V+ 接 5V（USB 供電）"},
+    {"what": "freq 不是 50", "why": "伺服只認 20 ms 週期的脈衝", "fix": "PWM(..., freq=50)"},
+    {"what": "沒共地", "why": "訊號線的 0 V 基準和馬達不同，角度亂跳", "fix": "馬達 GND 一定接板子 GND"}
+   ],
+   "pins": {"GND": "棕線，接 GND", "V+": "紅線，接 5V", "PWM": "橘線，接 GPIO（50 Hz PWM）"},
+   "code": "import lab\nfrom machine import Pin, PWM\nservo = PWM(Pin(17), freq=50)\ndef angle(a):\n    servo.duty_u16(int((0.5 + a / 180 * 2.0) / 20 * 65535))\nwhile lab.running():\n    for a in (0, 90, 180, 90):\n        angle(a)\n        lab.sleep(0.6)\n",
+   "specs": "SG90：4.8～6 V，約 100～250 mA，扭力 1.8 kg·cm"
+  },
+  "led-bar-graph": {
+   "name": "LED 長條", "summary": "10 段獨立的 LED，可做音量表、進度條。",
+   "how": ["每段 A（陽極）經各自的 220 Ω 接 GPIO 或 3V3", "每段 C（陰極）接 GND", "不夠 GPIO 時只接幾段，或用移位暫存器"],
+   "mistakes": [
+    {"what": "10 段共用一顆電阻", "why": "亮的段越多每段分到的電流越少，亮度不均", "fix": "每段各串一顆"},
+    {"what": "A、C 接反", "why": "LED 有方向", "fix": "A 接正、C 接 GND"}
+   ],
+   "pins": {"A1": "第 1 段陽極（A2～A10 同）", "C1": "第 1 段陰極（C2～C10 同）"},
+   "code": "import lab\nfrom machine import Pin\nsegs = [Pin(16, Pin.OUT), Pin(17, Pin.OUT), Pin(18, Pin.OUT)]\nwhile lab.running():\n    for i, s in enumerate(segs):\n        s.value(1)\n        lab.sleep(0.2)\n    for s in segs:\n        s.value(0)\n    lab.sleep(0.4)\n",
+   "specs": "每段同一般 LED：約 2 V、建議 5～10 mA"
+  },
+  "rgb-led": {
+   "name": "RGB LED", "summary": "三顆 LED 共一個陰極：R、G、B 各用一支 PWM 混色。",
+   "how": ["COM（最長腳）接 GND", "R、G、B 各串 220 Ω 接三支 GPIO", "三支都用 PWM，duty 越大該色越亮"],
+   "mistakes": [
+    {"what": "COM 接 3V3", "why": "這顆是共陰極，COM 要接 GND", "fix": "COM 接 GND（共陽極的才接 3V3）"},
+    {"what": "三色共用一顆電阻", "why": "紅色壓降最低會搶電流，混不出正確顏色", "fix": "每色各一顆電阻"}
+   ],
+   "pins": {"R": "紅，經 220 Ω 接 GPIO", "COM": "共陰極（最長腳），接 GND", "G": "綠，經 220 Ω 接 GPIO", "B": "藍，經 220 Ω 接 GPIO"},
+   "code": "import lab\nfrom machine import Pin, PWM\nr = PWM(Pin(16), freq=1000); g = PWM(Pin(17), freq=1000); b = PWM(Pin(18), freq=1000)\nwhile lab.running():\n    for rv, gv, bv in ((65535, 0, 0), (0, 65535, 0), (0, 0, 65535)):\n        r.duty_u16(rv); g.duty_u16(gv); b.duty_u16(bv)\n        lab.sleep(0.5)\n",
+   "specs": "紅 1.8 V、綠／藍 3.0 V；各 20 mA 上限"
+  },
+  "ssd1306": {
+   "name": "OLED SSD1306", "summary": "128×64 單色 OLED，I2C 兩條線就能畫字和圖。",
+   "how": ["3V3 接 3V3、GND 接 GND", "DATA（SDA）與 CLK（SCL）接兩支 GPIO，程式 I2C(0, scl=Pin(a), sda=Pin(b))", "import ssd1306 → SSD1306_I2C(128, 64, i2c)，畫完一定要 show()"],
+   "mistakes": [
+    {"what": "畫了沒 show()", "why": "畫面先在記憶體，show() 才送到螢幕", "fix": "每次畫完呼叫 oled.show()"},
+    {"what": "SDA、SCL 接反", "why": "I2C 掃不到裝置，程式 OSError", "fix": "對調兩條線，或改程式裡的腳位"},
+    {"what": "i2c.scan() 是空的", "why": "沒供電或接線鬆", "fix": "確認 3V3、GND，再看 SDA／SCL"}
+   ],
+   "pins": {"DATA": "I2C SDA（資料）", "CLK": "I2C SCL（時脈）", "DC": "SPI 用，I2C 不接", "RST": "重置，可不接", "CS": "SPI 用，I2C 不接", "3V3": "電源 3.3 V", "VIN": "電源 5 V（擇一）", "GND": "接 GND"},
+   "code": "import lab, ssd1306\nfrom machine import Pin, I2C\ni2c = I2C(0, scl=Pin(17), sda=Pin(16))\noled = ssd1306.SSD1306_I2C(128, 64, i2c)\nn = 0\nwhile lab.running():\n    oled.fill(0)\n    oled.text('n=%d' % n, 0, 0)\n    oled.show()\n    n += 1\n    lab.sleep(0.5)\n",
+   "specs": "I2C 位址 0x3C（有些 0x3D），約 20 mA"
+  },
+  "lcd1602": {
+   "name": "LCD1602（I2C 背板）", "summary": "16 字×2 行的字元液晶，背板 PCF8574 把它變成 I2C 四線。",
+   "how": ["VCC 接 5V、GND 接 GND", "SDA、SCL 接兩支 GPIO", "from machine_i2c_lcd import I2cLcd → I2cLcd(i2c, 0x27, 2, 16) → putstr()"],
+   "mistakes": [
+    {"what": "VCC 接 3V3 字很淡", "why": "LCD 本體要 5 V 才有足夠對比", "fix": "VCC 接 5V"},
+    {"what": "位址 0x27 找不到", "why": "有些背板是 0x3F", "fix": "先 i2c.scan() 看位址"},
+    {"what": "第二行沒字", "why": "DDRAM 第二行位址從 0x40 開始", "fix": "用 move_to(0, 1) 或換行字元"}
+   ],
+   "pins": {"GND": "接 GND", "VCC": "電源 5 V", "SDA": "I2C 資料", "SCL": "I2C 時脈"},
+   "code": "import lab\nfrom machine import Pin, I2C\nfrom machine_i2c_lcd import I2cLcd\ni2c = I2C(0, scl=Pin(17), sda=Pin(16))\nlcd = I2cLcd(i2c, 0x27, 2, 16)\nn = 0\nwhile lab.running():\n    lcd.move_to(0, 0)\n    lcd.putstr('count %d   ' % n)\n    n += 1\n    lab.sleep(1)\n",
+   "specs": "I2C 位址 0x27 或 0x3F；5 V、約 30 mA（背光）"
+  },
+  "hc-sr04": {
+   "name": "超音波 HC-SR04", "summary": "送 10 µs 脈衝到 TRIG，ECHO 的高電位時間 ÷ 58 就是距離（公分）。",
+   "how": ["VCC 接 5V、GND 接 GND", "TRIG 接 GPIO（輸出）、ECHO 接 GPIO（輸入）", "程式 time_pulse_us(echo, 1, 30000) 量微秒，÷ 58 得公分"],
+   "mistakes": [
+    {"what": "ECHO 直接接 3.3 V 的腳", "why": "ECHO 輸出 5 V，長期會傷腳位", "fix": "實機用 1 kΩ＋2 kΩ 分壓到 3.3 V"},
+    {"what": "回 -2 或 -1", "why": "超過 timeout 沒等到回波（太遠或沒接）", "fix": "檢查接線，timeout 設 30000 µs（約 5 m）"},
+    {"what": "量太快", "why": "回波還沒結束又送下一次", "fix": "兩次量測間隔至少 60 ms"}
+   ],
+   "pins": {"VCC": "電源 5 V", "TRIG": "觸發輸入，接 GPIO 輸出", "ECHO": "回波輸出，接 GPIO 輸入", "GND": "接 GND"},
+   "code": "import lab\nfrom machine import Pin, time_pulse_us\ntrig = Pin(17, Pin.OUT); echo = Pin(16, Pin.IN)\nwhile lab.running():\n    trig.value(1); trig.value(0)\n    us = time_pulse_us(echo, 1, 30000)\n    print('距離', us / 58 if us > 0 else '無', 'cm')\n    lab.sleep(0.3)\n",
+   "specs": "2～400 cm，5 V 15 mA"
+  },
+  "dht22": {
+   "name": "溫濕度 DHT22", "summary": "單線協定回傳溫度與濕度，兩秒最多讀一次。",
+   "how": ["VCC 接 3V3、GND 接 GND", "SDA（資料）接一支 GPIO；實機建議加 10 kΩ 上拉", "import dht → DHT22(Pin(n)) → measure() → temperature()、humidity()"],
+   "mistakes": [
+    {"what": "讀太快", "why": "感測器要 2 秒才能更新", "fix": "lab.sleep(2)"},
+    {"what": "沒加 try", "why": "偶爾時序失敗會丟 OSError 讓程式結束", "fix": "measure() 包在 try/except OSError"},
+    {"what": "接到 NC 腳", "why": "NC 是空腳", "fix": "資料線接 SDA（第 2 腳）"}
+   ],
+   "pins": {"VCC": "電源 3.3 V", "SDA": "資料線，接 GPIO", "NC": "空腳，不接", "GND": "接 GND"},
+   "code": "import lab, dht\nfrom machine import Pin\ns = dht.DHT22(Pin(18))\nwhile lab.running():\n    try:\n        s.measure()\n        print('溫度', s.temperature(), '濕度', s.humidity())\n    except OSError as e:\n        print('讀取失敗', e)\n    lab.sleep(2)\n",
+   "specs": "溫度 −40～80 °C ±0.5、濕度 0～100% ±2；3.3～5 V"
+  },
+  "neopixel-strip": {
+   "name": "NeoPixel 燈條", "summary": "WS2812 全彩 LED，一條資料線串接，程式用 neopixel 模組設顏色。",
+   "how": ["VCC 接 5V、GND 接 GND", "DIN（資料入）接 GPIO；DOUT 可接下一條燈條", "neopixel.NeoPixel(Pin(n), 顆數) → np[i] = (r, g, b) → np.write()"],
+   "mistakes": [
+    {"what": "設了顏色沒 write()", "why": "資料只在記憶體，write() 才送出", "fix": "改完呼叫 np.write()"},
+    {"what": "全亮白色太多顆", "why": "每顆全亮 60 mA，8 顆就 480 mA，USB 供電撐不住", "fix": "降低亮度或外接電源"},
+    {"what": "接到 DOUT", "why": "DOUT 是給下一條的輸出", "fix": "資料線接 DIN"}
+   ],
+   "pins": {"GND": "接 GND", "VCC": "電源 5 V", "DIN": "資料入，接 GPIO", "DOUT": "資料出，接下一條燈條（可不接）"},
+   "code": "import lab, neopixel\nfrom machine import Pin\nnp = neopixel.NeoPixel(Pin(16), 8)\ni = 0\nwhile lab.running():\n    np.fill((0, 0, 0))\n    np[i % 8] = (0, 40, 0)\n    np.write()\n    i += 1\n    lab.sleep(0.1)\n",
+   "specs": "每顆最大 60 mA（白全亮），5 V；資料 800 kHz"
+  },
+  "pir": {
+   "name": "PIR 人體感測", "summary": "偵測到紅外線變化（有人走動）OUT 就變高電位幾秒。",
+   "how": ["VCC 接 5V、GND 接 GND", "OUT 接 GPIO（輸入）", "程式 Pin(n, Pin.IN) 讀 1 代表有人"],
+   "mistakes": [
+    {"what": "一直讀到 1", "why": "剛上電要暖機 30～60 秒，或靈敏度／延遲旋鈕轉太大", "fix": "等一下再讀，調低旋鈕"},
+    {"what": "接 3V3", "why": "多數 PIR 模組要 5 V 才穩定", "fix": "VCC 接 5V"}
+   ],
+   "pins": {"VCC": "電源 5 V", "OUT": "數位輸出，有人＝1", "GND": "接 GND"},
+   "code": "import lab\nfrom machine import Pin\npir = Pin(17, Pin.IN)\nled = Pin(16, Pin.OUT)\nwhile lab.running():\n    led.value(pir.value())\n    print('有人' if pir.value() else '沒人')\n    lab.sleep(0.2)\n",
+   "specs": "HC-SR501：5 V，偵測 3～7 m，輸出 3.3 V"
+  },
+  "relay": {
+   "name": "繼電器模組", "summary": "用小電流的 GPIO 控制大電流的開關：IN 高電位時 COM 接到 NO。",
+   "how": ["VCC 接 5V、GND 接 GND、IN 接 GPIO", "負載串在 COM 與 NO（常開）之間：IN=1 才通", "想要平常通、按了斷就用 NC（常閉）"],
+   "mistakes": [
+    {"what": "IN 接了但 VCC 沒接", "why": "線圈沒電不會吸合", "fix": "VCC、GND 都要接"},
+    {"what": "分不清 NO／NC", "why": "NO 平常斷、NC 平常通", "fix": "看模組絲印，或用萬用電表量"},
+    {"what": "用繼電器切 110 V", "why": "危險，教室不要做", "fix": "只控制低壓直流（燈、小馬達）"}
+   ],
+   "pins": {"VCC": "線圈電源 5 V", "GND": "接 GND", "IN": "控制輸入，接 GPIO", "NO": "常開接點", "COM": "共用接點", "NC": "常閉接點"},
+   "code": "import lab\nfrom machine import Pin\nrelay = Pin(16, Pin.OUT)\nwhile lab.running():\n    relay.value(1)\n    print('吸合')\n    lab.sleep(1)\n    relay.value(0)\n    print('放開')\n    lab.sleep(1)\n",
+   "specs": "SRD-05VDC：線圈 5 V 約 70 mA，接點 10 A"
+  },
+  "stepper": {
+   "name": "步進馬達", "summary": "照順序給四個線圈通電就一步一步轉，步數決定角度。",
+   "how": ["四支腳 A-、A+、B+、B- 接四支 GPIO（實機要經 ULN2003 驅動板，不能直接接）", "程式依半步序列輪流輸出 1000、1100、0100…", "每步之間 lab.sleep(0.002) 以上"],
+   "mistakes": [
+    {"what": "直接用 GPIO 推馬達", "why": "線圈電流超過腳位 40 mA", "fix": "實機用 ULN2003 模組"},
+    {"what": "順序接錯只會抖", "why": "線圈相序不對", "fix": "對調其中兩條線"}
+   ],
+   "pins": {"A-": "A 線圈負端", "A+": "A 線圈正端", "B+": "B 線圈正端", "B-": "B 線圈負端"},
+   "code": "import lab\nfrom machine import Pin\npins = [Pin(16, Pin.OUT), Pin(17, Pin.OUT), Pin(18, Pin.OUT), Pin(48, Pin.OUT)]\nseq = ['1000', '1100', '0100', '0110', '0010', '0011', '0001', '1001']\nwhile lab.running():\n    for s in seq:\n        for p, v in zip(pins, s):\n            p.value(int(v))\n        lab.sleep(0.005)\n",
+   "specs": "示意用 200 步／圈（NEMA 17）；28BYJ-48 要 2048 步／圈"
+  },
+  "joystick": {
+   "name": "搖桿", "summary": "兩顆可變電阻加一顆按鍵：VERT、HORZ 讀 ADC，SEL 按下為 0。",
+   "how": ["VCC 接 3V3、GND 接 GND", "VERT、HORZ 接兩支 ADC 腳位", "SEL 接 GPIO 並開內部上拉，按下讀到 0"],
+   "mistakes": [
+    {"what": "VCC 接 5V", "why": "ADC 腳位會被餵到 5 V", "fix": "接 3V3"},
+    {"what": "中間不是 2048", "why": "機械中心點有誤差", "fix": "程式先讀一次當中心，再算偏移"}
+   ],
+   "pins": {"VCC": "電源 3.3 V", "VERT": "垂直軸類比輸出", "HORZ": "水平軸類比輸出", "SEL": "按下接 GND", "GND": "接 GND"},
+   "code": "import lab\nfrom machine import Pin, ADC\nx = ADC(Pin(16), atten=ADC.ATTN_11DB); y = ADC(Pin(17), atten=ADC.ATTN_11DB)\nsel = Pin(18, Pin.IN, Pin.PULL_UP)\nwhile lab.running():\n    print('x', x.read(), 'y', y.read(), '按下' if sel.value() == 0 else '')\n    lab.sleep(0.2)\n",
+   "specs": "兩顆 10 kΩ 可變電阻＋輕觸開關"
+  }
+ },
+ "boards": {
+  "tqt_pro": {
+   "name": "LILYGO T-QT Pro", "summary": "ESP32-S3 小板，內建 128×128 彩色螢幕與兩顆按鍵，擴充腳只有四支。",
+   "power": {"3V3": "3.3 V 輸出（給感測器、OLED）", "5V": "USB 5 V（給伺服、繼電器）", "GND": "接地"},
+   "pins": {"16": {"label": "G16", "desc": "數位輸入輸出、PWM；模擬器也可當 ADC", "adc": false, "pwm": true}, "17": {"label": "G17", "desc": "數位輸入輸出、PWM", "adc": false, "pwm": true}, "18": {"label": "G18", "desc": "數位輸入輸出、PWM", "adc": false, "pwm": true}, "48": {"label": "G48", "desc": "數位輸入輸出、PWM", "adc": false, "pwm": true}, "4": {"label": "G4", "desc": "電池電壓分壓，只能讀", "adc": true, "pwm": false}, "0": {"label": "BOOT", "desc": "左按鍵，可當輸入（PULL_UP，按下 0）", "adc": false, "pwm": false}, "47": {"label": "KEY", "desc": "右按鍵，可當輸入（PULL_UP，按下 0）", "adc": false, "pwm": false}},
+   "tips": ["只有 G16、G17、G18、G48 能接外部元件", "實機沒有可用的 ADC 擴充腳；模擬器放寬讓四支都能當 ADC，程式註解要提醒", "螢幕由 lab.display 控制，不要自己初始化 SPI"]
+  },
+  "devkit": {
+   "name": "ESP32 DevKit V1", "summary": "最常見的 ESP32 開發板，30 支腳，板載藍色 LED 在 GPIO2。",
+   "power": {"3V3": "3.3 V 輸出", "VIN": "USB 5 V", "GND": "接地（兩支）"},
+   "pins": {"4": {"label": "D4", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "5": {"label": "D5", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "12": {"label": "D12", "desc": "輸入輸出、PWM（開機時要低）", "adc": false, "pwm": true}, "13": {"label": "D13", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "14": {"label": "D14", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "15": {"label": "D15", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "16": {"label": "RX2", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "17": {"label": "TX2", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "18": {"label": "D18", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "19": {"label": "D19", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "21": {"label": "D21", "desc": "輸入輸出、PWM（常當 I2C SDA）", "adc": false, "pwm": true}, "22": {"label": "D22", "desc": "輸入輸出、PWM（常當 I2C SCL）", "adc": false, "pwm": true}, "23": {"label": "D23", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "25": {"label": "D25", "desc": "輸入輸出、PWM、DAC", "adc": false, "pwm": true}, "26": {"label": "D26", "desc": "輸入輸出、PWM、DAC", "adc": false, "pwm": true}, "27": {"label": "D27", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "32": {"label": "D32", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "33": {"label": "D33", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "34": {"label": "D34", "desc": "只能輸入，ADC", "adc": true, "pwm": false}, "35": {"label": "D35", "desc": "只能輸入，ADC", "adc": true, "pwm": false}, "36": {"label": "VP", "desc": "只能輸入，ADC", "adc": true, "pwm": false}, "39": {"label": "VN", "desc": "只能輸入，ADC", "adc": true, "pwm": false}, "2": {"label": "D2", "desc": "板載 LED（lab.led）", "adc": false, "pwm": true}, "1": {"label": "TX0", "desc": "序列埠，不要用", "adc": false, "pwm": false}, "3": {"label": "RX0", "desc": "序列埠，不要用", "adc": false, "pwm": false}, "0": {"label": "BOOT", "desc": "BOOT 鍵，開機時要高", "adc": false, "pwm": false}},
+   "tips": ["34、35、36、39 只能輸入，沒有上拉", "板載 LED 在 GPIO2，lab.led(1) 會亮", "6～11 接內建快閃，不能用"]
+  },
+  "tdisplay_s3": {
+   "name": "LILYGO T-Display S3", "summary": "ESP32-S3 加 1.9 吋螢幕，兩排腳位，大部分可當 ADC。",
+   "power": {"3V3": "3.3 V 輸出", "5V": "USB 5 V", "GND": "接地"},
+   "pins": {"1": {"label": "G1", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "2": {"label": "G2", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "3": {"label": "G3", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "10": {"label": "G10", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "11": {"label": "G11", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "12": {"label": "G12", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "13": {"label": "G13", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "16": {"label": "G16", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "17": {"label": "G17", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "18": {"label": "G18", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "21": {"label": "G21", "desc": "輸入輸出、PWM", "adc": false, "pwm": true}, "43": {"label": "G43", "desc": "輸入輸出、PWM（TX）", "adc": false, "pwm": true}, "44": {"label": "G44", "desc": "輸入輸出、PWM（RX）", "adc": false, "pwm": true}, "0": {"label": "BOOT", "desc": "左按鍵，可當輸入", "adc": false, "pwm": false}, "14": {"label": "KEY", "desc": "右按鍵，可當輸入", "adc": false, "pwm": false}, "4": {"label": "G4", "desc": "電池電壓，只能讀", "adc": true, "pwm": false}},
+   "tips": ["螢幕是並列介面，佔掉 5～9、38～48 等腳", "G1、G2、G3、G10～G13 可當 ADC", "19、20 是 USB，不要接"]
+  },
+  "xiao_esp32s3": {
+   "name": "Seeed XIAO ESP32S3", "summary": "拇指大小的 ESP32-S3，D0～D10 共 11 支腳，可加 Sense 鏡頭擴充板。",
+   "power": {"3V3": "3.3 V 輸出", "5V": "USB 5 V", "GND": "接地"},
+   "pins": {"1": {"label": "D0", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "2": {"label": "D1", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "3": {"label": "D2", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "4": {"label": "D3", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "5": {"label": "D4", "desc": "輸入輸出、PWM、ADC（常當 SDA）", "adc": true, "pwm": true}, "6": {"label": "D5", "desc": "輸入輸出、PWM、ADC（常當 SCL）", "adc": true, "pwm": true}, "7": {"label": "D8", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "8": {"label": "D9", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "9": {"label": "D10", "desc": "輸入輸出、PWM、ADC", "adc": true, "pwm": true}, "43": {"label": "D6", "desc": "輸入輸出（TX）", "adc": false, "pwm": true}, "44": {"label": "D7", "desc": "輸入輸出（RX）", "adc": false, "pwm": true}, "21": {"label": "LED", "desc": "板載黃色 LED，低電位亮", "adc": false, "pwm": true}, "0": {"label": "BOOT", "desc": "BOOT 鍵", "adc": false, "pwm": false}},
+   "tips": ["一定要接天線，不然 Wi-Fi 訊號很差", "板載 LED 是低電位亮：lab.led(1) 會處理反相", "裝 Sense 擴充板後 10～18、38～48 被鏡頭與麥克風用掉"]
+  }
+ }
+}

@@ -6,6 +6,7 @@ import { solve, BOARDS, PARTS } from "./circuit.js";
 import { BREADBOARD, holeAt } from "./breadboard.js";
 import { toWokwiDiagram, fromWokwiDiagram } from "./diagram.js";
 import { createEngine } from "./engine.js";
+import { attachPart } from "./parts.js";
 
 const SVGNS = "http://www.w3.org/2000/svg";
 export const WIRE_COLORS = ["#d33", "#111", "#2a7", "#27d", "#e90", "#a3c", "#999", "#fff"];
@@ -26,7 +27,11 @@ export function createSimulator(opts) {
   let selection = new Set();       // "partId" | "wire:3" | "board" | "bb"
   const undoStack = [], redoStack = [];
   let engine = null, running = false, pinState = {}, gridSnap = true, shortNets = [];
+  let hlWires = new Set();          // 步驟提示：高亮的線
   let cards = null;                 // part_cards.json（說明小卡與腳位說明）
+  const partRuntime = {};           // 元件層的執行期狀態（解碼器畫面、燈條顏色、步進角度）
+  const attached = {};              // partId → detach()
+  const wiringListeners = new Set();
 
   // ---------- DOM ----------
   const viewport = root.querySelector(".sim-viewport");
@@ -160,9 +165,10 @@ export function createSimulator(opts) {
     wireLayer.innerHTML = "";
     doc.wires.forEach((w, i) => {
       const d = wirePath(w); if (!d) return;
+      const hl = hlWires.has(i);
       const sel = selection.has("wire:" + i), isShort = shortNets.length && [w.a, w.b].some((r) => shortNets.includes(netOf(r)));
       const path = document.createElementNS(SVGNS, "path"); path.setAttribute("d", d); path.setAttribute("stroke", isShort ? "#f00" : w.color);
-      path.setAttribute("class", "wire" + (sel ? " selected" : "") + (isShort ? " short" : "")); path.dataset.index = i; wireLayer.appendChild(path);
+      path.setAttribute("class", "wire" + (sel ? " selected" : "") + (isShort ? " short" : "") + (hl ? " hl" : "") + (hlWires.size && !hl ? " dim" : "")); path.dataset.index = i; wireLayer.appendChild(path);
       if (w.label) { const m = midpoint(w); const t = document.createElementNS(SVGNS, "text"); t.setAttribute("x", m[0]); t.setAttribute("y", m[1] - 6); t.setAttribute("class", "wire-label"); t.textContent = w.label; wireLayer.appendChild(t); }
       if (sel) for (const [k, pt] of (w.pts || []).entries()) { const h = document.createElementNS(SVGNS, "circle"); h.setAttribute("cx", pt[0]); h.setAttribute("cy", pt[1]); h.setAttribute("r", 5); h.setAttribute("class", "wp"); h.dataset.wire = i; h.dataset.pt = k; wireLayer.appendChild(h); }
     });
@@ -204,8 +210,11 @@ export function createSimulator(opts) {
   }
   const boardButtons = () => (doc.board === "tqt_pro" ? [0, 47] : doc.board === "tdisplay_s3" ? [0, 14] : [0]);
   let stoppedForShort = false;
+  let lastStructure = "";
   function tick() {
-    const r = solve(circuitForSolver(), io(), breadboardLinks());
+    const r = solve(circuitForSolver(), { ...io(), prevV: lastResult ? lastResult.nodeV : {} }, breadboardLinks());
+    const structure = Object.keys(doc.parts).join() + "|" + doc.wires.map((w) => w.a + w.b).join() + "|" + JSON.stringify(Object.values(doc.parts).map((p) => p.snaps));
+    if (structure !== lastStructure) { lastStructure = structure; lastResult = r; queueMicrotask(syncAttachments); }
     lastResult = r; burned = new Set(r.burned);
     shortNets = r.warnings.filter((w) => (w.code === "SHORT" || w.code === "SUPPLY_MIX") && w.net).map((w) => w.net);
     if (engine) {
@@ -231,6 +240,12 @@ export function createSimulator(opts) {
         case "slide-switch": el.value = ui[id]?.value ? 1 : 0; break;
         case "potentiometer": if (el.value === undefined || Math.abs(el.value / 100 - (ui[id]?.value ?? 0.5)) > 0.02) el.value = (ui[id]?.value ?? 0.5) * 100; break;
         case "photoresistor-sensor": el.ledPower = !!s.powered; break;
+        case "ssd1306": { const rt = partRuntime[id]; if (rt?.decoder && (rt.decoder.dirty || !rt.painted) && el.imageData) { rt.decoder.toRGBA(el.imageData.data); rt.decoder.dirty = false; rt.painted = true; el.redraw && el.redraw(); } break; }
+        case "lcd1602": { const rt = partRuntime[id]; if (rt?.decoder) { if (rt.decoder.dirty || !rt.painted) { el.characters = rt.decoder.characters(); rt.decoder.dirty = false; rt.painted = true; } el.backlight = !!s.powered && rt.decoder.backlight; el.cursor = rt.decoder.cursor; el.blink = rt.decoder.blink; } else el.backlight = false; break; }
+        case "neopixel-strip": { const rt = partRuntime[id]; if (el.setPixel && el.shadowRoot && el.shadowRoot.querySelector("g.pixel")) { const cols = rt?.colors || []; for (let i = 0; i < 8; i++) { const c = s.powered && cols[i] ? cols[i] : [0, 0, 0]; try { el.setPixel(0, i, { r: c[0] / 255, g: c[1] / 255, b: c[2] / 255 }); } catch (e) {} } } break; }
+        case "stepper": { const rt = partRuntime[id]; el.angle = rt?.angle ?? 0; break; }
+        case "joystick": { const u = ui[id] || {}; el.xValue = u.x ?? 0; el.yValue = u.y ?? 0; el.pressed = !!u.pressed; break; }
+        case "relay": el.setAttribute("energized", s.energized ? "true" : "false"); el.setAttribute("powered", s.powered ? "true" : "false"); break;
       }
     }
     const boardEl = partsLayer.querySelector(".sim-board"); if (!boardEl || !engine) return;
@@ -346,9 +361,16 @@ export function createSimulator(opts) {
     if (kind === "press") { ui[id].pressed = true; drag = { kind: "interact", id, mode: "press" }; viewport.setPointerCapture(ev.pointerId); tick(); }
     else if (kind === "toggle") { ui[id].value = ui[id].value ? 0 : 1; tick(); }
     else if (kind === "knob" || kind === "light") { drag = { kind: "interact", id, mode: kind, sy: ev.clientY, v0: kind === "light" ? (ui[id].light ?? 0.5) : (ui[id].value ?? 0.5) }; viewport.setPointerCapture(ev.pointerId); }
+    else if (kind === "distance") { drag = { kind: "interact", id, mode: "distance", sy: ev.clientY, v0: ui[id].distance ?? 100 }; viewport.setPointerCapture(ev.pointerId); }
+    else if (kind === "motion") { ui[id].motion = true; tick(); clearTimeout(ui[id]._t); ui[id]._t = setTimeout(() => { ui[id].motion = false; tick(); }, 2500); onStatus({ toast: { text: id + "：偵測到人（OUT 高電位 2.5 秒）", kind: "info" } }); }
+    else if (kind === "joystick") { const [wx, wy] = toWorld(ev.clientX, ev.clientY); drag = { kind: "interact", id, mode: "joystick", cx: wx, cy: wy }; viewport.setPointerCapture(ev.pointerId); if (ev.shiftKey) { ui[id].pressed = true; } tick(); }
+    else if (kind === "climate") { onStatus({ toast: { text: "溫濕度在右側屬性面板用滑桿調整", kind: "info" } }); }
   }
-  function interactMove(d, ev) { if (d.mode === "knob" || d.mode === "light") { const v = Math.max(0, Math.min(1, d.v0 + (d.sy - ev.clientY) / 150)); if (d.mode === "knob") ui[d.id].value = v; else ui[d.id].light = v; tick(); const el = partEls[d.id]; if (el) el.querySelector(".sim-label").textContent = (d.mode === "knob" ? "轉到 " : "光線 ") + Math.round(v * 100) + "%"; } }
-  function interactEnd(d) { if (d.mode === "press") { ui[d.id].pressed = false; tick(); } render(); }
+  function interactMove(d, ev) {
+    if (d.mode === "distance") { const v = Math.max(2, Math.min(400, Math.round(d.v0 + (d.sy - ev.clientY) * 2))); ui[d.id].distance = v; tick(); const el = partEls[d.id]; if (el) el.querySelector(".sim-label").textContent = "距離 " + v + " cm"; return; }
+    if (d.mode === "joystick") { const [wx, wy] = toWorld(ev.clientX, ev.clientY); const x = Math.max(-1, Math.min(1, (wx - d.cx) / 40)), y = Math.max(-1, Math.min(1, (wy - d.cy) / 40)); ui[d.id].x = Math.round(x * 100) / 100; ui[d.id].y = Math.round(y * 100) / 100; tick(); return; }
+    if (d.mode === "knob" || d.mode === "light") { const v = Math.max(0, Math.min(1, d.v0 + (d.sy - ev.clientY) / 150)); if (d.mode === "knob") ui[d.id].value = v; else ui[d.id].light = v; tick(); const el = partEls[d.id]; if (el) el.querySelector(".sim-label").textContent = (d.mode === "knob" ? "轉到 " : "光線 ") + Math.round(v * 100) + "%"; } }
+  function interactEnd(d) { if (d.mode === "press") { ui[d.id].pressed = false; tick(); } if (d.mode === "joystick") { ui[d.id].x = 0; ui[d.id].y = 0; ui[d.id].pressed = false; tick(); } render(); }
 
   function select(id, add) {
     if (!id) selection = new Set(); else if (add) { if (selection.has(id)) selection.delete(id); else selection.add(id); } else selection = new Set([id]);
@@ -372,10 +394,26 @@ export function createSimulator(opts) {
     return { minX, minY, maxX, maxY, items };
   }
 
+  /** 元件層接上引擎：每個第二批元件一個 attachPart；接線變了就通知它們重新登記腳位 */
+  const ctx = {
+    gpioOf: (id, pin) => { const r = lastResult; if (!r) return null; const members = r.nets.nets[r.nets.find(id + ":" + pin)] || []; for (const m of members) { const g = /^board:(\d+)$/.exec(m); if (g) return Number(g[1]); } return null; },
+    powered: (id) => !!(lastResult?.parts?.[id]?.powered ?? true),
+    level: (g) => (pinState[g] ? pinState[g].level : null),
+    ui,
+    setState: (id, st) => { partRuntime[id] = { ...(partRuntime[id] || {}), ...st }; applyState(); },
+    onWiringChange: (fn) => { wiringListeners.add(fn); return () => wiringListeners.delete(fn); },
+  };
+  function syncAttachments() {
+    if (!engine) return;
+    for (const id of Object.keys(attached)) if (!doc.parts[id]) { attached[id](); delete attached[id]; delete partRuntime[id]; }
+    for (const [id, p] of Object.entries(doc.parts)) if (!attached[id] && ["ssd1306", "lcd1602", "neopixel-strip", "hc-sr04", "dht22", "stepper"].includes(p.type)) attached[id] = attachPart(engine, id, p.type, ctx);
+    for (const fn of wiringListeners) { try { fn(); } catch (e) {} }
+  }
   const api = {
     doc, view, get running() { return running; }, get result() { return lastResult; }, get selected() { return selection.size === 1 ? [...selection][0] : null; }, get selection() { return [...selection]; },
     wireColor: 0, get gridSnap() { return gridSnap; }, set gridSnap(v) { gridSnap = !!v; }, get wireMode() { return wireMode; }, set wireMode(v) { wireMode = !!v; },
     pinInfo, nodeVoltage, bounds, tick, render, select, toast,
+    highlightWires(idx) { hlWires = new Set(idx || []); renderWires(); },
     setCards(c) { cards = c; }, get cards() { return cards; },
     addPart(type, x, y) {
       pushUndo(); const base = { led: "led", resistor: "r", pushbutton: "btn", "slide-switch": "sw", potentiometer: "pot", "photoresistor-sensor": "ldr", buzzer: "bz", servo: "servo", "led-bar-graph": "bar", "rgb-led": "rgb" }[type] || type;
@@ -450,13 +488,14 @@ export function createSimulator(opts) {
       engine.on("state", (st) => { running = st === "running"; onStatus({ running, engineState: st }); });
       engine.on("console", (m) => onEvent(m));
       engine.on("screen", () => applyState());
-      onStatus({ engine: engine.kind, capabilities: engine.capabilities }); tick(); return engine;
+      onStatus({ engine: engine.kind, capabilities: engine.capabilities }); syncAttachments(); tick(); return engine;
     },
     async run(code, name) { if (!engine) await api.attach(); if (shortNets.length) { toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } burned = new Set(); stoppedForShort = false; const r = await engine.boot({ program: code, name: name || "main.py", board: doc.board }); if (r.ok) { running = true; onStatus({ running }); } return r; },
     async stop() { if (!engine) return true; const ok = await engine.stop(); running = false; onStatus({ running }); return ok; },
     pause() { if (engine) engine.pause(); },
     step() { if (engine) engine.step(); },
-    async reset() { if (engine) await engine.reset(); for (const k of Object.keys(ui)) delete ui[k]; burned = new Set(); pinState = engine ? engine.pins() : {}; tick(); },
+    async reset() { if (engine) await engine.reset(); for (const k of Object.keys(ui)) delete ui[k]; burned = new Set(); pinState = engine ? engine.pins() : {}; for (const id of Object.keys(partRuntime)) { const rt = partRuntime[id]; if (rt.decoder) { const T = rt.decoder.constructor; partRuntime[id] = {}; } else partRuntime[id] = {}; } for (const id of Object.keys(attached)) { attached[id](); delete attached[id]; } syncAttachments(); tick(); },
+    partRuntime, ui,
     async check(code) { if (!engine) await api.attach(); return engine.check(code); },
     cmd(c) { if (engine) engine.cmd(c); },
   };

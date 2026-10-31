@@ -13,6 +13,16 @@ export const CATALOG = {
   servo: { tag: "wokwi-servo", w: 170.1, h: 119.5, label: "伺服馬達", attrs: {} },
   "led-bar-graph": { tag: "wokwi-led-bar-graph", w: 38.2, h: 96.4, label: "LED 長條", attrs: { color: "red" } },
   "rgb-led": { tag: "wokwi-rgb-led", w: 42.1, h: 72.6, label: "RGB LED", attrs: {} },
+  // 第二批
+  ssd1306: { tag: "wokwi-ssd1306", w: 150, h: 116, label: "OLED SSD1306", attrs: {}, cat: "顯示" },
+  lcd1602: { tag: "wokwi-lcd1602", w: 302.4, h: 136.2, label: "LCD1602（I2C）", attrs: { pins: "i2c" }, cat: "顯示" },
+  "hc-sr04": { tag: "wokwi-hc-sr04", w: 170.1, h: 94.5, label: "超音波 HC-SR04", attrs: {}, interact: "distance", cat: "感測" },
+  dht22: { tag: "wokwi-dht22", w: 57.1, h: 116.7, label: "溫濕度 DHT22", attrs: {}, interact: "climate", cat: "感測" },
+  "neopixel-strip": { tag: "wokwi-neopixel-matrix", w: 201.4, h: 22.7, label: "NeoPixel 燈條（8 顆）", attrs: { rows: "1", cols: "8" }, cat: "致動" },
+  pir: { tag: "wokwi-pir-motion-sensor", w: 90.7, h: 92.4, label: "PIR 人體感測", attrs: {}, interact: "motion", cat: "感測" },
+  relay: { tag: "sim-relay", w: 120, h: 70, label: "繼電器模組", attrs: {}, cat: "致動" },
+  stepper: { tag: "wokwi-stepper-motor", w: 163.7, h: 178.8, label: "步進馬達", attrs: { size: "17" }, cat: "致動" },
+  joystick: { tag: "wokwi-analog-joystick", w: 102.8, h: 120.2, label: "搖桿", attrs: {}, interact: "joystick", cat: "輸入" },
 };
 for (const k of Object.keys(CATALOG)) CATALOG[k].pins = PARTS[k].pins;
 
@@ -29,6 +39,17 @@ export const PIN_TABLE = {
   "rgb-led": { R: [8.5, 44], COM: [18, 54], G: [26.4, 44], B: [35.7, 44] },
 };
 const mm = 96 / 25.4;
+Object.assign(PIN_TABLE, {
+  ssd1306: { DATA: [36.5, 12.5], CLK: [45.5, 12.5], DC: [54.5, 12.5], RST: [64.5, 12.5], CS: [74.5, 12.5], "3V3": [83.5, 12.5], VIN: [93.5, 12.5], GND: [103.5, 12] },
+  lcd1602: { GND: [4, 32], VCC: [4, 41.5], SDA: [4, 51], SCL: [4, 60.5] },
+  "hc-sr04": { VCC: [71.3, 94.5], TRIG: [81.3, 94.5], ECHO: [91.3, 94.5], GND: [101.3, 94.5] },
+  dht22: { VCC: [15, 114.9], SDA: [24.5, 114.9], NC: [34.1, 114.9], GND: [43.8, 114.9] },
+  "neopixel-strip": { GND: [100.7 - 1.5 * 9.6, 22.7], VCC: [100.7 - 0.5 * 9.6, 22.7], DIN: [100.7 + 0.5 * 9.6, 22.7], DOUT: [100.7 + 1.5 * 9.6, 22.7] },
+  pir: { VCC: [36.2, 92], OUT: [45.9, 92], GND: [55.6, 92] },
+  relay: { VCC: [12, 64], GND: [28, 64], IN: [44, 64], NO: [76, 64], COM: [92, 64], NC: [108, 64] },
+  stepper: { "A-": [66.8, 178.8], "A+": [66.8 + 2.54 * mm, 178.8], "B+": [66.8 + 5.08 * mm, 178.8], "B-": [66.8 + 7.62 * mm, 178.8] },
+  joystick: { VCC: [33, 115.8], VERT: [42.6, 115.8], HORZ: [52.2, 115.8], SEL: [61.8, 115.8], GND: [71.4, 115.8] },
+});
 PIN_TABLE["led-bar-graph"] = {};
 for (let i = 1; i <= 10; i++) { PIN_TABLE["led-bar-graph"]["A" + i] = [1.27 * mm, (1.27 + (i - 1) * 2.54) * mm]; PIN_TABLE["led-bar-graph"]["C" + i] = [8.89 * mm, (1.27 + (i - 1) * 2.54) * mm]; }
 

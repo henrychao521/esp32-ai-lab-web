@@ -32,8 +32,20 @@ async function createWasmEngine(opts) {
   const em = makeEmitter();
   const board = opts.board || "tqt_pro";
   let prev = {}, t0 = performance.now(), status = "idle";
+  const pulseSources = {}, sensors = {}, i2cDevices = {};   // 引擎 A 的同步替代（規格第 4 節）
+  let i2cReplyBuf = null;
   const vb = await mod.createVirtualBoard({
     board,
+    hooks: {
+      i2cInit: (bus, scl, sda) => em.emit("i2cinit", bus, scl, sda),
+      i2cScan: (bus) => Object.keys(i2cDevices[bus] || {}).map(Number),
+      i2cWrite: (bus, addr, bytes) => { const known = !!(i2cDevices[bus] && i2cDevices[bus][addr]); em.emit("i2c", bus, addr, bytes, false); return known; },
+      i2cRead: (bus, addr, n) => { i2cReplyBuf = null; em.emit("i2c", bus, addr, new Uint8Array(0), true, n); const d = i2cReplyBuf; i2cReplyBuf = null; return d ? d.slice(0, n) : (i2cDevices[bus] && i2cDevices[bus][addr] ? new Uint8Array(n) : null); },
+      spiWrite: (host, bytes) => em.emit("spi", host, bytes, null),
+      rmt: (gpio, bytes, bpp) => { const bits = new Uint8Array(bytes.length * 8); for (let i = 0; i < bytes.length; i++) for (let b = 0; b < 8; b++) bits[i * 8 + b] = (bytes[i] >> (7 - b)) & 1; em.emit("rmt", gpio, bits, { bytes, bpp }); },
+      pulse: (gpio, level) => (pulseSources[gpio] ? pulseSources[gpio](level) : null),
+      sensor: (gpio) => (sensors[gpio] ? sensors[gpio]() : null),
+    },
     onEvent: (m) => {
       if (m.t === "start") { status = "running"; em.emit("state", status); }
       if (m.t === "done") { status = "idle"; em.emit("state", status); }
@@ -67,7 +79,7 @@ async function createWasmEngine(opts) {
   const held = {};
   return {
     apiVersion: API_VERSION, kind: "micropython-wasm", board,
-    capabilities: { screen: board === "tqt_pro", i2c: false, spi: false, uart: false, rmt: false, step: false, cycleAccurate: false, arduino: false },
+    capabilities: { screen: board === "tqt_pro", i2c: true, spi: true, uart: false, rmt: true, step: false, cycleAccurate: false, arduino: false },
     get running() { return status === "running"; },
     on: em.on,
     async boot({ program, name } = {}) { t0 = performance.now(); prev = {}; const r = await vb.run(program || "", name || "main.py"); diff(); return r; },
@@ -88,7 +100,10 @@ async function createWasmEngine(opts) {
     releaseButton(g) { const gpio = typeof g === "number" ? g : 0; clearTimeout(held[gpio]); vb.pressButton(gpio, false); },
     cmd: (c) => vb.cmd(c),
     uartWrite() {},
-    i2cReply() {},
+    i2cReply(bus, addr, bytes) { i2cReplyBuf = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes); },
+    registerI2CDevice(bus, addr, on = true) { i2cDevices[bus] = i2cDevices[bus] || {}; if (on) i2cDevices[bus][addr] = true; else delete i2cDevices[bus][addr]; },
+    registerPulseSource(gpio, fn) { if (fn) pulseSources[gpio] = fn; else delete pulseSources[gpio]; },
+    registerSensor(gpio, fn) { if (fn) sensors[gpio] = fn; else delete sensors[gpio]; },
     screenRGBA: () => (board === "tqt_pro" ? vb.screenRGBA() : null),
     takeScreenDirty() { const d = screenDirty; screenDirty = false; return d; },
     sensorValue() { return null; },

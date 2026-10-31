@@ -95,6 +95,7 @@ export async function createVirtualBoard(opts = {}) {
   };
   const buttonPins = board === "tqt_pro" ? [0, 47] : [0];
   for (const p of buttonPins) { st.inputs[p] = 1; st.buttons[p] = false; }   // 上拉：沒按＝1
+  const hooks = opts.hooks || {};   // 周邊轉接：i2cInit/i2cScan/i2cWrite/i2cRead/spiWrite/rmt/pulse/sensor（由引擎介面層設定）
   const screenRGBA = new Uint8ClampedArray(128 * 128 * 4);
   let screenDirty = false, runPromise = null, mp = null;
 
@@ -127,6 +128,15 @@ export async function createVirtualBoard(opts = {}) {
     adc_init: (gpio) => { st.pinModes[gpio] = "adc"; if (!(gpio in st.adc)) st.adc[gpio] = 2048; changed(); },
     adc_read: (gpio) => (gpio in st.adc ? st.adc[gpio] : 2048),
     reset: () => { setTimeout(() => api.reset(), 50); },
+    // ---- 周邊：交給外部（引擎介面）解碼，這裡只轉發 ----
+    i2c_init: (bus, scl, sda) => { hooks.i2cInit && hooks.i2cInit(bus, scl, sda); },
+    i2c_scan: (bus) => JSON.stringify(hooks.i2cScan ? hooks.i2cScan(bus) : []),
+    i2c_write: (bus, addr, n) => { let buf; try { buf = mp.FS.readFile("/i2c.bin"); } catch (e) { buf = new Uint8Array(0); } return hooks.i2cWrite ? !!hooks.i2cWrite(bus, addr, buf.slice(0, n)) : false; },
+    i2c_read: (bus, addr, n) => { const d = hooks.i2cRead ? hooks.i2cRead(bus, addr, n) : null; if (!d) return -1; mp.FS.writeFile("/i2c.bin", d); return d.length; },
+    spi_write: (host, n) => { let buf; try { buf = mp.FS.readFile("/spi.bin"); } catch (e) { return; } hooks.spiWrite && hooks.spiWrite(host, buf.slice(0, n)); },
+    rmt: (gpio, n, bpp) => { let buf; try { buf = mp.FS.readFile("/rmt.bin"); } catch (e) { return; } hooks.rmt && hooks.rmt(gpio, buf.slice(0, n * bpp), bpp); },
+    pulse_us: (gpio, level) => (hooks.pulse ? hooks.pulse(gpio, level) : null),
+    sensor_value: (gpio) => { const v = hooks.sensor ? hooks.sensor(gpio) : null; return v == null ? null : JSON.stringify(v); },
   });
   try { mp.FS.mkdir("/lib"); } catch (e) {}
   for (const [path, src] of Object.entries(PY_FILES)) {
@@ -159,7 +169,7 @@ export async function createVirtualBoard(opts = {}) {
   }
 
   const api = {
-    board, state: st, info,
+    board, state: st, info, hooks,
     get running() { return st.status === "running"; },
     screenRGBA: () => screenRGBA,
     takeScreenDirty: () => { const d = screenDirty; screenDirty = false; return d; },
