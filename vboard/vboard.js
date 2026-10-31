@@ -90,7 +90,7 @@ export async function createVirtualBoard(opts = {}) {
 
   const st = {
     board, status: "idle", file: null, led: false,
-    pins: {}, pinModes: {}, inputs: {}, adc: {}, servos: {}, pwm: {},
+    pins: {}, pinModes: {}, pinPulls: {}, inputs: {}, adc: {}, servos: {}, pwm: {},
     buttons: {}, battery: 3.92, rssi: -55, startedAt: 0,
   };
   const buttonPins = board === "tqt_pro" ? [0, 47] : [0];
@@ -112,19 +112,19 @@ export async function createVirtualBoard(opts = {}) {
     led: (v) => { st.led = !!v; changed(); },
     rssi: () => st.rssi,
     battery: () => st.battery,
-    pin_mode: (gpio, mode, pull) => { st.pinModes[gpio] = mode; if (mode === "in" && !(gpio in st.inputs)) st.inputs[gpio] = pull ? 1 : 0; changed(); },
+    pin_mode: (gpio, mode, pull) => { st.pinModes[gpio] = mode; st.pinPulls[gpio] = pull ? 1 : 0; if (mode === "in" && !(gpio in st.inputs)) st.inputs[gpio] = pull ? 1 : 0; changed(); },
     pin_read: (gpio) => (gpio in st.inputs ? st.inputs[gpio] : 0),
     pin_write: (gpio, v) => { st.pins[gpio] = v ? 1 : 0; if (gpio === 2 && board !== "tqt_pro") st.led = !!v; changed(); },
     pin_irq: () => {},
     pwm: (gpio, freq, duty16) => {
-      st.pwm[gpio] = { freq, duty16 };
+      st.pwm[gpio] = { freq, duty16 }; st.pinModes[gpio] = freq > 0 ? "pwm" : "out";
       if (freq >= 40 && freq <= 60) {   // 伺服：脈衝寬 0.5～2.5 ms → 0～180°
         const ms = (duty16 / 65535) * (1000 / freq);
         st.servos[gpio] = Math.max(0, Math.min(180, Math.round((ms - 0.5) / 2.0 * 180)));
       } else { delete st.servos[gpio]; }
       changed();
     },
-    adc_init: (gpio) => { if (!(gpio in st.adc)) st.adc[gpio] = 2048; changed(); },
+    adc_init: (gpio) => { st.pinModes[gpio] = "adc"; if (!(gpio in st.adc)) st.adc[gpio] = 2048; changed(); },
     adc_read: (gpio) => (gpio in st.adc ? st.adc[gpio] : 2048),
     reset: () => { setTimeout(() => api.reset(), 50); },
   });
@@ -221,6 +221,8 @@ export async function createVirtualBoard(opts = {}) {
       for (const k of Object.keys(st.pins)) delete st.pins[k];
       for (const k of Object.keys(st.servos)) delete st.servos[k];
       for (const k of Object.keys(st.pwm)) delete st.pwm[k];
+      for (const k of Object.keys(st.pinModes)) delete st.pinModes[k];
+      for (const k of Object.keys(st.pinPulls)) delete st.pinPulls[k];
       st.led = false;
       mp.runPython("import _vboard\n_vboard.clear_main(globals())\n_vboard.setup(" + JSON.stringify(board) + ")");
       changed();

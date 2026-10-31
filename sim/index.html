@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>電路模擬器 — ESP32 AI 實驗室</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f4f5;--panel:#fff;--ink:#1c1917;--muted:#6b7280;--line:#d4d4d8;--accent:#ff6a2b;--term:#0b0d10;--term-ink:#e7e5e4}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--panel:#171a21;--ink:#e7e5e4;--muted:#9a9ea8;--line:#3f3f46}}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.4 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;-webkit-text-size-adjust:100%;overflow:hidden}
+body{display:grid;grid-template-rows:44px 1fr;grid-template-columns:150px 1fr 360px;grid-template-areas:"top top top" "pal canvas side";height:100dvh}
+header{grid-area:top;display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:2px solid var(--line);background:var(--panel);overflow-x:auto;white-space:nowrap}
+header b{margin-right:4px}
+button,select{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:5px 10px;min-height:32px}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+button:disabled{opacity:.45}
+.pal{grid-area:pal;border-right:2px solid var(--line);overflow:auto;padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--panel)}
+.pal h4{margin:4px 0 2px;font-size:12px;color:var(--muted)}
+.pal button{text-align:left;padding:6px 8px}
+.sim-viewport{grid-area:canvas;position:relative;overflow:hidden;touch-action:none;background:
+ linear-gradient(var(--line) 1px,transparent 1px) 0 0/24px 24px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/24px 24px,var(--bg);cursor:grab}
+.sim-world{position:absolute;left:0;top:0;transform-origin:0 0;width:0;height:0}
+.sim-parts{position:absolute;left:0;top:0}
+.sim-item{position:absolute;transform-origin:center;user-select:none;-webkit-user-select:none}
+.sim-part.selected{outline:2px dashed var(--accent);outline-offset:3px;border-radius:4px}
+.sim-part.burned{filter:grayscale(1) brightness(.6)}
+.sim-part.burned::after{content:"燒毀";position:absolute;left:0;top:-14px;font-size:10px;color:#f33;font-weight:700}
+.sim-label{position:absolute;left:0;top:100%;font-size:10px;color:var(--muted);white-space:nowrap;pointer-events:none}
+.sim-board,.sim-bb{cursor:move}
+svg.sim-wires{position:absolute;left:0;top:0;overflow:visible;width:1px;height:1px;pointer-events:none}
+svg.sim-wires circle.pin{fill:rgba(255,106,43,.15);stroke:rgba(255,106,43,.6);stroke-width:1;pointer-events:all;cursor:crosshair}
+svg.sim-wires circle.pin:hover{fill:rgba(255,106,43,.6)}
+svg.sim-wires circle.pin.hole{fill:transparent;stroke:transparent}
+svg.sim-wires circle.pin.hole:hover{fill:rgba(255,106,43,.5)}
+svg.sim-wires circle.pin.reserved{stroke:#c33;fill:rgba(200,50,50,.15)}
+svg.sim-wires path.wire{fill:none;stroke-width:3;stroke-linecap:round;pointer-events:stroke;cursor:pointer}
+svg.sim-wires path.wire.selected{stroke-width:5;filter:drop-shadow(0 0 3px var(--accent))}
+svg.sim-wires path.temp{fill:none;stroke:var(--accent);stroke-width:3;stroke-dasharray:6 4;display:none}
+.side{grid-area:side;border-left:2px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--panel)}
+.side .tabs{display:flex;border-bottom:2px solid var(--line)}
+.side .tabs button{flex:1;border:0;border-radius:0;border-bottom:3px solid transparent;background:transparent}
+.side .tabs button.active{border-bottom-color:var(--accent);color:var(--accent)}
+.side .pane{display:none;flex:1;min-height:0;flex-direction:column;padding:8px;gap:6px}
+.side .pane.active{display:flex}
+textarea#code{flex:1;min-height:120px;font:13px/1.45 ui-monospace,Menlo,monospace;tab-size:4;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--bg);color:var(--ink);resize:none}
+#console{flex:1;min-height:80px;overflow:auto;background:var(--term);color:var(--term-ink);font:12px/1.4 ui-monospace,Menlo,monospace;padding:6px 8px;border-radius:6px;white-space:pre-wrap}
+#console .err{color:#f87171}#console .sys{color:#9a9ea8}
+#warnings{display:flex;flex-direction:column;gap:6px;overflow:auto;max-height:180px}
+.warn{border-left:4px solid #e90;background:rgba(238,153,0,.1);padding:6px 8px;border-radius:4px;font-size:13px}
+.warn.bad{border-left-color:#e33;background:rgba(238,51,51,.1)}
+.warn b{display:block}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.muted{color:var(--muted);font-size:12px}
+#props{font-size:13px;display:flex;flex-direction:column;gap:6px}
+.status{display:flex;align-items:center;gap:6px;font-size:13px}
+.status .dot{width:9px;height:9px;border-radius:50%;background:#999}.status .dot.on{background:#2a7}
+@media (max-width:900px){
+ body{grid-template-rows:44px 1fr 46vh;grid-template-columns:1fr;grid-template-areas:"top" "canvas" "side"}
+ .pal{display:none}
+ .side{border-left:0;border-top:2px solid var(--line)}
+ header .desktop{display:none}
+}
+#mobile-add{display:none}@media (max-width:900px){#mobile-add{display:inline-block}}
+</style>
+</head>
+<body>
+<header>
+  <b>電路模擬器</b>
+  <select id="board"><option value="tqt_pro">T-QT Pro</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option><option value="xiao_esp32s3">XIAO ESP32S3</option></select>
+  <select id="mobile-add"><option value="">＋ 加元件</option></select>
+  <button id="btn-run" class="primary">▶ 執行</button>
+  <button id="btn-stop" disabled>■ 停止</button>
+  <span class="status"><span id="dot" class="dot"></span><span id="status-text">未啟動</span></span>
+  <span style="flex:1"></span>
+  <button id="btn-undo" title="復原">↶</button><button id="btn-redo" title="重做">↷</button>
+  <button id="btn-rotate" title="旋轉選取的元件">⟳</button>
+  <button id="btn-del" title="刪除選取">刪除</button>
+  <select id="sim-wire-color" title="接線顏色"><option value="0">紅線</option><option value="1">黑線</option><option value="2">綠線</option><option value="3">藍線</option><option value="4">橘線</option><option value="5">紫線</option><option value="6">灰線</option></select>
+  <button id="btn-fit" class="desktop">置中</button>
+  <button id="btn-export" class="desktop">匯出 Wokwi</button>
+  <button id="btn-import" class="desktop">匯入</button>
+  <button id="btn-clear" class="desktop">清空</button>
+</header>
+<nav class="pal" id="palette"><h4>元件（點一下放到畫布）</h4></nav>
+<div class="sim-viewport">
+  <div class="sim-world">
+    <div class="sim-parts"></div>
+    <svg class="sim-wires" xmlns="http://www.w3.org/2000/svg"><g class="wires"></g><g class="pins"></g><path class="temp"/></svg>
+  </div>
+</div>
+<aside class="side">
+  <div class="tabs"><button class="active" data-pane="code">程式</button><button data-pane="console">主控台</button><button data-pane="props">元件</button><button data-pane="help">說明</button></div>
+  <div class="pane active" id="pane-code">
+    <div class="row"><select id="examples"><option value="">範例程式…</option></select><span class="muted">同一份程式之後可直接推到真板子</span></div>
+    <textarea id="code" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+    <div id="warnings"></div>
+  </div>
+  <div class="pane" id="pane-console"><div id="console"></div><div class="row"><button id="btn-clear-console">清除</button><span class="muted" id="sensors"></span></div></div>
+  <div class="pane" id="pane-props"><div id="props" class="muted">點一個元件或一條線</div></div>
+  <div class="pane" id="pane-help"><div class="muted" style="overflow:auto">
+    <p><b>怎麼用</b>：左邊點元件放進畫布，拖曳移動；按住腳位（橘點）拉到另一個腳位就接線；把元件腳放在麵包板孔上會自動插進去（同一排 5 孔相通）。滾輪／兩指縮放，空白處拖曳平移。</p>
+    <p><b>執行</b>：程式在瀏覽器裡的 MicroPython 跑，<code>machine.Pin／PWM／ADC</code> 直接驅動畫布上的元件。執行中可以按按鍵、拖曳可變電阻（上下拖）、調光敏模組的光線（上下拖）。</p>
+    <p><b>回饋</b>：LED 沒串電阻會燒毀（要刪掉重放）、接反不亮、3V3 和 GND 短路會警告、腳位超過 40 mA 警告、紅圈腳位是板子保留腳。</p>
+    <p><b>限制</b>：這不是 SPICE，只算直流電壓電流（電阻、LED 順向壓降、按鍵、可變電阻、光敏分壓、蜂鳴器、伺服）；PWM 以工作比混合亮度；沒有電容、電感、時序與晶片內部模擬；I2C／顯示器元件下一期。要更精確請「匯出 Wokwi」到 wokwi.com 開。</p>
+  </div></div>
+</aside>
+<script src="vendor/wokwi-elements.bundle.min.js"></script>
+<script type="module">
+import { createSimulator } from "./sim.js";
+import { CATALOG } from "./catalog.js";
+const $ = (id) => document.getElementById(id);
+const con = $("console");
+const sensors = {};
+function log(s, cls) { const d = document.createElement("div"); d.className = cls || ""; d.textContent = s; con.appendChild(d); while (con.childNodes.length > 400) con.removeChild(con.firstChild); con.scrollTop = con.scrollHeight; }
+const sim = createSimulator({
+  root: document.body, board: new URLSearchParams(location.search).get("board") || "tqt_pro",
+  onEvent: (m) => {
+    if (m.t === "out") log(m.s.replace(/\n$/, ""));
+    else if (m.t === "err") { log(m.s.replace(/\n$/, ""), "err"); showPane("console"); }
+    else if (m.t === "start") log("▶ 開始執行 " + m.file, "sys");
+    else if (m.t === "done") log(m.stopped ? "■ 已停止" : (m.ok ? "✓ 程式結束" : "✗ 程式因錯誤結束"), "sys");
+    else if (m.t === "sensor") { Object.assign(sensors, m.v); $("sensors").textContent = Object.entries(sensors).map(([k, v]) => k + "=" + v).join("  "); }
+    else if (m.t === "display") log("🖥 " + (m.lines || []).join(" / "), "sys");
+  },
+  onWarnings: renderWarnings,
+  onStatus: (s) => {
+    if ("running" in s) { $("btn-run").disabled = s.running; $("btn-stop").disabled = !s.running; $("dot").classList.toggle("on", s.running); $("status-text").textContent = s.running ? "執行中（可操作按鍵、旋鈕）" : "待命"; }
+    if ("selected" in s) renderProps(s);
+    if ("undo" in s) { $("btn-undo").disabled = !s.undo; $("btn-redo").disabled = !s.redo; }
+  },
+});
+window.sim = sim;
+// 元件面板
+for (const [type, c] of Object.entries(CATALOG)) {
+  const b = document.createElement("button"); b.textContent = c.label; b.addEventListener("click", () => sim.addPart(type, 300 + Math.random() * 60, 120 + Math.random() * 60)); $("palette").appendChild(b);
+  const o = document.createElement("option"); o.value = type; o.textContent = c.label; $("mobile-add").appendChild(o);
+}
+const bb = document.createElement("button"); bb.textContent = "麵包板"; bb.addEventListener("click", () => sim.addBreadboard()); $("palette").appendChild(bb);
+const ob = document.createElement("option"); ob.value = "__bb"; ob.textContent = "麵包板"; $("mobile-add").appendChild(ob);
+$("mobile-add").addEventListener("change", function() { if (this.value === "__bb") sim.addBreadboard(); else if (this.value) sim.addPart(this.value, 200, 200); this.value = ""; });
+$("board").value = sim.doc.board;
+$("board").addEventListener("change", function() { sim.setBoard(this.value); });
+$("btn-undo").addEventListener("click", () => sim.undo()); $("btn-redo").addEventListener("click", () => sim.redo());
+$("btn-rotate").addEventListener("click", () => sim.rotateSelected()); $("btn-del").addEventListener("click", () => sim.deleteSelected());
+$("btn-fit").addEventListener("click", () => sim.fit()); $("btn-clear").addEventListener("click", () => { if (confirm("清空畫布？")) sim.clear(); });
+$("btn-clear-console").addEventListener("click", () => { con.innerHTML = ""; });
+document.addEventListener("keydown", (e) => { if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return; if (e.key === "Delete" || e.key === "Backspace") sim.deleteSelected(); if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.shiftKey ? sim.redo() : sim.undo(); e.preventDefault(); } if (e.key === "r") sim.rotateSelected(); });
+$("btn-export").addEventListener("click", () => { const j = JSON.stringify(sim.exportWokwi(), null, 2); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([j], { type: "application/json" })); a.download = "diagram.json"; a.click(); log("已匯出 diagram.json：到 wokwi.com 新專案，把內容貼進 diagram.json 分頁。", "sys"); });
+$("btn-import").addEventListener("click", () => { const i = document.createElement("input"); i.type = "file"; i.accept = ".json"; i.onchange = async () => { const t = await i.files[0].text(); try { sim.importWokwi(t); $("board").value = sim.doc.board; } catch (e) { alert("匯入失敗：" + e.message); } }; i.click(); });
+$("btn-run").addEventListener("click", async () => { const code = $("code").value; localStorage.setItem("sim.code", code); const r = await sim.run(code); if (!r.ok) { log("無法執行：" + (r.msg || ""), "err"); showPane("console"); } });
+$("btn-stop").addEventListener("click", () => sim.stop());
+for (const b of document.querySelectorAll(".side .tabs button")) b.addEventListener("click", () => showPane(b.dataset.pane));
+function showPane(name) { for (const b of document.querySelectorAll(".side .tabs button")) b.classList.toggle("active", b.dataset.pane === name); for (const p of document.querySelectorAll(".side .pane")) p.classList.toggle("active", p.id === "pane-" + name); }
+function renderWarnings(ws) {
+  const el = $("warnings"); el.innerHTML = "";
+  for (const w of ws) { const d = document.createElement("div"); d.className = "warn" + (/BURN|SHORT|OVERCURRENT/.test(w.code) ? " bad" : ""); d.innerHTML = "<b></b><span></span>"; d.firstChild.textContent = w.brief; d.lastChild.textContent = w.detail; el.appendChild(d); }
+}
+function renderProps(s) {
+  const el = $("props"); el.innerHTML = "";
+  if (s.part) {
+    const c = CATALOG[s.part.type]; el.innerHTML = `<b>${s.selected}</b> ${c.label}<div class="muted">腳位：${c.pins.join("、")}</div>`;
+    for (const [k, opts] of Object.entries(c.attrOptions || {})) { const sel = document.createElement("select"); for (const o of opts) { const op = document.createElement("option"); op.value = o; op.textContent = k + "：" + o; if (String(s.part.attrs[k]) === o) op.selected = true; sel.appendChild(op); } sel.addEventListener("change", () => sim.setAttr(s.selected, k, sel.value)); el.appendChild(sel); }
+    const snaps = Object.entries(s.part.snaps || {}); if (snaps.length) { const d = document.createElement("div"); d.className = "muted"; d.textContent = "插在麵包板：" + snaps.map(([p, h]) => p + "→" + h).join("、"); el.appendChild(d); }
+    const r = sim.result?.parts?.[s.selected]; if (r) { const d = document.createElement("div"); d.className = "muted"; d.textContent = "狀態：" + JSON.stringify(Object.fromEntries(Object.entries(r).filter(([k]) => k !== "leds").map(([k, v]) => [k, typeof v === "number" ? Math.round(v * 1000) / 1000 : v]))); el.appendChild(d); }
+    showPane("props");
+  } else if (s.wire) {
+    el.innerHTML = `<b>接線</b> ${s.wire.a} ↔ ${s.wire.b}`;
+    const row = document.createElement("div"); row.className = "row";
+    for (const col of ["#d33", "#111", "#2a7", "#27d", "#e90", "#a3c", "#999"]) { const b = document.createElement("button"); b.style.background = col; b.style.width = "28px"; b.title = col; b.addEventListener("click", () => sim.setWireColor(Number(s.selected.slice(5)), col)); row.appendChild(b); }
+    el.appendChild(row);
+    const del = document.createElement("button"); del.textContent = "刪除這條線"; del.addEventListener("click", () => sim.deleteSelected()); el.appendChild(del);
+    showPane("props");
+  } else el.innerHTML = '<span class="muted">點一個元件或一條線</span>';
+}
+// 範例程式（先內建幾支；P2 會改成完整電路＋程式一鍵載入）
+const EX = {
+  "LED 閃爍（GPIO16 → 220Ω → LED → GND）": "import lab\nfrom machine import Pin\nled = Pin(16, Pin.OUT)\nn = 0\nwhile lab.running():\n    led.value(1); lab.sleep(0.5)\n    led.value(0); lab.sleep(0.5)\n    n += 1\n    print('閃了', n, '次')\n",
+  "按鍵控制 LED（按鍵 GPIO17–GND，內部上拉）": "import lab\nfrom machine import Pin\nled = Pin(16, Pin.OUT)\nbtn = Pin(17, Pin.IN, Pin.PULL_UP)\nwhile lab.running():\n    pressed = btn.value() == 0\n    led.value(1 if pressed else 0)\n    lab.sleep(0.02)\n",
+  "可變電阻調亮度（SIG → GPIO4，PWM GPIO16）": "import lab\nfrom machine import Pin, PWM, ADC\npwm = PWM(Pin(16), freq=1000)\npot = ADC(Pin(4), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    v = pot.read()\n    pwm.duty_u16(v * 16)\n    print('ADC', v)\n    lab.send(adc=v)\n    lab.sleep(0.1)\n",
+  "伺服馬達掃描（PWM GPIO17，V+ 接 5V）": "import lab\nfrom machine import Pin, PWM\nservo = PWM(Pin(17), freq=50)\ndef angle(a):\n    servo.duty_u16(int((0.5 + a / 180 * 2.0) / 20 * 65535))\nwhile lab.running():\n    for a in (0, 45, 90, 135, 180):\n        angle(a); print('角度', a); lab.sleep(0.6)\n",
+  "光敏模組讀值（AO → GPIO4）": "import lab\nfrom machine import Pin, ADC\nldr = ADC(Pin(4), atten=ADC.ATTN_11DB)\nled = Pin(16, Pin.OUT)\nwhile lab.running():\n    v = ldr.read()\n    led.value(1 if v < 1500 else 0)   # 暗就開燈\n    print('光線', v)\n    lab.sleep(0.2)\n",
+};
+for (const k of Object.keys(EX)) { const o = document.createElement("option"); o.value = k; o.textContent = k; $("examples").appendChild(o); }
+$("examples").addEventListener("change", function() { if (EX[this.value]) $("code").value = EX[this.value]; this.value = ""; });
+$("code").value = localStorage.getItem("sim.code") || EX[Object.keys(EX)[0]];
+// 上次的畫布（localStorage）；?fresh=1 或沒有存檔時放預設示範電路：LED＋電阻接 GPIO16
+const fresh = new URLSearchParams(location.search).get("fresh") === "1";
+let loaded = false;
+try { const saved = localStorage.getItem("sim.doc"); if (saved && !fresh) { sim.load(JSON.parse(saved)); $("board").value = sim.doc.board; loaded = true; } } catch (e) {}
+if (!loaded) {
+  const led = sim.addPart("led", 380, 150), r = sim.addPart("resistor", 300, 150);
+  sim.doc.wires.push({ a: "board:G16", b: r + ":1", color: "#d33" }, { a: r + ":2", b: led + ":A", color: "#e90" }, { a: led + ":C", b: "board:GND", color: "#111" });
+  sim.select(null); sim.tick();
+}
+window.addEventListener("beforeunload", () => { try { localStorage.setItem("sim.doc", JSON.stringify(sim.save())); } catch (e) {} });
+showPane("code");
+sim.attach().then(() => log("模擬器就緒（MicroPython " + (sim.vb.info().version) + "）", "sys")).catch((e) => log("MicroPython 載入失敗：" + e.message, "err"));
+</script>
+</body>
+</html>
