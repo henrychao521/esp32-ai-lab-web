@@ -151,7 +151,7 @@ export function createSimulator(opts) {
     for (const ref of allPinRefs()) {
       const p = pinPos(ref); if (!p) continue;
       const c = document.createElementNS(SVGNS, "circle"); c.setAttribute("cx", p[0]); c.setAttribute("cy", p[1]);
-      c.setAttribute("r", ref.startsWith("bb:") ? 3.4 : 4.5); c.setAttribute("class", "pin" + (ref.startsWith("bb:") ? " hole" : "")); c.dataset.ref = ref;
+      c.setAttribute("r", ref.startsWith("bb:") ? 3.6 : 5); /* 腳位熱區 5 px（LED 兩腳相距 10 px，再大會重疊） */ c.setAttribute("class", "pin" + (ref.startsWith("bb:") ? " hole" : "")); c.dataset.ref = ref;
       if (ref.startsWith("board:")) { const bref = boardRefOf(ref.slice(6)); const g = bref ? Number(bref.slice(6)) : NaN; if (!bref) c.classList.add("na"); else if (!isNaN(g) && B.reserved[g]) c.classList.add("reserved"); }
       pinLayer.appendChild(c);
     }

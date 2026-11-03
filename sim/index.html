@@ -30,13 +30,14 @@ header b{margin-right:6px;font-size:15px}
 .sim-world{position:absolute;left:0;top:0;transform-origin:0 0;width:0;height:0}
 .sim-parts{position:absolute;left:0;top:0}
 .sim-item{position:absolute;transform-origin:center;user-select:none;-webkit-user-select:none}
+.sim-part::before{content:"";position:absolute;inset:-8px;pointer-events:auto}   /* 薄元件（電阻）也抓得到：外擴 8px 的透明抓取區 */
 .sim-part.selected,.sim-board.selected,.sim-bb.selected{outline:2px dashed var(--accent);outline-offset:3px;border-radius:4px}
 .sim-part.burned{filter:grayscale(1) brightness(.5)}
 .sim-part.burned::after{content:"燒毀";position:absolute;left:0;top:-15px;font-size:10px;color:#f33;font-weight:700;animation:burn .6s ease-out}
 @keyframes burn{0%{transform:scale(2);color:#ff0;text-shadow:0 0 12px #f80}100%{transform:scale(1)}}
 .sim-part.buzzing::after{content:"♪";position:absolute;right:-10px;top:-10px;color:var(--accent);font-weight:700;animation:bz .4s infinite alternate}
 @keyframes bz{from{opacity:.3}to{opacity:1}}
-.sim-label{position:absolute;left:50%;top:calc(100% + 3px);transform:translateX(-50%);font-size:10px;color:var(--ink);white-space:nowrap;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:0 4px;line-height:14px;opacity:.9}
+.sim-label{position:absolute;left:50%;top:calc(100% + 3px);transform:translateX(-50%);font-size:10px;color:var(--ink);white-space:nowrap;pointer-events:auto;cursor:move;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:0 4px;line-height:14px;opacity:.9}
 .sim-board,.sim-bb{cursor:move}
 svg.sim-wires{position:absolute;left:0;top:0;overflow:visible;width:1px;height:1px;pointer-events:none}
 svg.sim-wires circle.pin{fill:rgba(255,106,43,.15);stroke:rgba(255,106,43,.6);stroke-width:1;pointer-events:all;cursor:crosshair}
@@ -67,7 +68,7 @@ svg.sim-wires circle.wp{fill:#fff;stroke:var(--accent);stroke-width:2;pointer-ev
 svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;stroke:var(--bg);stroke-width:3px;pointer-events:none}
 .canvas-tools{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:4px;z-index:3}
 .canvas-tools button{background:var(--panel)}
-#minimap{position:absolute;left:10px;bottom:10px;width:150px;height:100px;background:rgba(127,127,127,.15);border:1px solid var(--line);border-radius:6px;z-index:3;cursor:pointer}
+#minimap{position:absolute;left:10px;bottom:10px;width:150px;height:100px;background:rgba(127,127,127,.15);border:1px solid var(--line);border-radius:6px;z-index:3;cursor:pointer;pointer-events:none;opacity:.55}   /* 只顯示、不吃點擊：原本會蓋住左下角的腳位，拉線變成平移 */
 #tooltip{position:absolute;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;pointer-events:none;display:none;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
 #tooltip b{display:block}#tooltip .v{color:var(--accent);font-family:ui-monospace,monospace}
 #toasts{position:absolute;left:50%;top:8px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:6;pointer-events:none}
@@ -178,7 +179,7 @@ dialog{position:relative}
   <button id="btn-step" class="icon" title="單步（真韌體引擎才有）" disabled>⏭︎</button>
   <button id="btn-reset" class="icon" title="重置板子">⟲</button>
   <select id="speed" title="模擬速度"><option value="1">即時</option><option value="0.5">0.5×</option><option value="0.25">0.25×</option></select>
-  <span class="status"><span id="dot" class="dot"></span><span id="status-text">未啟動</span></span>
+  <span class="status"><span id="dot" class="dot"></span><span id="status-text" title="板子一放上畫布就有 3V3／5V／GND；不寫程式也能點 LED。按執行才會跑程式。">已供電，待執行</span></span>
   <span class="status" id="power-ind" title="電源指示：LED 與模組的總電流（估）">⚡︎ 0 mA</span>
   <span class="sep"></span>
   <button id="btn-wiremode" class="icon" title="接線模式：執行中也只拉線不操作元件">⌁ 接線</button>
@@ -364,10 +365,10 @@ const sim = createSimulator({
     else if (m.t === "sensor") { Object.assign(sensors, m.v); $("sensors").textContent = Object.entries(sensors).map(([k, v]) => k + "=" + v).join("  "); log("感測值 " + JSON.stringify(m.v), "sen"); }
     else if (m.t === "display") log("🖥 " + (m.lines || []).join(" / "), "disp");
   },
-  onWarnings: renderIssues,
+  onWarnings: (ws) => { renderIssues(ws); updatePower(); },
   onHover: showTooltip,
   onStatus: (s) => {
-    if ("running" in s) { $("btn-run").disabled = s.running; $("btn-pause").disabled = !s.running; $("dot").classList.toggle("on", s.running); $("status-text").textContent = s.running ? "執行中（可操作按鍵、旋鈕）" : "待命"; }
+    if ("running" in s) { $("btn-run").disabled = s.running; $("btn-pause").disabled = !s.running; $("dot").classList.toggle("on", s.running); $("status-text").textContent = s.running ? "執行中（可操作按鍵、旋鈕）" : "已供電，待執行"; $("status-text").title = s.running ? "" : "板子一放上畫布就有 3V3／5V／GND；不寫程式也能點 LED。按執行才會跑程式。"; }
     if ("selected" in s || "selection" in s) renderProps(s);
     if ("undo" in s) { $("btn-undo").disabled = !s.undo; $("btn-redo").disabled = !s.redo; }
     if ("toast" in s) toast(s.toast.text, s.toast.kind);
@@ -522,12 +523,12 @@ $("push-go").addEventListener("click", async () => {
     $("more-body").innerHTML = ""; closeAll();
   }
   const apply = () => (mq.matches ? toMobile() : toDesk());
-  mq.addEventListener("change", apply); apply();
   // 工作表／抽屜：開一個就關其他；scrim 點了關；標頭下滑關；瀏覽器返回鍵關
   const SHEETS = ["palette", "side", "sheet-more"];
   function openSheet(id) { for (const s of SHEETS) $(s).classList.toggle("open", s === id); $("scrim").classList.toggle("open", mq.matches); if (mq.matches && !(history.state && history.state.sheet)) history.pushState({ sheet: id }, ""); }
   function closeAll(fromPop) { for (const s of SHEETS) $(s).classList.remove("open"); $("scrim").classList.remove("open"); if (!fromPop && history.state && history.state.sheet) history.back(); }
   window.closeSheets = closeAll;
+  mq.addEventListener("change", apply); apply();   // 要在 SHEETS／closeAll 定義之後才能跑（桌機載入時 toDesk 會呼叫 closeAll）
   $("scrim").addEventListener("click", () => closeAll());
   window.addEventListener("popstate", () => closeAll(true));
   document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => closeAll()));
@@ -648,7 +649,7 @@ const SNIPPETS = {
 for (const k of Object.keys(SNIPPETS)) { const o = document.createElement("option"); o.value = k; o.textContent = k; $("snippets").appendChild(o); }
 $("snippets").addEventListener("change", function() { if (SNIPPETS[this.value]) setCode(SNIPPETS[this.value]); this.value = ""; });
 let saveT = 0; function scheduleSave() { clearTimeout(saveT); saveT = setTimeout(saveLocal, 800); }
-let engineChosen = false;   // 使用者在下拉選過才記住引擎；?engine=（量測用）不算
+let engineChosen = false; let viewportTouched = () => {};   // 使用者在下拉選過才記住引擎；?engine=（量測用）不算
 function saveLocal() { try { localStorage.setItem("sim.doc", JSON.stringify(sim.save())); localStorage.setItem("sim.code", getCode()); if (sim.engine && engineChosen) localStorage.setItem("sim.engine", sim.engine.kind); } catch (e) {} }
 
 function renderProps(s) {
@@ -724,6 +725,7 @@ function showTooltip(info) {
   tip.innerHTML = `<b>${esc(info.title)}</b>${esc(info.desc || "")}${info.reserved ? `<div style="color:var(--bad)">保留腳位：${esc(info.reserved)}</div>` : ""}<div class="v">${fmtV(info.volt)}</div>`;
   tip.style.display = "block";
 }
+document.querySelector(".sim-viewport").addEventListener("pointerdown", () => viewportTouched(), true); document.querySelector(".sim-viewport").addEventListener("wheel", () => viewportTouched(), { passive: true, capture: true });
 document.querySelector(".sim-viewport").addEventListener("pointermove", (e) => { const r = e.currentTarget.getBoundingClientRect(); tip.style.left = Math.min(r.width - 270, e.clientX - r.left + 14) + "px"; tip.style.top = (e.clientY - r.top + 14) + "px"; });
 document.querySelector(".sim-viewport").addEventListener("pointerdown", (e) => { const pin = e.target.closest && e.target.closest("circle.pin"); if (!pin || !e.altKey) return; e.stopPropagation(); const ref = pin.dataset.ref; if (!meterA) { meterA = ref; toast("電表：第一點 " + ref + "，按住 Alt 再點第二點"); } else { const va = sim.nodeVoltage(meterA), vb = sim.nodeVoltage(ref); $("meter-v").textContent = (va !== null && vb !== null) ? (va - vb).toFixed(3) + " V" : "—"; $("meter-hint").textContent = meterA + " − " + ref; meterA = null; showPane("measure"); } }, true);
 $("meter-clear").addEventListener("click", () => { meterA = null; $("meter-v").textContent = "—"; $("meter-hint").textContent = "按住 Alt 點兩個腳位量電壓差"; });
@@ -831,6 +833,8 @@ async function decompress(b64) { const bin = atob(b64.replace(/-/g, "+").replace
   try { await sim.attach(sim.doc.board, $("engine").value); $("engine-load").style.display = "none"; log("模擬器就緒（" + (sim.engine.kind === "esp32sim" ? "真韌體引擎 esp32sim" : sim.engine.info().version) + "）", "sys"); } catch (e) { log("MicroPython 載入失敗：" + e.message, "err"); }
   if (await loadAssignmentFromHash()) toast("已載入作業");
   sim.fit();
+  // 畫布剛開時若還沒有尺寸（分頁在背景、面板剛展開），fit 會算成最小縮放；等它有尺寸再 fit 一次
+  (() => { const vp = document.querySelector(".sim-viewport"); let last = vp.getBoundingClientRect(); let touched = false; viewportTouched = () => { touched = true; }; new ResizeObserver(() => { const r = vp.getBoundingClientRect(); if (!touched && (last.width < 50 || last.height < 50) && r.width >= 50 && r.height >= 50) sim.fit(); last = r; }).observe(vp); })();
 })();
 </script>
 </body>
