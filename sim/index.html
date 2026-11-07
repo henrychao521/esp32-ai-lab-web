@@ -201,9 +201,10 @@ dialog{position:relative}
 <header>
   <b>電路模擬器</b>
   <button id="btn-pal" class="icon" title="元件庫">☰ 元件</button><button id="btn-more" class="icon" title="更多功能">⋯</button><span class="brk"></span>
-  <select id="board" title="板子"><option value="tqt_pro">T-QT Pro</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option><option value="xiao_esp32s3">XIAO ESP32S3</option></select>
+  <select id="board" title="板子"><option value="tqt_pro">T-QT Pro</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option><option value="xiao_esp32s3">XIAO ESP32S3</option><option value="uno">Arduino UNO</option></select>
   <select id="engine" title="執行引擎：快速＝秒開的 MicroPython wasm；真韌體＝未修改的 ESP32 韌體在 esp32sim 裡逐指令執行"><option value="micropython-wasm">快速引擎</option><option value="esp32sim">真韌體引擎（esp32sim）</option></select>
   <select id="firmware" title="要執行的程式：MicroPython 程式（編輯器）或 Arduino 已編譯映像（只有真韌體引擎）" style="display:none"><option value="">MicroPython</option><option value="arduino/t_qt_weather_clock.bin">Arduino：天氣時鐘</option></select>
+  <button id="btn-hex" title="Arduino UNO：匯入 arduino-cli／Arduino IDE 編好的 .hex（「草稿 → 匯出已編譯的二進位檔」）" style="display:none">匯入 .hex</button>
   <span id="engine-load" class="status" style="display:none"></span>
   <span class="sep"></span>
   <button id="btn-run" class="primary">▶ 執行</button>
@@ -291,7 +292,15 @@ dialog{position:relative}
       <div class="muted" style="font-size:11px">簡圖與萬用板的圖片用各自分頁右下的 PNG／SVG 按鈕。</div>
     </div>
   </dialog>
-  <dialog id="examples-dlg"><div class="hd"><b>範例電路</b><span class="muted">點一個：電路、程式、接線步驟一起載入</span><span style="flex:1"></span><select id="ex-board" title="哪塊板子的範例"><option value="">全部板子</option><option value="tqt_pro">T-QT Pro</option><option value="xiao_esp32s3">XIAO ESP32S3</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option></select><button id="examples-close">關閉</button></div><div class="grid" id="examples-grid"></div></dialog>
+  <dialog id="uno-dlg" style="border:0;border-radius:12px;padding:0;max-width:520px;width:94vw;background:var(--panel);color:var(--ink)">
+    <div class="hd" style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)"><b>Arduino 程式要先編譯</b></div>
+    <div style="padding:12px 16px;font-size:13px;display:grid;gap:10px">
+      <div id="uno-dlg-text">Arduino 程式要先編譯，App 內暫不支援；請用範例或匯入 .hex。</div>
+      <div class="muted" style="font-size:12px">在電腦上用 Arduino IDE（草稿 → 匯出已編譯的二進位檔）或 <code>arduino-cli compile --fqbn arduino:avr:uno --output-dir 輸出夾 草稿夾</code> 編譯，選不含 bootloader 的 <code>.ino.hex</code> 匯入。模擬器跑的就是這個檔，跟燒進真板子的一樣。</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="uno-dlg-hex" class="primary">匯入 .hex</button><button id="uno-dlg-ex">開範例</button><button id="uno-dlg-restore" style="display:none">還原範例程式並執行</button><span style="flex:1"></span><button id="uno-dlg-close">關閉</button></div>
+    </div>
+  </dialog>
+  <dialog id="examples-dlg"><div class="hd"><b>範例電路</b><span class="muted">點一個：電路、程式、接線步驟一起載入</span><span style="flex:1"></span><select id="ex-board" title="哪塊板子的範例"><option value="">全部板子</option><option value="tqt_pro">T-QT Pro</option><option value="xiao_esp32s3">XIAO ESP32S3</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option><option value="uno">Arduino UNO</option></select><button id="examples-close">關閉</button></div><div class="grid" id="examples-grid"></div></dialog>
   <div id="tour"><div class="box">
     <h3>第一次用？三步驟</h3>
     <ol><li>左邊<b>元件庫</b>點一下或拖進畫布；把元件腳放到麵包板孔上會自動插進去（同一欄 5 孔相通）。</li>
@@ -344,9 +353,10 @@ import { createSimulator, WIRE_COLORS } from "./sim.js";
 import { mountSchematic } from "./schematic-view.js";
 import { mountPerfboard } from "./perfboard-view.js";
 import { exportKiCad } from "./kicad.js";
-import { ENGINES } from "./engine.js";
+import { ENGINES, engineForBoard } from "./engine.js";
 import { CATALOG, BOARD_ART } from "./catalog.js";
-import { BOARDS } from "./circuit.js";
+import { BOARDS, gpioName } from "./circuit.js";
+const pinLabel = (g) => gpioName(window.sim ? sim.doc.board : "", Number(g));   // UNO：D13／A0；ESP32：GPIO16
 import * as CM from "./vendor/codemirror.bundle.js";
 const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
@@ -452,8 +462,8 @@ const sim = createSimulator({
     if ("undo" in s) { $("btn-undo").disabled = !s.undo; $("btn-redo").disabled = !s.redo; }
     if ("toast" in s) toast(s.toast.text, s.toast.kind);
     if ("view" in s || "bounds" in s) drawMinimap();
-    if ("engine" in s) { scopeAttach(); scope.hist = {}; scopePinsUI(); $("engine-note").textContent = s.engine === "micropython-wasm" ? "快速引擎：秒開；沒有精確時序與單步" : "真韌體引擎：未修改的 MicroPython 1.29 在 esp32sim 裡逐指令跑，時序＝實機；開機約 2 秒；超音波、DHT22 這類要引擎回應的感測器只有快速引擎支援"; if ($("more-engine-note")) $("more-engine-note").textContent = $("engine-note").textContent; $("btn-step").disabled = !s.capabilities?.step; $("firmware").dataset.avail = s.capabilities?.arduino ? "1" : "0"; const fwWrap = $("firmware").closest(".more-item"); if (fwWrap) fwWrap.style.display = s.capabilities?.arduino ? "" : "none"; else $("firmware").style.display = s.capabilities?.arduino ? "" : "none"; if (!s.capabilities?.arduino) $("firmware").value = ""; $("engine").value = s.engineKind || s.engine; }
-    if ("board" in s) $("board").value = s.board;
+    if ("engine" in s) { scopeAttach(); scope.hist = {}; scopePinsUI(); $("engine-note").textContent = s.engine === "micropython-wasm" ? "快速引擎：秒開；沒有精確時序與單步" : s.engine === "arduino-avr8js" ? "Arduino UNO：avr8js 逐指令模擬 ATmega328P（16 MHz），跑預先編譯的 .hex；時序精確，可暫停、單步；邏輯高 5 V" : "真韌體引擎：未修改的 MicroPython 1.29 在 esp32sim 裡逐指令跑，時序＝實機；開機約 2 秒；超音波、DHT22 這類要引擎回應的感測器只有快速引擎支援"; if ($("more-engine-note")) $("more-engine-note").textContent = $("engine-note").textContent; $("btn-step").disabled = !s.capabilities?.step; const fwOk = !!s.capabilities?.arduino && s.engine === "esp32sim"; $("firmware").dataset.avail = fwOk ? "1" : "0"; const fwWrap = $("firmware").closest(".more-item"); if (fwWrap) fwWrap.style.display = fwOk ? "" : "none"; else $("firmware").style.display = fwOk ? "" : "none"; if (!fwOk) $("firmware").value = ""; if (ENGINES[s.engineKind || s.engine] && s.engine !== "arduino-avr8js") $("engine").value = s.engineKind || s.engine; }
+    if ("board" in s) { $("board").value = s.board; applyBoardUI(s.board); }
   },
 });
 const schematicView = mountSchematic(sim, { viewport: document.querySelector(".sim-viewport"), toast });
@@ -464,7 +474,7 @@ window.sim = sim;
 fetch("part_cards.json").then((r) => (r.ok ? r.json() : null)).then((c) => { if (c) { cards = c; sim.setCards(c); } }).catch(() => {});
 
 $("board").value = sim.doc.board;
-$("board").addEventListener("change", function() { sim.setBoard(this.value); buildPalette($("search").value.trim()); });
+$("board").addEventListener("change", function() { const from = sim.doc.board, to = this.value; sim.setBoard(to); swapCodeForBoard(from, to); buildPalette($("search").value.trim()); });
 $("engine").addEventListener("change", async function() {
   const kind = this.value; engineChosen = true; if (sim.engine && sim.engine.kind === kind) return;
   $("engine").disabled = true; $("btn-run").disabled = true;
@@ -473,7 +483,7 @@ $("engine").addEventListener("change", async function() {
   $("engine").disabled = false; $("btn-run").disabled = false; $("engine-load").style.display = "none";
 });
 $("firmware").addEventListener("change", function() { if (this.value) { toast("Arduino C 要在電腦上編譯，這裡只能執行已編譯的映像；按 ▶ 執行開機", "info"); log("已選 Arduino 映像：" + this.options[this.selectedIndex].text + "。Arduino C 要在電腦上編譯，這裡只能執行。", "sys"); } });
-$("btn-run").addEventListener("click", async () => { if ($("firmware").value) { const r = await sim.runFirmware($("firmware").value); if (!r.ok) log("無法開機：" + (r.msg || ""), "err"); else log("Arduino 映像開機中（無 REPL、無 lab 模組；主控台只有韌體自己的輸出）", "sys"); return; } const code = getCode(); saveLocal(); const r = await sim.run(code); if (!r.ok) { log("無法執行：" + (r.msg || "") + (r.line ? "（第 " + r.line + " 行）" : ""), "err"); showPane("console"); } });
+$("btn-run").addEventListener("click", async () => { if (isUno()) { saveLocal(); await runUno(); return; } if ($("firmware").value) { const r = await sim.runFirmware($("firmware").value); if (!r.ok) log("無法開機：" + (r.msg || ""), "err"); else log("Arduino 映像開機中（無 REPL、無 lab 模組；主控台只有韌體自己的輸出）", "sys"); return; } const code = getCode(); saveLocal(); const r = await sim.run(code); if (!r.ok) { log("無法執行：" + (r.msg || "") + (r.line ? "（第 " + r.line + " 行）" : ""), "err"); showPane("console"); } });
 $("btn-pause").addEventListener("click", () => sim.stop());
 $("btn-step").addEventListener("click", () => sim.step());
 $("btn-reset").addEventListener("click", () => { sim.reset(); log("板子已重置", "sys"); });
@@ -524,7 +534,8 @@ $("t-tab-make").addEventListener("click", () => { $("t-make").style.display = "f
 $("t-tab-grade").addEventListener("click", () => { $("t-make").style.display = "none"; $("t-grade").style.display = "flex"; $("t-tab-grade").classList.add("on"); $("t-tab-make").classList.remove("on"); });
 async function runCapture(code, ms = 3000) {
   const lines = []; const off = sim.engine.on("console", (m) => { if (m.t === "out") lines.push(...m.s.split("\n").map((x) => x.trim()).filter(Boolean)); });
-  await sim.run(code); await new Promise((r) => setTimeout(r, ms)); await sim.stop(); off(); return lines;
+  if (isUno()) { const hex = await unoHexFor(code); if (!hex) { off(); toast("Arduino：要先載入範例或匯入 .hex 才擷取得到輸出", "warn"); return lines; } await sim.runHex(hex, unoProg.name); } else await sim.run(code);
+  await new Promise((r) => setTimeout(r, ms)); await sim.stop(); off(); return lines;
 }
 const normLine = (l) => l.replace(/\d+(\.\d+)?/g, "#").trim();
 async function captureExpected() { const lines = await runCapture(getCode()); const uniq = [...new Set(lines.map(normLine))].slice(0, 6); $("t-expect").value = uniq.join("\n"); }
@@ -607,9 +618,9 @@ $("push-go").addEventListener("click", async () => {
 // ---------- 手機版面：主要動作列＋「更多」工作表、抽屜關閉機制（寬度 ≤ 900px） ----------
 (() => {
   const mq = window.matchMedia("(max-width: 900px)");
-  const MORE = ["board", "engine", "power-ind", "speed", "firmware", "btn-wiremode", "btn-route", "wire-color", "btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-clear", "btn-teacher", "btn-help"];
+  const MORE = ["board", "engine", "power-ind", "speed", "firmware", "btn-hex", "btn-wiremode", "btn-route", "wire-color", "btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-clear", "btn-teacher", "btn-help"];
   const home = {};   // id → { parent, next }：搬回桌機位置用
-  const LABEL = { board: "板子", engine: "執行引擎", "power-ind": "電源指示（LED 與模組總電流，估）", speed: "模擬速度", firmware: "要執行的程式", "wire-color": "線色", "btn-wiremode": "接線模式", "btn-route": "整理走線", "btn-del": "刪除所選", "btn-undo": "復原", "btn-redo": "重做", "btn-rotate": "旋轉", "btn-selall": "全選", "btn-align-l": "靠左對齊", "btn-align-t": "靠上對齊", "btn-grid": "格線吸附", "btn-fit": "縮放到全部", "btn-examples": "範例電路", "btn-save": "儲存到瀏覽器", "btn-export": "匯出 KiCad／Wokwi", "btn-png": "匯出 PNG", "btn-import": "匯入", "btn-share": "分享網址", "btn-clear": "清空畫布", "btn-teacher": "老師模式", "btn-help": "說明與快捷鍵" };
+  const LABEL = { "btn-hex": "匯入 .hex（Arduino）", board: "板子", engine: "執行引擎", "power-ind": "電源指示（LED 與模組總電流，估）", speed: "模擬速度", firmware: "要執行的程式", "wire-color": "線色", "btn-wiremode": "接線模式", "btn-route": "整理走線", "btn-del": "刪除所選", "btn-undo": "復原", "btn-redo": "重做", "btn-rotate": "旋轉", "btn-selall": "全選", "btn-align-l": "靠左對齊", "btn-align-t": "靠上對齊", "btn-grid": "格線吸附", "btn-fit": "縮放到全部", "btn-examples": "範例電路", "btn-save": "儲存到瀏覽器", "btn-export": "匯出 KiCad／Wokwi", "btn-png": "匯出 PNG", "btn-import": "匯入", "btn-share": "分享網址", "btn-clear": "清空畫布", "btn-teacher": "老師模式", "btn-help": "說明與快捷鍵" };
   const ENGINE_LABELS = { "micropython-wasm": ["快速引擎", "快速"], "esp32sim": ["真韌體引擎（esp32sim）", "真韌體"] };
   const setEngineLabels = (short) => { for (const o of $("engine").options) if (ENGINE_LABELS[o.value]) o.textContent = ENGINE_LABELS[o.value][short ? 1 : 0]; };
   function toMobile() {
@@ -624,7 +635,7 @@ $("push-go").addEventListener("click", async () => {
     for (const id of [...MORE].reverse()) { const el = $(id); const h = home[id]; if (!el || !h) continue; if (h.next && h.next.parentNode === h.parent) h.parent.insertBefore(el, h.next); else h.parent.appendChild(el); if (["btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-clear", "btn-teacher"].includes(id)) el.classList.add("desk"); }
     $("more-body").innerHTML = ""; closeAll();
   }
-  const apply = () => (mq.matches ? toMobile() : toDesk());
+  const apply = () => { mq.matches ? toMobile() : toDesk(); if (window.sim) applyBoardUI(sim.doc.board); };
   // 工作表／抽屜：開一個就關其他；scrim 點了關；標頭下滑關；瀏覽器返回鍵關
   const SHEETS = ["palette", "side", "sheet-more"];
   function openSheet(id) { for (const s of SHEETS) $(s).classList.toggle("open", s === id); $("scrim").classList.toggle("open", mq.matches); if (mq.matches && !(history.state && history.state.sheet)) history.pushState({ sheet: id }, ""); }
@@ -680,6 +691,64 @@ if (q.get("bench") === "1") (async () => {
   window.parent.postMessage({ t: "sim:bench", result }, "*"); window.__benchResult = result; toast("效能量測：" + JSON.stringify(result));
 })();
 $("tour-close").addEventListener("click", () => { $("tour").style.display = "none"; localStorage.setItem("sim.toured", "1"); });
+// ---------- Arduino UNO（引擎 C，avr8js）：程式來源是預先編譯的 .hex，不是編輯器裡的文字 ----------
+var editorRef = null;   // CodeMirror 建好後才指定（applyBoardUI 在那之前就可能被呼叫）
+const isUno = () => !!(window.sim && sim.doc.board === "uno");
+let unoProg = null;     // { src: "example"|"import", id, title, name, hexUrl | hex, code }：▶ 執行時跑哪一份 hex
+try { unoProg = JSON.parse(localStorage.getItem("sim.unoProg") || "null"); } catch (e) {}
+function saveUnoProg() { try { localStorage.setItem("sim.unoProg", JSON.stringify(unoProg)); } catch (e) {} }
+const UNO_NEED_HEX = "Arduino 程式要先編譯，App 內暫不支援；請用範例或匯入 .hex";
+/** 這份程式能跑的 hex：範例（程式沒改過）或匯入的檔；否則 null */
+async function unoHexFor(code) {
+  if (!unoProg) return null;
+  if (unoProg.src === "example" && code !== unoProg.code) return null;
+  if (unoProg.hex) return unoProg.hex;
+  const r = await fetch(unoProg.hexUrl); if (!r.ok) throw new Error("讀不到 " + unoProg.hexUrl + "（" + r.status + "）"); return r.text();
+}
+function showUnoDialog(text) { $("uno-dlg-text").textContent = text; $("uno-dlg-restore").style.display = unoProg && unoProg.src === "example" ? "" : "none"; $("uno-dlg").showModal(); }
+async function runUno() {
+  const code = getCode(); let hex = null;
+  try { hex = await unoHexFor(code); } catch (e) { log("無法執行：" + e.message, "err"); return; }
+  if (!hex) { log(UNO_NEED_HEX, "err"); showUnoDialog(unoProg && unoProg.src === "example" ? "你改過程式了。" + UNO_NEED_HEX + "。模擬器跑的是編好的機器碼（.hex），編輯器裡的文字要先在電腦上編譯。" : UNO_NEED_HEX + "。"); return; }
+  const r = await sim.runHex(hex, unoProg.name);
+  if (!r.ok) { log("無法執行：" + (r.msg || ""), "err"); showPane("console"); return; }
+  log(unoProg.src === "import" ? "▶ 執行匯入的 " + unoProg.name + "（編輯器裡的文字只是參考，不會被編譯）" : "▶ 執行範例「" + unoProg.title + "」預先編譯的 " + unoProg.name + "（" + r.msg + "）", "sys");
+}
+function importHex() {
+  const i = document.createElement("input"); i.type = "file"; i.accept = ".hex,.ihex,.txt,text/plain";
+  i.onchange = async () => {
+    const f = i.files[0]; if (!f) return; const t = await f.text();
+    if (!/^\s*:[0-9A-Fa-f]{10}/.test(t)) { toast("這不是 Intel HEX 檔（.hex 第一個字是冒號）", "bad"); return; }
+    if (/with_bootloader/.test(f.name)) toast("含 bootloader 的 hex 也能跑，但建議選不含 bootloader 的 .ino.hex", "warn");
+    unoProg = { src: "import", name: f.name, hex: t, code: getCode() }; saveUnoProg();
+    if (!isUno()) { const from = sim.doc.board; $("board").value = "uno"; await sim.setBoard("uno"); swapCodeForBoard(from, "uno", true); buildPalette($("search").value.trim()); }
+    $("uno-dlg").close(); toast("已匯入 " + f.name + "（" + Math.round(t.length / 1024) + " KB），按 ▶ 執行"); log("已匯入 " + f.name + "；▶ 執行會跑這份 hex", "sys");
+  };
+  i.click();
+}
+$("btn-hex").addEventListener("click", importHex);
+$("uno-dlg-hex").addEventListener("click", importHex);
+$("uno-dlg-ex").addEventListener("click", () => { $("uno-dlg").close(); $("ex-board").value = "uno"; renderExamples("uno"); $("examples-dlg").showModal(); });
+$("uno-dlg-restore").addEventListener("click", async () => { $("uno-dlg").close(); if (unoProg && unoProg.code) { setCode(unoProg.code); await runUno(); } });
+$("uno-dlg-close").addEventListener("click", () => $("uno-dlg").close());
+/** 換板子時，編輯器的語言對不上就換成那塊板子的入門程式（Python ↔ Arduino） */
+function swapCodeForBoard(from, to, keep) {
+  if (!editorRef || from === to) return;
+  const code = getCode(), looksIno = /void\s+setup\s*\(/.test(code);
+  if (to === "uno" && !looksIno && !keep) { const ex = EXAMPLES.find((e) => e.board === "uno"); if (ex) { unoProg = { src: "example", id: ex.id, title: ex.title, hexUrl: ex.hex, name: ex.hex.split("/").pop(), code: ex.code }; saveUnoProg(); setCode(ex.code); toast("Arduino UNO 用 C++（.ino）；編輯器換成「" + ex.title + "」範例，按 ▶ 執行"); } }
+  else if (from === "uno" && to !== "uno" && looksIno) setCode(SNIPPETS[Object.keys(SNIPPETS)[0]]);
+}
+/** 依板子切換介面：UNO 隱藏引擎切換、推到實機、Python 片段；顯示「匯入 .hex」；編輯器改 C++ */
+function applyBoardUI(board) {
+  const uno = board === "uno";
+  const vis = (id, on) => { const el = $(id); if (!el) return; const w = el.closest(".more-item"); (w || el).style.display = on ? "" : "none"; };
+  vis("engine", !uno); vis("btn-hex", uno); vis("btn-push", !uno); vis("snippets", !uno);
+  if (uno) vis("firmware", false);
+  $("serial-in").placeholder = uno ? "送到 Arduino 的序列埠（程式用 Serial.read 讀）" : "送到板子（真韌體引擎才會收到）";
+  $("editor-note").textContent = uno ? "Arduino 程式（C++）：範例已預先編譯；改了程式要在電腦上編譯成 .hex 再匯入" : "同一份程式之後可直接推到真板子；保護檢查的問題會在程式裡畫底線";
+  $("btn-check").textContent = uno ? "編譯說明" : "檢查語法";
+  if (editorRef) setEditorLang(board);
+}
 // ---------- 範例電路（sim/examples.json）＋步驟式接線提示 ----------
 let stepState = null;
 function renderExamples(board) { const g = $("examples-grid"); g.innerHTML = ""; for (const ex of EXAMPLES) { if (board && ex.board !== board) continue; const d = document.createElement("div"); d.className = "ex-card"; d.innerHTML = `<b></b><span class="lv"></span><span class="sm"></span>`; d.querySelector("b").textContent = ex.title; d.querySelector(".lv").textContent = (ex.boardName || ex.board) + " · " + ex.level + " · " + Object.keys(ex.parts).length + " 個元件 · " + ex.wires.length + " 條線"; d.querySelector(".sm").textContent = ex.summary; d.addEventListener("click", () => { loadExample(ex); $("examples-dlg").close(); }); g.appendChild(d); } }
@@ -690,8 +759,9 @@ $("btn-examples").addEventListener("click", () => { if (!EXAMPLES.length) { toas
 $("examples-close").addEventListener("click", () => $("examples-dlg").close());
 function loadExample(ex) {
   sim.stop();
+  if (ex.board === "uno") { unoProg = { src: "example", id: ex.id, title: ex.title, hexUrl: ex.hex, name: ex.hex.split("/").pop(), code: ex.code }; saveUnoProg(); }
   sim.load({ board: ex.board, parts: JSON.parse(JSON.stringify(ex.parts)), wires: ex.wires.map((w) => ({ ...w, pts: [] })), boardPos: { x: 60, y: 40 }, breadboard: ex.breadboard || null });
-  if (ex.board) $("board").value = ex.board; sim.autoRoute(); setCode(ex.code); sim.fit(); showPane("editor"); buildPalette($("search").value.trim());
+  if (ex.board) $("board").value = ex.board; applyBoardUI(sim.doc.board); sim.autoRoute(); setCode(ex.code); sim.fit(); showPane("editor"); buildPalette($("search").value.trim());
   stepState = { ex, i: 0 }; renderStep(); toast("已載入「" + ex.title + "」。預期：" + ex.expect);
 }
 function renderStep() {
@@ -721,7 +791,7 @@ function showPane(name) { if (name === "scope") scopePinsUI(); for (const b of d
 let guardRules = null;
 fetch("guard_rules.json").then((r) => r.json()).then((g) => { guardRules = g; editor.dispatch({ changes: { from: 0, to: 0, insert: "" } }); }).catch(() => {});
 const guardLinter = CM.linter((view) => {
-  const out = []; if (!guardRules) return out;
+  const out = []; if (!guardRules || isUno()) return out;   // 保護規則是 MicroPython 的；Arduino C++ 不套
   const lines = view.state.doc.toString().split("\n"); let pos = 0; const B = BOARDS[sim.doc.board];
   for (const line of lines) {
     const code = line.split("#")[0];
@@ -732,15 +802,19 @@ const guardLinter = CM.linter((view) => {
   }
   return out;
 }, { delay: 400 });
+const langComp = new CM.Compartment();   // 語言模式：ESP32＝Python、Arduino UNO＝C++
+const langExt = (board) => (board === "uno" ? [CM.cpp(), CM.indentUnit.of("  ")] : [CM.python(), CM.indentUnit.of("    ")]);
 const editor = new CM.EditorView({
   parent: $("cm"),
-  state: CM.EditorState.create({ doc: "", extensions: [CM.lineNumbers(), CM.highlightActiveLineGutter(), CM.highlightActiveLine(), CM.drawSelection(), CM.history(), CM.bracketMatching(), CM.closeBrackets(), CM.highlightSelectionMatches(), CM.python(), CM.syntaxHighlighting(CM.defaultHighlightStyle, { fallback: true }), CM.indentUnit.of("    "), CM.lintGutter(), guardLinter,
+  state: CM.EditorState.create({ doc: "", extensions: [CM.lineNumbers(), CM.highlightActiveLineGutter(), CM.highlightActiveLine(), CM.drawSelection(), CM.history(), CM.bracketMatching(), CM.closeBrackets(), CM.highlightSelectionMatches(), langComp.of(langExt(sim.doc.board)), CM.syntaxHighlighting(CM.defaultHighlightStyle, { fallback: true }), CM.lintGutter(), guardLinter,
     CM.keymap.of([CM.indentWithTab, ...CM.closeBracketsKeymap, ...CM.defaultKeymap, ...CM.historyKeymap, ...CM.searchKeymap]), ...(matchMedia("(prefers-color-scheme: dark)").matches ? [CM.oneDark] : []), CM.EditorView.updateListener.of((u) => { if (u.docChanged) scheduleSave(); })] }),
 });
+editorRef = editor; let editorLang = sim.doc.board === "uno" ? "cpp" : "py";
+function setEditorLang(board) { const want = board === "uno" ? "cpp" : "py"; if (want === editorLang) return; editorLang = want; editor.dispatch({ effects: langComp.reconfigure(langExt(board)) }); }
 const getCode = () => editor.state.doc.toString();
 const setCode = (s) => editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: s } });
 window.simEditor = { getCode, setCode };
-$("btn-check").addEventListener("click", async () => { const r = await sim.check(getCode()); if (r.ok) toast("語法檢查通過"); else { toast(`第 ${r.line ?? "?"} 行：${r.msg}`, "bad"); if (r.line) { const l = editor.state.doc.line(Math.min(r.line, editor.state.doc.lines)); editor.dispatch({ selection: { anchor: l.from }, scrollIntoView: true }); } } });
+$("btn-check").addEventListener("click", async () => { if (isUno()) { toast("Arduino（C++）程式不在 App 內編譯，沒有語法檢查；請在電腦上用 Arduino IDE 或 arduino-cli 編譯", "warn"); return; } const r = await sim.check(getCode()); if (r.ok) toast("語法檢查通過"); else { toast(`第 ${r.line ?? "?"} 行：${r.msg}`, "bad"); if (r.line) { const l = editor.state.doc.line(Math.min(r.line, editor.state.doc.lines)); editor.dispatch({ selection: { anchor: l.from }, scrollIntoView: true }); } } });
 const SNIPPETS = {
   "LED 閃爍（GPIO16 → 220Ω → LED → GND）": "import lab\nfrom machine import Pin\nled = Pin(16, Pin.OUT)\nn = 0\nwhile lab.running():\n    led.value(1); lab.sleep(0.5)\n    led.value(0); lab.sleep(0.5)\n    n += 1\n    print('閃了', n, '次')\n",
   "按鍵控制 LED（按鍵 GPIO17–GND，內部上拉）": "import lab\nfrom machine import Pin\nled = Pin(16, Pin.OUT)\nbtn = Pin(17, Pin.IN, Pin.PULL_UP)\nwhile lab.running():\n    pressed = btn.value() == 0\n    led.value(1 if pressed else 0)\n    lab.sleep(0.02)\n",
@@ -755,7 +829,7 @@ for (const k of Object.keys(SNIPPETS)) { const o = document.createElement("optio
 $("snippets").addEventListener("change", function() { if (SNIPPETS[this.value]) setCode(SNIPPETS[this.value]); this.value = ""; });
 let saveT = 0; function scheduleSave() { clearTimeout(saveT); saveT = setTimeout(saveLocal, 800); }
 let engineChosen = false; let viewportTouched = () => {};   // 使用者在下拉選過才記住引擎；?engine=（量測用）不算
-function saveLocal() { try { localStorage.setItem("sim.doc", JSON.stringify(sim.save())); localStorage.setItem("sim.code", getCode()); if (sim.engine && engineChosen) localStorage.setItem("sim.engine", sim.engine.kind); } catch (e) {} }
+function saveLocal() { try { localStorage.setItem("sim.doc", JSON.stringify(sim.save())); localStorage.setItem("sim.code", getCode()); if (sim.engine && engineChosen && sim.engine.kind !== "arduino-avr8js") localStorage.setItem("sim.engine", sim.engine.kind); } catch (e) {} }
 
 function renderProps(s) {
   const el = $("props"); el.innerHTML = "";
@@ -876,8 +950,8 @@ function scopeProbesUI() {
 function scopePinsUI() {
   scopeProbesUI();
   const el = $("scope-pins"); el.innerHTML = "";
-  const gpios = [...new Set([...Object.keys(sim.engine ? sim.engine.pins() : {}), ...Object.keys(scope.hist)].map(Number))].sort((a, b) => a - b);
-  for (const g of gpios) { const b = document.createElement("button"); b.className = "icon" + (scope.pins.includes(g) ? " on" : ""); b.textContent = "GPIO" + g; b.addEventListener("click", () => { if (scope.pins.includes(g)) scope.pins = scope.pins.filter((x) => x !== g); else if (scope.pins.length < 4) scope.pins.push(g); scopePinsUI(); }); el.appendChild(b); }
+  const gpios = [...new Set([...Object.entries(sim.engine ? sim.engine.pins() : {}).filter(([, st]) => !st.idle).map(([k]) => k), ...Object.keys(scope.hist)].map(Number))].sort((a, b) => a - b);   // 引擎 C 回報全部 20 支腳，只列程式碰過的
+  for (const g of gpios) { const b = document.createElement("button"); b.className = "icon" + (scope.pins.includes(g) ? " on" : ""); b.textContent = pinLabel(g); b.addEventListener("click", () => { if (scope.pins.includes(g)) scope.pins = scope.pins.filter((x) => x !== g); else if (scope.pins.length < 4) scope.pins.push(g); scopePinsUI(); }); el.appendChild(b); }
   if (!gpios.length) el.innerHTML = '<span class="muted">執行程式後這裡會列出用到的腳位</span>';
 }
 function drawScope() {
@@ -888,7 +962,7 @@ function drawScope() {
   ctx.strokeStyle = "#333"; for (let i = 1; i <= 5; i++) { const x = (W * i) / 5; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
   scope.pins.forEach((g, i) => {
     const y0 = i * rowH + 6, y1 = (i + 1) * rowH - 10; const pts = (scope.hist[g] || []).filter((p) => p[0] >= t0 - win);
-    ctx.fillStyle = "#9a9ea8"; ctx.font = "11px sans-serif"; ctx.fillText("GPIO" + g, 4, y0 + 10);
+    ctx.fillStyle = "#9a9ea8"; ctx.font = "11px sans-serif"; ctx.fillText(pinLabel(g), 4, y0 + 10);
     ctx.strokeStyle = ["#2a7", "#27d", "#e90", "#a3c"][i]; ctx.lineWidth = 2; ctx.beginPath();
     let last = null;
     const st = sim.engine ? sim.engine.pins()[g] : null; const cur = st ? (st.pwm ? 0.5 + st.pwm.duty / 2 : st.level) : 0;
@@ -913,7 +987,7 @@ function drawScope() {
   ctx.fillStyle = "#6b7280"; ctx.font = "10px sans-serif"; for (let i = 0; i <= 5; i++) ctx.fillText(((t0 + (win * i) / 5) / 1000).toFixed(1) + "s", (W * i) / 5 + 2, H - 2);
 }
 let scopeKey = "";
-setInterval(() => { drawScope(); if ($("pane-scope").classList.contains("active")) { const key = Object.keys(sim.engine ? sim.engine.pins() : {}).join(",") + "|" + scope.pins.join(","); if (key !== scopeKey) { scopeKey = key; scopePinsUI(); } } }, 100);
+setInterval(() => { drawScope(); if ($("pane-scope").classList.contains("active")) { const key = Object.entries(sim.engine ? sim.engine.pins() : {}).filter(([, st]) => !st.idle).map(([k]) => k).join(",") + "|" + scope.pins.join(","); if (key !== scopeKey) { scopeKey = key; scopePinsUI(); } } }, 100);
 $("scope-clear").addEventListener("click", () => { scope.hist = {}; sim.clearProbes(); });
 // ---------- 序列埠監視器 ----------
 const serial = $("serial");
@@ -944,17 +1018,23 @@ async function decompress(b64) { const bin = atob(b64.replace(/-/g, "+").replace
   const m = /#s=([A-Za-z0-9_-]+)/.exec(location.hash);
   if (m) { try { const data = JSON.parse(await decompress(m[1])); sim.load(data.d); sharedCode = data.c || null; loaded = true; toast("已載入分享的電路"); } catch (e) { toast("分享網址解析失敗", "bad"); } }
   if (!loaded && q.get("fresh") !== "1") { try { const saved = localStorage.getItem("sim.doc"); if (saved) { sim.load(JSON.parse(saved)); loaded = true; } } catch (e) {} }
+  let unoStart = null;
+  if (!loaded && sim.doc.board === "uno") {   // Arduino UNO 第一次開：直接載入 Blink 範例（電路＋程式＋預編譯 hex）
+    for (let i = 0; i < 50 && !EXAMPLES.length; i++) await new Promise((r) => setTimeout(r, 100));
+    unoStart = EXAMPLES.find((e) => e.board === "uno"); if (unoStart) { loadExample(unoStart); loaded = true; }
+  }
   if (!loaded) {
     const led = sim.addPart("led", 380, 150), r = sim.addPart("resistor", 300, 150);
     sim.doc.wires.push({ a: "board:G16", b: r + ":1", color: "#d33", pts: [] }, { a: r + ":2", b: led + ":A", color: "#e90", pts: [] }, { a: led + ":C", b: "board:GND", color: "#111", pts: [] });
     sim.select(null); sim.tick();
   }
   $("board").value = sim.doc.board;
-  setCode(sharedCode || (q.get("fresh") !== "1" && localStorage.getItem("sim.code")) || SNIPPETS[Object.keys(SNIPPETS)[0]]);
+  if (!unoStart) setCode(sharedCode || (q.get("fresh") !== "1" && localStorage.getItem("sim.code")) || SNIPPETS[Object.keys(SNIPPETS)[0]]);
   if (!localStorage.getItem("sim.toured") && !q.get("notour")) $("tour").style.display = "flex";
   window.addEventListener("beforeunload", saveLocal);
-  const engineQ = q.get("engine") || (localStorage.getItem("sim.engine") || "micropython-wasm"); $("engine").value = ENGINES[engineQ] ? engineQ : "micropython-wasm";
-  try { await sim.attach(sim.doc.board, $("engine").value); $("engine-load").style.display = "none"; log("模擬器就緒（" + (sim.engine.kind === "esp32sim" ? "真韌體引擎 esp32sim" : sim.engine.info().version) + "）", "sys"); } catch (e) { log("MicroPython 載入失敗：" + e.message, "err"); }
+  const engineQ = q.get("engine") || (localStorage.getItem("sim.engine") || "micropython-wasm"); $("engine").value = ENGINES[engineQ] && engineQ !== "arduino-avr8js" ? engineQ : "micropython-wasm";
+  applyBoardUI(sim.doc.board);
+  try { await sim.attach(sim.doc.board, $("engine").value); $("engine-load").style.display = "none"; log("模擬器就緒（" + (sim.engine.kind === "esp32sim" ? "真韌體引擎 esp32sim" : sim.engine.kind === "arduino-avr8js" ? "Arduino UNO，" + sim.engine.info().version : sim.engine.info().version) + "）", "sys"); } catch (e) { log("MicroPython 載入失敗：" + e.message, "err"); }
   if (await loadAssignmentFromHash()) toast("已載入作業");
   sim.fit();
   // 畫布剛開時若還沒有尺寸（分頁在背景、面板剛展開），fit 會算成最小縮放；等它有尺寸再 fit 一次

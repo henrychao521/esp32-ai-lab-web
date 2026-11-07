@@ -61,7 +61,17 @@ export const BOARDS = {
                  usable: [1, 2, 3, 10, 11, 12, 13, 16, 17, 18, 21, 43, 44], adc: [1, 2, 3, 10, 11, 12, 13], input_only: [], reserved: {} },
   xiao_esp32s3: { name: "XIAO ESP32S3", power: { "3V3": 3.3, "5V": 5.0, GND: 0 }, gpios: [1, 2, 3, 4, 5, 6, 7, 8, 9, 43, 44],
                   usable: [1, 2, 3, 4, 5, 6, 7, 8, 9, 43, 44], adc: [1, 2, 3, 4, 5, 6, 7, 8, 9], input_only: [], reserved: {} },
+  // Arduino UNO R3（ATmega328P，引擎 C avr8js）：5 V 系統。腳號 D0–D13＝0–13、A0–A5＝14–19；PWM 只有 D3/5/6/9/10/11；A4/A5 兼 I2C SDA/SCL
+  uno: { name: "Arduino UNO", power: { "5V": 5.0, "3V3": 3.3, VIN: 5.0, GND: 0 }, vlogic: 5.0, gpioROut: 25,
+         gpios: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+         usable: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], adc: [14, 15, 16, 17, 18, 19], pwm: [3, 5, 6, 9, 10, 11], input_only: [],
+         reserved: { 0: "UART RX（USB 序列埠，Serial 用）", 1: "UART TX（USB 序列埠，Serial 用）" }, onboard: { 13: "板載 L 燈" },
+         names: { 14: "A0", 15: "A1", 16: "A2", 17: "A3", 18: "A4", 19: "A5" } },
 };
+/** 板子腳號的印刷名（UNO：13 → D13、14 → A0；ESP32：GPIO16） */
+export function gpioName(board, g) { const B = BOARDS[board]; if (board === "uno") return (B.names[g] || "D" + g); return "GPIO" + g; }
+/** 邏輯高電壓（ESP32 3.3 V、UNO 5 V） */
+export const vLogic = (board) => (BOARDS[board] && BOARDS[board].vlogic) || V_SUPPLY;
 
 /** 聯集尋找：把 wires（與麵包板導通群組）合併成網路。extraLinks 給麵包板：[[refA, refB], ...] */
 export function buildNets(circuit, extraLinks = []) {
@@ -113,6 +123,7 @@ export function solve(circuit, io = {}, extraLinks = []) {
 
 function solveOnce(circuit, io = {}, extraLinks = []) {
   const B = BOARDS[circuit.board] || BOARDS.devkit;
+  const VL = B.vlogic || V_SUPPLY, R_OUT = B.gpioROut || GPIO_R_OUT;   // 邏輯高電壓、腳位輸出內阻（UNO 5 V／約 25 Ω）
   const N = io.nets || buildNets(circuit, extraLinks);   // 暫態每步呼叫：結構沒變就沿用上一步的網路表
   const pins = io.pins || {}, modes = io.modes || {}, pulls = io.pulls || {}, pwm = io.pwm || {}, ui = io.ui || {};
   const burned = new Set(io.burned || []);
@@ -143,10 +154,10 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     const nd = node("board:" + g);
     const mode = modes[g] || (pins[g] !== undefined ? "out" : "in");
     if (mode === "out" || mode === "pwm") {
-      const v = pins[g] ? V_SUPPLY : 0;
-      const e = { type: "V", a: nd, b: -1, v, g: 1 / GPIO_R_OUT, tag: "gpio:" + g }; elems.push(e); gpioElems[g] = e;
+      const v = pins[g] ? VL : 0;
+      const e = { type: "V", a: nd, b: -1, v, g: 1 / R_OUT, tag: "gpio:" + g }; elems.push(e); gpioElems[g] = e;
     } else if (pulls[g]) {
-      addV(nd, -1, V_SUPPLY, PULLUP_R, "pull:" + g);
+      addV(nd, -1, VL, PULLUP_R, "pull:" + g);
     }
     // 純輸入／ADC：高阻抗（1 MΩ 到地讓浮接節點有定義）
     addR(nd, -1, 1e6);
@@ -180,7 +191,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       // 模組：供電腳之間放一個負載（算得出有沒有供電），訊號腳高阻抗
       case "ssd1306": addR(a("3V3"), a("GND"), 330); addR(a("VIN"), a("GND"), 330); for (const q of ["DATA", "CLK"]) addR(a(q), -1, 1e6); break;
       case "lcd1602": addR(a("VCC"), a("GND"), 200); for (const q of ["SDA", "SCL"]) addR(a(q), -1, 1e6); break;
-      case "hc-sr04": addR(a("VCC"), a("GND"), 330); addR(a("TRIG"), -1, 1e6); { const pv = V0(a("VCC")) - V0(a("GND")); const lv = (u.echoLevel || 0) && pv > 2.5 ? Math.min(pv, 3.3) : 0; addV(a("ECHO"), -1, lv, 100, "mod:" + id); } break;
+      case "hc-sr04": addR(a("VCC"), a("GND"), 330); addR(a("TRIG"), -1, 1e6); { const pv = V0(a("VCC")) - V0(a("GND")); const lv = (u.echoLevel || 0) && pv > 2.5 ? Math.min(pv, VL) : 0; addV(a("ECHO"), -1, lv, 100, "mod:" + id); } break;
       case "dht22": addR(a("VCC"), a("GND"), 5000); addR(a("SDA"), -1, 1e6); break;
       case "neopixel-strip": addR(a("VCC"), a("GND"), 60); addR(a("DIN"), -1, 1e6); break;
       case "pir": addR(a("VCC"), a("GND"), 2000); { const pv = V0(a("VCC")) - V0(a("GND")); addV(a("OUT"), -1, u.motion && pv > 2.5 ? 3.3 : 0, 100, "mod:" + id); } break;
@@ -302,7 +313,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     if (burned.has(L.key)) { warn("LED_BURN", L.part, `${L.part} 已燒毀`, "為什麼：剛才電流超過 LED 上限 30 mA（沒有串電阻，電流只受腳位內阻限制）。", "怎麼改：按「重置」或重新「執行」讓 LED 復活，並在 LED 長腳（A）和 GPIO 之間串 220 Ω～1 kΩ 電阻。"); continue; }
     if (i > LED_I_MAX && !burned.has(L.key)) {
       burned.add(L.key); st.leds[L.key].burned = true; st.leds[L.key].on = false;
-      warn("LED_BURN", L.part, `${L.part} 燒毀了（${(i * 1000).toFixed(0)} mA）`, "為什麼：LED 一導通電壓就被夾在順向壓降（紅約 1.8 V），沒有電阻分壓的話電流只受腳位內阻限制，會超過 LED 的上限 30 mA，發熱燒斷。", "怎麼改：刪掉這顆 LED 重放一顆，在 LED 的長腳（A）和 GPIO 之間串 220 Ω～1 kΩ 電阻（3.3 V 時 220 Ω 約 7 mA，剛好亮）。");
+      warn("LED_BURN", L.part, `${L.part} 燒毀了（${(i * 1000).toFixed(0)} mA）`, "為什麼：LED 一導通電壓就被夾在順向壓降（紅約 1.8 V），沒有電阻分壓的話電流只受腳位內阻限制，會超過 LED 的上限 30 mA，發熱燒斷。", VL > 4 ? "怎麼改：刪掉這顆 LED 重放一顆，在 LED 的長腳（A）和腳位之間串 220 Ω～1 kΩ 電阻（5 V 時 220 Ω 約 13 mA、330 Ω 約 9 mA；UNO 的腳位是 5 V，比 ESP32 更容易燒）。" : "怎麼改：刪掉這顆 LED 重放一顆，在 LED 的長腳（A）和 GPIO 之間串 220 Ω～1 kΩ 電阻（3.3 V 時 220 Ω 約 7 mA，剛好亮）。");
     }
     if (!on && vC - vA > vf) warn("LED_REVERSE", L.part, `${L.part} 接反了`, "為什麼：LED 是二極體，只讓電流從長腳（A，陽極）流向短腳（C，陰極）；反向時不導通，所以不亮（也不會壞）。", "怎麼改：把 LED 轉 180°，長腳那一側接 GPIO 或電阻、短腳接 GND。");
   }
@@ -310,18 +321,19 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     if (e.type !== "V") continue;
     const i = (e.v - (V(e.a) - V(e.b))) * e.g;   // 流出源的電流
     if (e.tag.startsWith("supply:") && i > SHORT_I) warn("SHORT", "board", `${e.tag.slice(7)} 短路（${i.toFixed(1)} A）`, "為什麼：電源正極和 GND 之間沒有任何元件擋著（或按鍵按下、LED 導通後變成直通），電流只受電源內阻限制，真板子會重開、發燙或燒掉保護元件。", "怎麼改：找出畫紅的那幾條線，電源和 GND 之間一定要有負載（LED＋電阻、蜂鳴器…），不要直接連。模擬已暫停，修好再執行。", { net: N.find("board:" + e.tag.slice(7)) });
-    if (e.tag.startsWith("gpio:") && Math.abs(i) > GPIO_I_MAX) warn("GPIO_OVERCURRENT", "board", `GPIO${e.tag.slice(5)} 電流 ${(Math.abs(i) * 1000).toFixed(0)} mA 超過 40 mA`, "為什麼：ESP32 每支腳位最多只能供／吸 40 mA，直接驅動低阻抗負載（蜂鳴器、馬達、沒電阻的 LED）會超過，久了腳位會壞。", "怎麼改：LED 串 220 Ω 以上電阻；蜂鳴器、馬達、繼電器用電晶體（或 MOSFET）當開關，由 GPIO 控制電晶體。");
+    if (e.tag.startsWith("gpio:") && Math.abs(i) > GPIO_I_MAX) warn("GPIO_OVERCURRENT", "board", `${gpioName(circuit.board, Number(e.tag.slice(5)))} 電流 ${(Math.abs(i) * 1000).toFixed(0)} mA 超過 40 mA`, (circuit.board === "uno" ? "為什麼：ATmega328P 每支腳位絕對最大 40 mA（建議 20 mA 以內），" : "為什麼：ESP32 每支腳位最多只能供／吸 40 mA，") + "直接驅動低阻抗負載（蜂鳴器、馬達、沒電阻的 LED）會超過，久了腳位會壞。", "怎麼改：LED 串 220 Ω 以上電阻；蜂鳴器、馬達、繼電器用電晶體（或 MOSFET）當開關，由 GPIO 控制電晶體。");
   }
   // 3V3 與 5V 接在一起（或 VIN）：兩個電源互灌
   const supplies = Object.keys(B.power).filter((k) => B.power[k] > 0);
   for (let i = 0; i < supplies.length; i++) for (let j = i + 1; j < supplies.length; j++) {
+    if (B.power[supplies[i]] === B.power[supplies[j]]) continue;   // 同電壓（UNO 的 5V 與 USB 供電時的 VIN）不算互灌
     if (N.same("board:" + supplies[i], "board:" + supplies[j])) warn("SUPPLY_MIX", "board", `${supplies[i]} 和 ${supplies[j]} 接在一起`, "為什麼：3.3 V 和 5 V 是兩個不同的電源，直接相連會讓 5 V 灌進 3.3 V 穩壓器與晶片，ESP32 的腳位只能承受 3.3 V。", "怎麼改：同一條線路只用一種電源；需要 5 V 的元件（伺服）接 5V 與 GND，訊號線仍用 3.3 V 的 GPIO。", { net: N.find("board:" + supplies[i]) });
   }
   // 按鍵浮接：一側接 GPIO、另一側沒接 GND／3V3，且 GPIO 沒開上拉
   for (const [id, p] of Object.entries(circuit.parts)) if (p.type === "pushbutton") {
     const sides = [["1.l"], ["2.l"]].map((pins) => N.nets[N.find(id + ":" + pins[0])] || []);
     const gp = (members) => members.filter((m) => m.startsWith("board:") && !isNaN(Number(m.slice(6)))).map((m) => Number(m.slice(6)));
-    const toPower = (members) => members.some((m) => m === "board:GND" || m === "board:3V3");
+    const toPower = (members) => members.some((m) => m === "board:GND" || m === "board:3V3" || m === "board:5V");
     for (let k = 0; k < 2; k++) {
       const g = gp(sides[k]); const other = sides[1 - k];
       if (g.length && !toPower(other) && !gp(other).length && !pulls[g[0]]) warn("BTN_FLOAT", id, `${id} 讀值會亂跳（浮接）`, "為什麼：按鍵沒按下時 GPIO 哪裡都沒接，電位不定（浮接），程式讀到的 0／1 會隨機變化。", "怎麼改：按鍵另一側接 GND，程式用 Pin(n, Pin.IN, Pin.PULL_UP)（內部上拉：沒按＝1、按下＝0）；或另一側接 3V3 並外加 10 kΩ 下拉電阻到 GND。");
@@ -385,7 +397,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     }
     if (st.powered === false && ["ssd1306", "lcd1602", "hc-sr04", "dht22", "neopixel-strip", "pir", "relay", "joystick"].includes(p.type)) {
       const hasAnyWire = PARTS[p.type].pins.some((pin) => (N.nets[N.find(id + ":" + pin)] || []).some((m) => !m.startsWith(id + ":") && !m.startsWith("bb:")));
-      if (hasAnyWire) warn("MODULE_NO_POWER", id, `${id} 沒有供電`, "為什麼：這類模組要有 VCC（3.3 V 或 5 V，看模組）和 GND 才會動，只接訊號線程式會讀不到或畫面不亮。", `怎麼改：${p.type === "hc-sr04" || p.type === "relay" ? "VCC 接 5V" : "VCC 接 3V3"}、GND 接 GND，再接訊號線。`);
+      if (hasAnyWire) warn("MODULE_NO_POWER", id, `${id} 沒有供電`, "為什麼：這類模組要有 VCC（3.3 V 或 5 V，看模組）和 GND 才會動，只接訊號線程式會讀不到或畫面不亮。", `怎麼改：${p.type === "hc-sr04" || p.type === "relay" || circuit.board === "uno" ? "VCC 接 5V" : "VCC 接 3V3"}、GND 接 GND，再接訊號線。`);
     }
   }
 
@@ -394,8 +406,8 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
   for (const g of B.gpios) {
     const v = V(node("board:" + g));
     const mode = modes[g] || (pins[g] !== undefined ? "out" : "in");
-    if (mode === "in") inputs[g] = v > 1.65 ? 1 : 0;
-    if (mode === "adc" || mode === "in") adc[g] = Math.max(0, Math.min(4095, Math.round(v / V_SUPPLY * 4095)));
+    if (mode === "in") inputs[g] = v > VL / 2 ? 1 : 0;
+    if (mode === "adc" || mode === "in") adc[g] = Math.max(0, Math.min(4095, Math.round(v / VL * 4095)));   // 0～4095 對應 0～邏輯電壓（ESP32 3.3 V、UNO 5 V）
   }
   const nodeVolt = {};
   for (const r of netIds) nodeVolt[r] = r === gndRoot ? 0 : nodeV[idx.get(r)];
@@ -403,10 +415,11 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
   if (!io._pwmInner) {
     const bd = BOARDS[circuit.board] || {}; const miss = [];
     for (const g of Object.keys(modes)) {
-      const n = Number(g); if (!bd.gpios || !bd.gpios.includes(n) || (bd.reserved && bd.reserved[n])) continue;
+      const n = Number(g); if (!bd.gpios || !bd.gpios.includes(n) || (bd.reserved && bd.reserved[n]) || (bd.onboard && bd.onboard[n])) continue;
       const ref = "board:" + n; if (!(circuit.wires || []).some(([a, b]) => a === ref || b === ref)) miss.push(n);
     }
-    if (miss.length) warn("PIN_UNWIRED", "board", `程式用了 GPIO${miss.join("、GPIO")}，但板子上這${miss.length > 1 ? "幾" : ""}支腳沒接線`, "為什麼：程式裡 Pin(編號) 的編號是晶片的 GPIO 號碼，不一定等於板子上印的字（XIAO 的 D9 是 GPIO8、D10 是 GPIO9）。", "怎麼改：把線接到板子上對應這個 GPIO 的腳，或把程式的編號改成你接線那支腳的 GPIO（滑到板子腳位上可看對應）。");
+    if (miss.length && circuit.board === "uno") warn("PIN_UNWIRED", "board", `程式用了 ${miss.map((n) => gpioName("uno", n)).join("、")}，但板子上這${miss.length > 1 ? "幾" : ""}支腳沒接線`, "為什麼：pinMode／digitalWrite／analogRead 用到的腳，板子上要有線接到元件，不然元件收不到訊號。", "怎麼改：把線接到板子上印著同樣名字的腳（數字 13 就是 D13、A0 就是 A0），或把程式的腳號改成你接線的那支。");
+    else if (miss.length) warn("PIN_UNWIRED", "board", `程式用了 GPIO${miss.join("、GPIO")}，但板子上這${miss.length > 1 ? "幾" : ""}支腳沒接線`, "為什麼：程式裡 Pin(編號) 的編號是晶片的 GPIO 號碼，不一定等於板子上印的字（XIAO 的 D9 是 GPIO8、D10 是 GPIO9）。", "怎麼改：把線接到板子上對應這個 GPIO 的腳，或把程式的編號改成你接線那支腳的 GPIO（滑到板子腳位上可看對應）。");
   }
   return { nets: N, nodeV: nodeVolt, parts: partState, warnings, inputs, adc, burned: [...burned], dynState: nextState };
 }

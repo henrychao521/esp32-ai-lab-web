@@ -1,13 +1,27 @@
 // engine.js — 模擬器執行引擎的共用介面（規格：docs/sim-engine-api.md v1）。
-// 畫布只透過這裡取得引擎；引擎 A（MicroPython wasm）在這個檔；引擎 B（esp32sim）由 sim-engine/engine-esp32sim.js 提供，畫布不碰那個目錄。
+// 畫布只透過這裡取得引擎；引擎 A（MicroPython wasm）在這個檔；引擎 B（esp32sim）由 sim-engine/engine-esp32sim.js 提供，畫布不碰那個目錄；
+// 引擎 C（Arduino UNO，avr8js）在 sim/engine-avr.js。
 export const API_VERSION = 1;
 export const ENGINES = {
   "micropython-wasm": { label: "快速（MicroPython wasm）", note: "秒開；lab 模組直接對應；沒有精確時序、單步與 Arduino", module: null },
   "esp32sim": { label: "真韌體（esp32sim）", note: "跑未修改的 ESP32-S3 韌體，時序精確，可單步，可 Arduino C；開機較慢", module: "../sim-engine/engine-esp32sim.js" },
+  // 引擎 C：Arduino UNO（avr8js，ATmega328P 逐指令）。只給 board:"uno" 用，程式來源是 arduino-cli 編好的 .hex；畫布依板子自動選，不出現在引擎選單
+  "arduino-avr8js": { label: "Arduino UNO（avr8js）", note: "ATmega328P 16 MHz 逐指令模擬，跑預先編譯的 .hex；時序精確、可單步；App 內不編譯 C++", module: "./engine-avr.js", boards: ["uno"] },
 };
+/** 這塊板子該用哪個引擎：UNO 一律 avr8js；ESP32 系列不能用 avr8js（退回快速引擎） */
+export function engineForBoard(board, kind) {
+  if (board === "uno") return "arduino-avr8js";
+  return kind === "arduino-avr8js" || !ENGINES[kind] ? "micropython-wasm" : kind;
+}
 
 export async function createEngine(kind = "micropython-wasm", opts = {}) {
   if (kind === "micropython-wasm") return createWasmEngine(opts);
+  if (kind === "arduino-avr8js") {
+    const mod = await import(new URL(ENGINES["arduino-avr8js"].module, import.meta.url).href);
+    const e = await mod.createAvrEngine(opts);
+    if (e.apiVersion !== API_VERSION) throw new Error("引擎 C 的 apiVersion 不符：" + e.apiVersion);
+    return e;
+  }
   if (kind === "esp32sim") {
     const base = new URL(ENGINES.esp32sim.module, import.meta.url);
     const mod = await import(base.href);

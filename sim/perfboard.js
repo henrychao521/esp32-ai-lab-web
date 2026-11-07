@@ -41,6 +41,8 @@ function boardFoot(board) {
   if (board === "tqt_pro") return { pins: [["5V", 0, 0], ["GND", 1, 0], ["3V3", 2, 0], ["G16", 3, 0], ["G17", 4, 0], ["G18", 5, 0], ["G48", 6, 0]], body: [-1.5, -6.5, 10, 7.2], title: "T-QT Pro" };
   if (board === "xiao_esp32s3") return { pins: [["D0", 0, 0], ["D1", 0, 1], ["D2", 0, 2], ["D3", 0, 3], ["D4", 0, 4], ["D5", 0, 5], ["D6", 0, 6], ["5V", 6, 0], ["GND", 6, 1], ["3V3", 6, 2], ["D10", 6, 3], ["D9", 6, 4], ["D8", 6, 5], ["D7", 6, 6]], body: [-0.5, -1, 7, 8.2], title: "XIAO ESP32S3" };
   if (board === "tdisplay_s3") { const L = ["3V3", "GND", "G43", "G44", "G18", "G17", "G21", "G16", "G1", "G2", "G3", "G10", "G11", "G12", "G13"]; return { pins: L.map((n, i) => [n, 0, i]).concat([["5V", 9, 0], ["GND", 9, 1], ["3V3", 9, 2]]), body: [-0.5, -1, 10, 16.2], title: "T-Display S3" }; }
+  // Arduino UNO：板子本身放不進萬用板，畫成「排線接頭」——上排 D0～D13＋GND、下排電源與 A0～A5（實際做成 shield 時就是這兩排排針）
+  if (board === "uno") { const T = ["D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "GND"], Bt = ["5V", "3V3", "GND", "VIN", "A0", "A1", "A2", "A3", "A4", "A5"]; return { pins: T.map((n, i) => [n, i, 0]).concat(Bt.map((n, i) => [n, i, 1])), body: [-0.5, -2.5, 15, 2.2], title: "Arduino UNO（排線）" }; }
   // devkit：DEVKIT_PINS 的 x 小的是左排，依 y 排序
   const left = DEVKIT_PINS.filter((p) => p[1] < 50).sort((a, b) => a[2] - b[2]), right = DEVKIT_PINS.filter((p) => p[1] >= 50).sort((a, b) => a[2] - b[2]);
   return { pins: left.map((p, i) => [p[0], 0, i]).concat(right.map((p, i) => [p[0], 10, i])), body: [-0.5, -1, 11, left.length + 1.2], title: "ESP32 DevKit" };

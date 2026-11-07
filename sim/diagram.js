@@ -2,11 +2,14 @@
 // 匯出讓學生能把電路拿到 wokwi.com 開（需要更精確的模擬時的備援）；匯入只認我們匯出的子集。
 import { CATALOG, DEVKIT_PINMAP, BOARD_ART } from "./catalog.js";
 
-const BOARD_TYPE = { devkit: "wokwi-esp32-devkit-v1", tqt_pro: "board-esp32-s3-devkitc-1", tdisplay_s3: "board-esp32-s3-devkitc-1", xiao_esp32s3: "board-xiao-esp32-s3" };
+const BOARD_TYPE = { devkit: "wokwi-esp32-devkit-v1", tqt_pro: "board-esp32-s3-devkitc-1", tdisplay_s3: "board-esp32-s3-devkitc-1", xiao_esp32s3: "board-xiao-esp32-s3", uno: "wokwi-arduino-uno" };
+// Wokwi 的 wokwi-arduino-uno 腳位名：數位腳是純數字（"13"）、類比 "A0"、電源 "5V"／"3.3V"／"VIN"、地 "GND.1"（上排）／"GND.2"／"GND.3"（下排）
+const UNO_WOKWI = { "3V3": "3.3V", "5V": "5V", VIN: "VIN", SDA: "A4", SCL: "A5" };
 const BB_ROW = { a: "t", b: "t", c: "t", d: "t", e: "t", f: "b", g: "b", h: "b", i: "b", j: "b" };
 
 function boardPinToWokwi(board, name) {
   if (board === "devkit") return "esp:" + name;                      // Wokwi 的 devkit-v1 腳位名就是 D4、3V3、GND.1…
+  if (board === "uno") { if (/^D\d+$/.test(name)) return "uno:" + name.slice(1); if (name === "GND") return "uno:GND.2"; return "uno:" + (UNO_WOKWI[name] || name); }
   const e = BOARD_ART[board].pins.find((q) => q[0] === name); if (!e) return null;
   const m = e[3];
   if (board === "xiao_esp32s3") { if (typeof m === "number") return "esp:" + name; return "esp:" + m; }   // XIAO 用 D0…；電源 5V／GND／3V3
@@ -26,7 +29,7 @@ function refToWokwi(doc, ref) {
 }
 
 export function toWokwiDiagram(doc) {
-  const parts = [{ type: BOARD_TYPE[doc.board] || BOARD_TYPE.devkit, id: "esp", top: doc.boardPos.y, left: doc.boardPos.x, attrs: {} }];
+  const parts = [{ type: BOARD_TYPE[doc.board] || BOARD_TYPE.devkit, id: doc.board === "uno" ? "uno" : "esp", top: doc.boardPos.y, left: doc.boardPos.x, attrs: {} }];
   if (doc.breadboard) parts.push({ type: "wokwi-breadboard-half", id: "bb1", top: doc.breadboard.y, left: doc.breadboard.x, attrs: {} });
   for (const [id, p] of Object.entries(doc.parts)) parts.push({ type: CATALOG[p.type].tag, id, top: p.y, left: p.x, rotate: p.rot || 0, attrs: { ...(p.attrs || {}) } });
   const connections = [];
@@ -41,6 +44,7 @@ export function fromWokwiDiagram(json) {
   const tagToType = Object.fromEntries(Object.entries(CATALOG).map(([k, v]) => [v.tag, k]));
   let bbId = null;
   for (const p of d.parts || []) {
+    if (p.type === "wokwi-arduino-uno") { doc.board = "uno"; doc.boardPos = { x: p.left || 0, y: p.top || 0 }; continue; }
     if (p.type === "wokwi-esp32-devkit-v1") { doc.board = "devkit"; doc.boardPos = { x: p.left || 0, y: p.top || 0 }; continue; }
     if (p.type === "board-xiao-esp32-s3") { doc.board = "xiao_esp32s3"; doc.boardPos = { x: p.left || 0, y: p.top || 0 }; continue; }
     if (p.type === "board-esp32-s3-devkitc-1") { doc.board = "tqt_pro"; doc.boardPos = { x: p.left || 0, y: p.top || 0 }; continue; }
@@ -50,6 +54,7 @@ export function fromWokwiDiagram(json) {
   }
   const fromWokwiRef = (r) => {
     const i = r.indexOf(":"), id = r.slice(0, i), pin = r.slice(i + 1);
+    if (id === "uno" && doc.board === "uno") { if (/^\d+$/.test(pin)) return "board:D" + pin; if (pin.startsWith("GND")) return "board:GND"; const back = { "3.3V": "3V3", "5V": "5V", VIN: "VIN" }[pin]; return "board:" + (back || pin); }
     if (id === "esp") {
       if (doc.board === "devkit") return "board:" + pin;
       if (doc.board === "xiao_esp32s3") { const e = BOARD_ART.xiao_esp32s3.pins.find((q) => q[0] === pin || String(q[3]) === pin); return e ? "board:" + e[0] : null; }

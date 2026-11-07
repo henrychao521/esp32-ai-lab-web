@@ -14935,5 +14935,1820 @@
   },
   "board": "devkit",
   "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "uno_blink@uno",
+  "title": "Blink 閃爍",
+  "level": "入門",
+  "summary": "Arduino 的第一個程式：D13 每秒亮滅一次。外接 LED 和板上的 L 燈接在同一支腳，會一起閃。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 400,
+    "y": 80,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 490,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D13",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#e90"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D13 → 220Ω 電阻 → LED 長腳（A）",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "LED 短腳（C）→ GND",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "text": "按 ▶ 執行：外接 LED 和板上 L 燈一起閃",
+    "wires": []
+   }
+  ],
+  "code": "// Blink：讓 D13 的 LED 每秒閃一次\n// 板上的 L 燈也接在 D13，不接任何東西也看得到它閃\nconst int LED = 13;\n\nvoid setup() {\n  pinMode(LED, OUTPUT);       // D13 設成輸出\n  Serial.begin(9600);\n  Serial.println(\"Blink 開始\");\n}\n\nvoid loop() {\n  digitalWrite(LED, HIGH);    // 輸出 5 V：亮\n  delay(500);                 // 等 500 毫秒\n  digitalWrite(LED, LOW);     // 輸出 0 V：滅\n  delay(500);\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_blink.hex",
+  "expect": "LED 與板上 L 燈每秒閃一次（亮 0.5 秒、滅 0.5 秒）。",
+  "try": [
+   "把 500 改成 100，閃快一點",
+   "把電阻刪掉看看 LED 會怎樣（5 V 比 3.3 V 更容易燒）",
+   "改成 SOS：三短三長三短"
+  ],
+  "verify": {
+   "seconds": 2,
+   "expect": {
+    "toggles": {
+     "13": 3
+    },
+    "periodMs": {
+     "13": [
+      995,
+      1005
+     ]
+    },
+    "serial": [
+     "Blink 開始"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_button@uno",
+  "title": "按鍵控燈",
+  "level": "入門",
+  "summary": "按住按鍵 LED 亮、放開就滅。用 INPUT_PULLUP 內部上拉，按鍵另一腳接 GND 就好，不必外加電阻。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 400,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 490,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 410,
+    "y": 150,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D8",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "board:D2",
+    "b": "btn1:1.l",
+    "color": "#36c"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D8 → 220Ω → 綠色 LED → GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "按鍵一腳接 D2、對角那腳接 GND",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "執行後按住畫布上的按鍵",
+    "wires": []
+   }
+  ],
+  "code": "// 按鍵控燈：按住亮、放開滅\nconst int LED = 8;\nconst int BTN = 2;\nint count = 0;\nbool lastPressed = false;\n\nvoid setup() {\n  pinMode(LED, OUTPUT);\n  pinMode(BTN, INPUT_PULLUP);   // 內部上拉：沒按＝HIGH，按下＝LOW\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  bool pressed = digitalRead(BTN) == LOW;\n  digitalWrite(LED, pressed ? HIGH : LOW);\n  if (pressed && !lastPressed) {          // 剛按下的那一刻才算一次\n    count++;\n    Serial.print(\"按下第 \");\n    Serial.print(count);\n    Serial.println(\" 次\");\n  }\n  lastPressed = pressed;\n  delay(10);                              // 簡單的防彈跳\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_button.hex",
+  "expect": "按住按鍵綠燈亮，序列埠印第幾次按下。",
+  "try": [
+   "改成按一下亮、再按一下滅（切換）",
+   "把 INPUT_PULLUP 改成 INPUT 看讀值會不會亂跳"
+  ],
+  "verify": {
+   "seconds": 2,
+   "actions": [
+    {
+     "t": 300,
+     "setPin": [
+      2,
+      0
+     ]
+    },
+    {
+     "t": 900,
+     "setPin": [
+      2,
+      1
+     ]
+    }
+   ],
+   "expect": {
+    "pinAt": [
+     {
+      "t": 250,
+      "pin": 8,
+      "level": 0
+     },
+     {
+      "t": 600,
+      "pin": 8,
+      "level": 1
+     },
+     {
+      "t": 1500,
+      "pin": 8,
+      "level": 0
+     }
+    ],
+    "serial": [
+     "按下第 1 次"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_breathing@uno",
+  "title": "呼吸燈 analogWrite",
+  "level": "入門",
+  "summary": "analogWrite 讓 D9 輸出 PWM（約 490 Hz 的方波），改變高電位所佔的比例，LED 就會漸亮漸暗。只有標 ~ 的腳（3、5、6、9、10、11）能用。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 400,
+    "y": 80,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 490,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "color": "blue"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D9",
+    "b": "r1:1",
+    "color": "#36c"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#36c"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D9（有 ~ 記號的 PWM 腳）→ 220Ω → 藍色 LED → GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "執行後打開「示波器」分頁看 D9 的方波",
+    "wires": []
+   }
+  ],
+  "code": "// 呼吸燈：analogWrite(腳, 0～255) 改變 PWM 占空比\nconst int LED = 9;    // 要用有 ~ 的腳\n\nvoid setup() {\n  pinMode(LED, OUTPUT);\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  for (int v = 0; v <= 255; v += 5) {   // 慢慢變亮\n    analogWrite(LED, v);\n    delay(15);\n  }\n  for (int v = 255; v >= 0; v -= 5) {   // 慢慢變暗\n    analogWrite(LED, v);\n    delay(15);\n  }\n  Serial.println(\"呼吸一次\");\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_breathing.hex",
+  "expect": "藍色 LED 約 1.5 秒一次漸亮漸暗。",
+  "try": [
+   "把 delay(15) 改成 5 看快慢",
+   "改接 D8（沒有 ~）看看會怎樣"
+  ],
+  "verify": {
+   "seconds": 2,
+   "expect": {
+    "pwm": {
+     "9": {
+      "hz": [
+       485,
+       495
+      ],
+      "minEvents": 20,
+      "dutySpan": 0.8
+     }
+    },
+    "serial": [
+     "呼吸一次"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_pot_serial@uno",
+  "title": "可變電阻讀值（序列埠）",
+  "level": "入門",
+  "summary": "analogRead 把 A0 的 0～5 V 換成 0～1023，序列埠印出數值與換算的電壓。轉旋鈕看數字變化。",
+  "breadboard": null,
+  "parts": {
+   "pot1": {
+    "type": "potentiometer",
+    "x": 420,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "pot1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "board:A0",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "可變電阻左腳 GND、右腳 5V",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "中間腳（SIG）→ A0",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "text": "執行後轉旋鈕，打開「序列埠」分頁看數字",
+    "wires": []
+   }
+  ],
+  "code": "// 可變電阻讀值：analogRead 回傳 0～1023（10 位元，對應 0～5 V）\nvoid setup() {\n  Serial.begin(9600);\n  Serial.println(\"轉動可變電阻看看\");\n}\n\nvoid loop() {\n  int raw = analogRead(A0);\n  float volts = raw * 5.0 / 1023.0;\n  Serial.print(\"A0 = \");\n  Serial.print(raw);\n  Serial.print(\"，電壓 \");\n  Serial.print(volts, 2);\n  Serial.println(\" V\");\n  delay(200);\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_pot_serial.hex",
+  "expect": "序列埠每 0.2 秒印一次 A0 讀值（0～1023）與電壓。",
+  "try": [
+   "改成讀值超過 800 時讓 D13 亮",
+   "用 map() 把 0～1023 換成 0～100 %"
+  ],
+  "verify": {
+   "seconds": 2,
+   "actions": [
+    {
+     "t": 0,
+     "setAnalog": [
+      14,
+      2.5
+     ]
+    },
+    {
+     "t": 1000,
+     "setAnalog": [
+      14,
+      1.0
+     ]
+    }
+   ],
+   "expect": {
+    "serial": [
+     "A0 = 512",
+     "A0 = 204"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_traffic@uno",
+  "title": "紅綠燈",
+  "level": "入門",
+  "summary": "三顆 LED 依序亮：綠→黃→紅→綠。為了在模擬器裡馬上看到變化，秒數縮短成 1.2／0.5／1.5 秒（真的路口是幾十秒）。",
+  "breadboard": {
+   "x": 325,
+   "y": 230
+  },
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 400,
+    "y": 30,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 490,
+    "y": 10,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 400,
+    "y": 100,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led2": {
+    "type": "led",
+    "x": 490,
+    "y": 80,
+    "rot": 0,
+    "attrs": {
+     "color": "yellow"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 400,
+    "y": 170,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led3": {
+    "type": "led",
+    "x": 490,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D12",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-15",
+    "color": "#222"
+   },
+   {
+    "a": "board:D11",
+    "b": "r2:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "r2:2",
+    "b": "led2:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "led2:C",
+    "b": "bb:top-14",
+    "color": "#222"
+   },
+   {
+    "a": "board:D10",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "led3:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led3:C",
+    "b": "bb:top-16",
+    "color": "#222"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     9
+    ]
+   },
+   {
+    "text": "D12 → 220Ω → 紅燈",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "D11 → 220Ω → 黃燈",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "D10 → 220Ω → 綠燈",
+    "wires": [
+     6,
+     7
+    ]
+   },
+   {
+    "text": "三顆 LED 的短腳都接到 GND 軌",
+    "wires": [
+     2,
+     5,
+     8
+    ]
+   }
+  ],
+  "code": "// 紅綠燈：綠 → 黃 → 紅 輪流亮（秒數縮短方便觀察）\nconst int RED_LED = 12, YELLOW_LED = 11, GREEN_LED = 10;\n\nvoid lights(int r, int y, int g) {\n  digitalWrite(RED_LED, r);\n  digitalWrite(YELLOW_LED, y);\n  digitalWrite(GREEN_LED, g);\n}\n\nvoid setup() {\n  pinMode(RED_LED, OUTPUT);\n  pinMode(YELLOW_LED, OUTPUT);\n  pinMode(GREEN_LED, OUTPUT);\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  lights(LOW, LOW, HIGH);  Serial.println(\"綠燈\");  delay(1200);\n  lights(LOW, HIGH, LOW);  Serial.println(\"黃燈\");  delay(500);\n  lights(HIGH, LOW, LOW);  Serial.println(\"紅燈\");  delay(1500);\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_traffic.hex",
+  "expect": "綠 1.2 秒 → 黃 0.5 秒 → 紅 1.5 秒循環，序列埠印目前燈號。",
+  "try": [
+   "紅燈最後 0.5 秒讓黃燈一起亮",
+   "加一個行人按鈕：按下就提早轉紅"
+  ],
+  "verify": {
+   "seconds": 2,
+   "expect": {
+    "pinAt": [
+     {
+      "t": 500,
+      "pin": 10,
+      "level": 1
+     },
+     {
+      "t": 1450,
+      "pin": 11,
+      "level": 1
+     },
+     {
+      "t": 1900,
+      "pin": 12,
+      "level": 1
+     },
+     {
+      "t": 1900,
+      "pin": 10,
+      "level": 0
+     }
+    ],
+    "serial": [
+     "綠燈",
+     "黃燈",
+     "紅燈"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_tone_scale@uno",
+  "title": "蜂鳴器 tone 音階",
+  "level": "進階",
+  "summary": "tone(腳, 頻率) 讓蜂鳴器發出 Do Re Mi…。蜂鳴器比較耗電，用 NPN 電晶體當開關：D8 經 1kΩ 控制基極，蜂鳴器接在 5V 與集極之間。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 400,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "q1": {
+    "type": "npn",
+    "x": 490,
+    "y": 120,
+    "rot": 0,
+    "attrs": {}
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 560,
+    "y": 20,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D8",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "q1:B",
+    "color": "#e90"
+   },
+   {
+    "a": "q1:E",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "q1:C",
+    "b": "bz1:2",
+    "color": "#93c"
+   },
+   {
+    "a": "bz1:1",
+    "b": "board:5V",
+    "color": "#d33"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D8 → 1kΩ → 電晶體基極 B",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "電晶體射極 E → GND",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "text": "蜂鳴器一腳接 5V、另一腳接電晶體集極 C",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "執行後看示波器：每個音的頻率不一樣",
+    "wires": []
+   }
+  ],
+  "code": "// 蜂鳴器音階：tone(腳, 頻率, 毫秒)\nconst int BUZZER = 8;\nconst int NOTES[] = {262, 294, 330, 349, 392, 440, 494, 523};   // C4～C5（Do Re Mi Fa Sol La Si Do）\nconst char *NAMES[] = {\"Do\", \"Re\", \"Mi\", \"Fa\", \"Sol\", \"La\", \"Si\", \"高音 Do\"};\n\nvoid setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  for (int i = 0; i < 8; i++) {\n    Serial.print(NAMES[i]);\n    Serial.print(\" \");\n    Serial.print(NOTES[i]);\n    Serial.println(\" Hz\");\n    tone(BUZZER, NOTES[i]);\n    delay(250);\n    noTone(BUZZER);\n    delay(50);\n  }\n  delay(1000);\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_tone_scale.hex",
+  "expect": "蜂鳴器依序發出八個音，序列埠印音名與頻率；示波器看得到方波頻率越來越高。",
+  "try": [
+   "改成「小蜜蜂」的旋律",
+   "把電晶體拿掉、蜂鳴器直接接 D8，看問題分頁的警告"
+  ],
+  "verify": {
+   "seconds": 2,
+   "expect": {
+    "pwm": {
+     "8": {
+      "hzSeq": [
+       262,
+       294,
+       330,
+       349,
+       392
+      ]
+     }
+    },
+    "serial": [
+     "Do 262 Hz",
+     "Sol 392 Hz"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_nightlight@uno",
+  "title": "光敏夜燈",
+  "level": "進階",
+  "summary": "光敏模組的 AO 接 A0：越亮電壓越高。讀值低於 300（約 1.5 V）就當天黑，D7 的 LED 自動亮。",
+  "breadboard": null,
+  "parts": {
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 400,
+    "y": 150,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 410,
+    "y": 50,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 500,
+    "y": 30,
+    "rot": 0,
+    "attrs": {
+     "color": "white"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ldr1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "board:A0",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:D7",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#e90"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "光敏模組 VCC → 5V、GND → GND、AO → A0",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "D7 → 220Ω → 白色 LED → GND",
+    "wires": [
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "執行後在光敏模組上往下拖讓它變暗",
+    "wires": []
+   }
+  ],
+  "code": "// 光敏夜燈：暗下來自動開燈\nconst int LED = 7;\nconst int DARK = 300;      // 低於這個值算天黑（可依環境調整）\n\nvoid setup() {\n  pinMode(LED, OUTPUT);\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  int light = analogRead(A0);\n  bool dark = light < DARK;\n  digitalWrite(LED, dark ? HIGH : LOW);\n  Serial.print(\"光線 \");\n  Serial.print(light);\n  Serial.println(dark ? \" → 暗，開燈\" : \" → 亮，關燈\");\n  delay(200);\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_nightlight.hex",
+  "expect": "環境變暗（讀值 < 300）時 LED 亮，序列埠印光線值。",
+  "try": [
+   "加一段 200～400 的「黃昏」區間用 analogWrite 半亮",
+   "連續 3 次都暗才開燈，避免閃爍"
+  ],
+  "verify": {
+   "seconds": 2,
+   "actions": [
+    {
+     "t": 0,
+     "setAnalog": [
+      14,
+      4.0
+     ]
+    },
+    {
+     "t": 1000,
+     "setAnalog": [
+      14,
+      0.5
+     ]
+    }
+   ],
+   "expect": {
+    "pinAt": [
+     {
+      "t": 800,
+      "pin": 7,
+      "level": 0
+     },
+     {
+      "t": 1800,
+      "pin": 7,
+      "level": 1
+     }
+    ],
+    "serial": [
+     "暗，開燈",
+     "亮，關燈"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_servo_sweep@uno",
+  "title": "伺服馬達掃描",
+  "level": "進階",
+  "summary": "Servo 函式庫每 20 毫秒送一個 0.5～2.4 毫秒的脈衝，脈衝越寬轉越多度。伺服的電源接 5V。",
+  "breadboard": null,
+  "parts": {
+   "servo1": {
+    "type": "servo",
+    "x": 430,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "servo1:V+",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "servo1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "servo1:PWM",
+    "b": "board:D9",
+    "color": "#e90"
+   }
+  ],
+  "steps": [
+   {
+    "text": "伺服紅線（V+）→ 5V、棕線（GND）→ GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "橘線（訊號）→ D9",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "text": "執行後看伺服臂來回掃，示波器看脈衝寬度",
+    "wires": []
+   }
+  ],
+  "code": "// 伺服掃描：0° → 180° → 0°\n#include <Servo.h>\nServo servo;\n\nvoid setup() {\n  servo.attach(9);          // 訊號線接 D9\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  for (int a = 0; a <= 180; a++) {\n    servo.write(a);\n    if (a % 30 == 0) { Serial.print(\"角度 \"); Serial.println(a); }\n    delay(15);\n  }\n  for (int a = 180; a >= 0; a--) {\n    servo.write(a);\n    delay(15);\n  }\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_servo_sweep.hex",
+  "expect": "伺服臂約 2.7 秒從 0° 轉到 180°，再轉回來；序列埠每 30° 印一次。",
+  "try": [
+   "改成只在 45°～135° 之間擺動",
+   "加可變電阻：轉旋鈕控制角度（map(analogRead(A0), 0, 1023, 0, 180)）"
+  ],
+  "verify": {
+   "seconds": 2,
+   "expect": {
+    "pwm": {
+     "9": {
+      "hz": [
+       48,
+       52
+      ],
+      "minEvents": 20,
+      "dutySpan": 0.04
+     }
+    },
+    "serial": [
+     "角度 0",
+     "角度 90"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_ultrasonic@uno",
+  "title": "超音波測距",
+  "level": "進階",
+  "summary": "HC-SR04：TRIG 送 10 微秒脈衝，ECHO 的高電位時間＝聲音來回的時間，除以 58 就是公分。太近（< 20 cm）時 D7 的紅燈亮。",
+  "breadboard": null,
+  "parts": {
+   "us1": {
+    "type": "hc-sr04",
+    "x": 410,
+    "y": 20,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 420,
+    "y": 170,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 510,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "us1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "us1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "us1:TRIG",
+    "b": "board:D9",
+    "color": "#e90"
+   },
+   {
+    "a": "us1:ECHO",
+    "b": "board:D10",
+    "color": "#0aa"
+   },
+   {
+    "a": "board:D7",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "HC-SR04 的 VCC → 5V、GND → GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "TRIG → D9、ECHO → D10",
+    "wires": [
+     2,
+     3
+    ]
+   },
+   {
+    "text": "D7 → 220Ω → 紅燈 → GND（太近警告）",
+    "wires": [
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "執行後拖超音波模組上的距離滑桿",
+    "wires": []
+   }
+  ],
+  "code": "// 超音波測距：距離（公分）＝ 回波時間（微秒）÷ 58\nconst int TRIG = 9, ECHO = 10, WARN = 7;\n\nvoid setup() {\n  pinMode(TRIG, OUTPUT);\n  pinMode(ECHO, INPUT);\n  pinMode(WARN, OUTPUT);\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  digitalWrite(TRIG, LOW);  delayMicroseconds(2);\n  digitalWrite(TRIG, HIGH); delayMicroseconds(10);    // 10 微秒觸發脈衝\n  digitalWrite(TRIG, LOW);\n  unsigned long us = pulseIn(ECHO, HIGH, 30000);    // 最多等 30 毫秒（約 5 公尺）\n  if (us == 0) {\n    Serial.println(\"沒有回波（太遠或沒接好）\");\n  } else {\n    float cm = us / 58.0;\n    Serial.print(\"距離 \");\n    Serial.print(cm, 1);\n    Serial.println(\" cm\");\n    digitalWrite(WARN, cm < 20 ? HIGH : LOW);\n  }\n  delay(200);\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_ultrasonic.hex",
+  "expect": "序列埠每 0.2 秒印距離；距離小於 20 cm 時紅燈亮。",
+  "try": [
+   "改成越近閃越快",
+   "加蜂鳴器做倒車雷達"
+  ],
+  "verify": {
+   "seconds": 2,
+   "pulse": {
+    "pin": 10,
+    "us": 5800
+   },
+   "expect": {
+    "serialRe": [
+     "距離 (99\\.[0-9]|100\\.[0-9]) cm"
+    ],
+    "pinAt": [
+     {
+      "t": 1900,
+      "pin": 7,
+      "level": 0
+     }
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_lcd_i2c@uno",
+  "title": "LCD1602 顯示（I2C）",
+  "level": "進階",
+  "summary": "I2C 只要兩條線（A4＝SDA、A5＝SCL）就能控制 LCD。第一列顯示標題，第二列顯示可變電阻（A0）的電壓與執行秒數。",
+  "breadboard": null,
+  "parts": {
+   "lcd1": {
+    "type": "lcd1602",
+    "x": 400,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 430,
+    "y": 180,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "lcd1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "lcd1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "lcd1:SDA",
+    "b": "board:A4",
+    "color": "#36c"
+   },
+   {
+    "a": "lcd1:SCL",
+    "b": "board:A5",
+    "color": "#2a7"
+   },
+   {
+    "a": "pot1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "board:A0",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "LCD 的 VCC → 5V、GND → GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "SDA → A4、SCL → A5（UNO 的 I2C 腳）",
+    "wires": [
+     2,
+     3
+    ]
+   },
+   {
+    "text": "可變電阻：5V、GND、中間腳 → A0",
+    "wires": [
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "執行後轉旋鈕看第二列的電壓",
+    "wires": []
+   }
+  ],
+  "code": "#include <Wire.h>\n\n// LCD1602 I2C（PCF8574 背板，位址 0x27）的精簡驅動，用法跟 LiquidCrystal_I2C 函式庫一樣：\n// lcd.begin()、lcd.setCursor(欄, 列)、lcd.print(…)、lcd.clear()。實機改用函式庫時這段整段刪掉即可。\nclass LcdI2C : public Print {\n public:\n  LcdI2C(uint8_t addr) : addr_(addr) {}\n  void begin() {\n    Wire.begin();\n    delay(50);\n    write4(0x30); delay(5); write4(0x30); delayMicroseconds(150); write4(0x30);\n    write4(0x20);                    // 切到 4 位元模式\n    command(0x28);                   // 2 列、5×8 字型\n    command(0x0C);                   // 顯示開、不顯示游標\n    command(0x06);                   // 寫一個字游標右移\n    clear();\n  }\n  void clear() { command(0x01); delay(2); }\n  void setCursor(uint8_t col, uint8_t row) { command(0x80 | (col + (row ? 0x40 : 0))); }\n  void backlight(bool on = true) { light_ = on ? 0x08 : 0; expander(0); }\n  size_t write(uint8_t c) { send(c, 1); return 1; }\n private:\n  uint8_t addr_, light_ = 0x08;\n  void expander(uint8_t d) { Wire.beginTransmission(addr_); Wire.write(d | light_); Wire.endTransmission(); }\n  void write4(uint8_t d) { expander(d); expander(d | 0x04); delayMicroseconds(1); expander(d & ~0x04); delayMicroseconds(50); }   // EN 拉高再放下＝鎖存\n  void send(uint8_t v, uint8_t rs) { write4((v & 0xF0) | rs); write4(((v << 4) & 0xF0) | rs); }\n  void command(uint8_t v) { send(v, 0); }\n};\n\nLcdI2C lcd(0x27);\n\nvoid setup() {\n  lcd.begin();\n  lcd.backlight();\n  lcd.setCursor(0, 0);\n  lcd.print(\"Hello UNO!\");\n  Serial.begin(9600);\n  Serial.println(\"LCD 已初始化（位址 0x27）\");\n}\n\nvoid loop() {\n  float volts = analogRead(A0) * 5.0 / 1023.0;\n  lcd.setCursor(0, 1);\n  lcd.print(\"A0=\");\n  lcd.print(volts, 2);\n  lcd.print(\"V t=\");\n  lcd.print(millis() / 1000);\n  lcd.print(\"s  \");\n  delay(250);\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_lcd_i2c.hex",
+  "expect": "LCD 第一列「Hello UNO!」，第二列顯示 A0 電壓與秒數。",
+  "try": [
+   "改成顯示你的名字",
+   "加超音波，第二列顯示距離"
+  ],
+  "verify": {
+   "seconds": 2,
+   "i2c": [
+    39
+   ],
+   "actions": [
+    {
+     "t": 0,
+     "setAnalog": [
+      14,
+      2.5
+     ]
+    }
+   ],
+   "expect": {
+    "lcd": [
+     "Hello UNO!",
+     "A0=2.50V"
+    ],
+    "serial": [
+     "LCD 已初始化"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_rgb@uno",
+  "title": "RGB LED 混色",
+  "level": "進階",
+  "summary": "共陰極 RGB LED：三支 PWM 腳（D9 紅、D10 綠、D11 藍）各串電阻，用 analogWrite 調三原色比例混出各種顏色。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 400,
+    "y": 30,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 400,
+    "y": 70,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 400,
+    "y": 110,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "rgb1": {
+    "type": "rgb-led",
+    "x": 520,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D9",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "rgb1:R",
+    "color": "#d33"
+   },
+   {
+    "a": "board:D10",
+    "b": "r2:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r2:2",
+    "b": "rgb1:G",
+    "color": "#2a7"
+   },
+   {
+    "a": "board:D11",
+    "b": "r3:1",
+    "color": "#36c"
+   },
+   {
+    "a": "r3:2",
+    "b": "rgb1:B",
+    "color": "#36c"
+   },
+   {
+    "a": "rgb1:COM",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D9 → 220Ω → R、D10 → 220Ω → G、D11 → 220Ω → B",
+    "wires": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "最長的共同腳（COM）→ GND",
+    "wires": [
+     6
+    ]
+   }
+  ],
+  "code": "// RGB 混色：三支 PWM 腳調紅、綠、藍的亮度\nconst int R = 9, G = 10, B = 11;\n\nvoid color(int r, int g, int b, const char *name) {\n  analogWrite(R, r);\n  analogWrite(G, g);\n  analogWrite(B, b);\n  Serial.println(name);\n}\n\nvoid setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  color(255, 0, 0, \"紅\");     delay(400);\n  color(255, 180, 0, \"黃\");   delay(400);   // 紅＋綠（綠少一點）\n  color(160, 0, 255, \"紫\");   delay(400);   // 紅＋藍\n  color(0, 200, 200, \"青\");   delay(400);   // 綠＋藍\n  color(0, 255, 0, \"綠\");     delay(400);\n  color(0, 0, 255, \"藍\");     delay(400);\n  color(255, 255, 255, \"白\"); delay(400);   // 三色全開\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_rgb.hex",
+  "expect": "RGB LED 依序變紅、黃、紫、青、綠、藍、白，每 0.4 秒換一色。",
+  "try": [
+   "用 random(256) 做隨機顏色",
+   "加三個可變電阻分別控制 R、G、B"
+  ],
+  "verify": {
+   "seconds": 2,
+   "expect": {
+    "pwm": {
+     "9": {
+      "minEvents": 1
+     },
+     "10": {
+      "minEvents": 2
+     },
+     "11": {
+      "minEvents": 1
+     }
+    },
+    "serial": [
+     "紅",
+     "黃",
+     "紫",
+     "青"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_serial_led@uno",
+  "title": "序列埠指令控燈",
+  "level": "進階",
+  "summary": "在「序列埠」分頁輸入 on、off、blink 按送出，Arduino 讀到指令就控制 D13 的 LED。電腦和板子溝通的第一步。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 400,
+    "y": 80,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 490,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "color": "yellow"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D13",
+    "b": "r1:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D13 → 220Ω → 黃色 LED → GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "執行後到「序列埠」分頁輸入 on、off 或 blink",
+    "wires": []
+   }
+  ],
+  "code": "// 序列埠指令控燈：輸入 on／off／blink\nconst int LED = 13;\nbool blinking = false;\n\nvoid setup() {\n  pinMode(LED, OUTPUT);\n  Serial.begin(9600);\n  Serial.println(\"請輸入指令：on、off、blink\");\n}\n\nvoid loop() {\n  if (Serial.available()) {\n    String cmd = Serial.readStringUntil('\\n');\n    cmd.trim();                               // 去掉前後空白與換行\n    if (cmd == \"on\")         { blinking = false; digitalWrite(LED, HIGH); Serial.println(\"開燈\"); }\n    else if (cmd == \"off\")   { blinking = false; digitalWrite(LED, LOW);  Serial.println(\"關燈\"); }\n    else if (cmd == \"blink\") { blinking = true;  Serial.println(\"閃爍\"); }\n    else { Serial.print(\"看不懂的指令：\"); Serial.println(cmd); }\n  }\n  if (blinking) { digitalWrite(LED, (millis() / 250) % 2); }\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_serial_led.hex",
+  "expect": "輸入 on 燈亮、off 燈滅、blink 閃爍，其他字會回「看不懂的指令」。",
+  "try": [
+   "加 bright 數字 指令，用 analogWrite 調亮度（要換到有 ~ 的腳）",
+   "回報目前燈的狀態"
+  ],
+  "verify": {
+   "seconds": 2,
+   "actions": [
+    {
+     "t": 300,
+     "uart": "on\n"
+    },
+    {
+     "t": 1100,
+     "uart": "off\n"
+    }
+   ],
+   "expect": {
+    "pinAt": [
+     {
+      "t": 1000,
+      "pin": 13,
+      "level": 1
+     },
+     {
+      "t": 1900,
+      "pin": 13,
+      "level": 0
+     }
+    ],
+    "serial": [
+     "請輸入指令",
+     "開燈",
+     "關燈"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_dice@uno",
+  "title": "電子骰子",
+  "level": "專題",
+  "summary": "按一下按鍵，骰子 LED 快速翻滾再停在 1～6 點。7 顆 LED 只用 4 支腳：對角的兩顆串聯共用一支腳（5 V 推兩顆紅燈剛好）。",
+  "breadboard": {
+   "x": 402,
+   "y": 325
+  },
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 400,
+    "y": 20,
+    "rot": 0,
+    "attrs": {
+     "value": "100"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 400,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "100"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 400,
+    "y": 100,
+    "rot": 0,
+    "attrs": {
+     "value": "100"
+    }
+   },
+   "r4": {
+    "type": "resistor",
+    "x": 400,
+    "y": 140,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "tl": {
+    "type": "led",
+    "x": 520,
+    "y": 10,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "tr": {
+    "type": "led",
+    "x": 644,
+    "y": 10,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "ml": {
+    "type": "led",
+    "x": 520,
+    "y": 76,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "c": {
+    "type": "led",
+    "x": 582,
+    "y": 76,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "mr": {
+    "type": "led",
+    "x": 644,
+    "y": 76,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "bl": {
+    "type": "led",
+    "x": 520,
+    "y": 142,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "br": {
+    "type": "led",
+    "x": 644,
+    "y": 142,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 400,
+    "y": 250,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D2",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "tl:A",
+    "color": "#d33"
+   },
+   {
+    "a": "tl:C",
+    "b": "br:A",
+    "color": "#e90"
+   },
+   {
+    "a": "br:C",
+    "b": "bb:top-21",
+    "color": "#222"
+   },
+   {
+    "a": "board:D3",
+    "b": "r2:1",
+    "color": "#36c"
+   },
+   {
+    "a": "r2:2",
+    "b": "tr:A",
+    "color": "#36c"
+   },
+   {
+    "a": "tr:C",
+    "b": "bl:A",
+    "color": "#0aa"
+   },
+   {
+    "a": "bl:C",
+    "b": "bb:top-11",
+    "color": "#222"
+   },
+   {
+    "a": "board:D4",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "ml:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "ml:C",
+    "b": "mr:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "mr:C",
+    "b": "bb:top-22",
+    "color": "#222"
+   },
+   {
+    "a": "board:D5",
+    "b": "r4:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "r4:2",
+    "b": "c:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "c:C",
+    "b": "bb:top-16",
+    "color": "#222"
+   },
+   {
+    "a": "board:D7",
+    "b": "btn1:1.l",
+    "color": "#93c"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "bb:top-2",
+    "color": "#222"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     17
+    ]
+   },
+   {
+    "text": "D2 → 100Ω → 左上 LED → 右下 LED → GND（兩顆串聯）",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "D3 → 100Ω → 右上 LED → 左下 LED → GND",
+    "wires": [
+     4,
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "D4 → 100Ω → 左中 LED → 右中 LED → GND",
+    "wires": [
+     8,
+     9,
+     10,
+     11
+    ]
+   },
+   {
+    "text": "D5 → 220Ω → 中間 LED → GND",
+    "wires": [
+     12,
+     13,
+     14
+    ]
+   },
+   {
+    "text": "按鍵接 D7 與 GND；執行後按一下按鍵擲骰",
+    "wires": [
+     15,
+     16
+    ]
+   }
+  ],
+  "code": "// 電子骰子：按一下擲骰，LED 排成骰子點數\nconst int DIAG1 = 2;   // 左上＋右下（串聯）\nconst int DIAG2 = 3;   // 右上＋左下\nconst int MID   = 4;   // 左中＋右中\nconst int CENTER = 5;  // 中間\nconst int BTN = 7;\n\nvoid show(int n) {     // 1～6 點要亮哪幾組\n  digitalWrite(CENTER, n == 1 || n == 3 || n == 5);\n  digitalWrite(DIAG1,  n >= 2);\n  digitalWrite(DIAG2,  n >= 4);\n  digitalWrite(MID,    n == 6);\n}\n\nvoid setup() {\n  pinMode(DIAG1, OUTPUT); pinMode(DIAG2, OUTPUT); pinMode(MID, OUTPUT); pinMode(CENTER, OUTPUT);\n  pinMode(BTN, INPUT_PULLUP);\n  Serial.begin(9600);\n  Serial.println(\"按按鍵擲骰子\");\n  show(1);\n}\n\nvoid loop() {\n  if (digitalRead(BTN) == LOW) {\n    randomSeed(micros());                 // 用按下的時間當亂數種子，每次都不一樣\n    for (int i = 0; i < 12; i++) {        // 翻滾動畫：越翻越慢\n      show(random(1, 7));\n      delay(20 + i * 8);\n    }\n    int n = random(1, 7);\n    show(n);\n    Serial.print(\"點數 \");\n    Serial.println(n);\n    while (digitalRead(BTN) == LOW) delay(10);   // 等放開\n    delay(50);\n  }\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_dice.hex",
+  "expect": "按一下按鍵，LED 翻滾約 1 秒後停在一個點數，序列埠印出點數。",
+  "try": [
+   "統計擲 60 次每個點數出現幾次",
+   "加蜂鳴器：翻滾時嗒嗒響"
+  ],
+  "verify": {
+   "seconds": 2,
+   "actions": [
+    {
+     "t": 300,
+     "setPin": [
+      7,
+      0
+     ]
+    },
+    {
+     "t": 450,
+     "setPin": [
+      7,
+      1
+     ]
+    }
+   ],
+   "expect": {
+    "serialRe": [
+     "點數 [1-6]"
+    ],
+    "toggles": {
+     "2": 1
+    }
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
+ },
+ {
+  "id": "uno_reaction@uno",
+  "title": "反應時間測試",
+  "level": "專題",
+  "summary": "LED 在隨機 0.8～2.5 秒後亮起，看到就按按鍵，序列埠印出反應時間（毫秒）與最佳紀錄；太早按會判犯規。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 400,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 490,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 410,
+    "y": 150,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D8",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "board:D2",
+    "b": "btn1:1.l",
+    "color": "#36c"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D8 → 220Ω → 紅燈 → GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "按鍵接 D2 與 GND",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "執行後等紅燈亮，越快按按鍵越好",
+    "wires": []
+   }
+  ],
+  "code": "// 反應時間測試：紅燈亮就按按鍵\nconst int LED = 8, BTN = 2;\nunsigned long best = 0;\n\nvoid setup() {\n  pinMode(LED, OUTPUT);\n  pinMode(BTN, INPUT_PULLUP);\n  Serial.begin(9600);\n  randomSeed(analogRead(A5));      // A5 沒接東西，讀到的雜訊當亂數種子\n  Serial.println(\"反應測試：紅燈亮就按按鍵！\");\n}\n\nvoid loop() {\n  delay(random(800, 2500));        // 隨機等 0.8～2.5 秒\n  if (digitalRead(BTN) == LOW) {   // 燈還沒亮就按著\n    Serial.println(\"太早按了！放開再來\");\n    while (digitalRead(BTN) == LOW) delay(10);\n    return;\n  }\n  digitalWrite(LED, HIGH);\n  unsigned long t0 = millis();\n  while (digitalRead(BTN) == HIGH) {\n    if (millis() - t0 > 3000) { Serial.println(\"太慢了（超過 3 秒）\"); digitalWrite(LED, LOW); return; }\n  }\n  unsigned long dt = millis() - t0;\n  digitalWrite(LED, LOW);\n  Serial.print(\"反應時間 \");\n  Serial.print(dt);\n  Serial.print(\" ms\");\n  if (best == 0 || dt < best) { best = dt; Serial.print(\"（新紀錄！）\"); }\n  Serial.println();\n  while (digitalRead(BTN) == LOW) delay(10);\n  delay(300);\n}\n",
+  "lang": "cpp",
+  "hex": "arduino-hex/uno_reaction.hex",
+  "expect": "紅燈亮起後按按鍵，序列埠印反應時間與是否破紀錄。",
+  "try": [
+   "連測 5 次算平均",
+   "用 LCD 顯示成績"
+  ],
+  "verify": {
+   "seconds": 4,
+   "onRise": {
+    "pin": 8,
+    "after": 150,
+    "setPin": [
+     2,
+     0
+    ],
+    "hold": 100
+   },
+   "expect": {
+    "serialRe": [
+     "反應時間 1[45][0-9] ms（新紀錄！）"
+    ],
+    "serial": [
+     "反應測試"
+    ]
+   }
+  },
+  "board": "uno",
+  "boardName": "Arduino UNO"
  }
 ]

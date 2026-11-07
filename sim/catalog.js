@@ -100,4 +100,47 @@ export const BOARD_ART = {
            ["5V", 82, 22, "5V"], ["GND", 82, 34, "GND"], ["3V3", 82, 46, "3V3"], ["D10", 82, 58, 9], ["D9", 82, 70, 8], ["D8", 82, 82, 7], ["D7", 82, 94, 44]],
     led: { gpio: 21, x: 45, y: 50, inverted: true },
   },
+  uno: (() => {
+    // Arduino UNO R3：自繪（不用官方商標圖）。比例照實板 68.6×53.3 mm（1 mm＝3.78 px，排針間距 2.54 mm＝9.6 px，跟麵包板孔距一樣）；
+    // USB 方口在左側凸出板外，所以板材從 x=12 開始。腳位座標由實板尺寸圖換算（板左下為原點）。
+    const X = (mm) => Math.round((12 + mm * 3.7795) * 10) / 10, T = 10, B = 192, P = 9.6;
+    const top = [["GND", 111.9, "GND"]];
+    for (let k = 13; k >= 8; k--) top.push(["D" + k, Math.round((169.5 - (k - 8) * P) * 10) / 10, k]);
+    for (let k = 7; k >= 0; k--) top.push(["D" + k, Math.round((252 - k * P) * 10) / 10, k]);
+    const bot = [["3V3", 146.4, "3V3"], ["5V", 156, "5V"], ["GND", 165.6, "GND"], ["GND", 175.2, "GND"], ["VIN", 184.8, "VIN"]];
+    for (let k = 0; k < 6; k++) bot.push(["A" + k, Math.round((204 + k * P) * 10) / 10, 14 + k]);
+    // SDA／SCL（R3 新增，在 AREF 左邊）與 A4／A5 是同一支腳；放最後，印刷名（簡圖、萬用板）才會先取 A4／A5
+    const pins = [...top.map(([n, x, g]) => [n, x, T, g]), ...bot.map(([n, x, g]) => [n, x, B, g]), ["SCL", 83.1, T, 19], ["SDA", 92.7, T, 18]];
+    const dip = (() => { let d = `<rect x="114" y="123" width="134.6" height="28.8" rx="2" fill="#1b1b1b" stroke="#000"/><path d="M114,131.5 a6,6 0 0 1 0,12" fill="#2b2b2b" stroke="#444"/>`;
+      for (let i = 0; i < 14; i++) { const x = 118.3 + i * 9.6; d += `<rect x="${x}" y="119" width="3" height="4" fill="#c9c9c9"/><rect x="${x}" y="151.8" width="3" height="4" fill="#c9c9c9"/>`; }
+      return d + `<text x="181" y="140" fill="#ddd" font-size="7" text-anchor="middle" font-family="sans-serif" letter-spacing="1">ATMEGA328P</text>`; })();
+    const hdr = (x0, x1, y) => `<rect x="${x0}" y="${y - 5}" width="${x1 - x0}" height="10" fill="#151515" rx="1"/>`;
+    const deco = [[102.3, T, "AREF"], [117.6, B, ""], [127.2, B, "IOREF"], [136.8, B, "RESET"]].map(([x, y, n]) => `<circle cx="${x}" cy="${y}" r="2.6" fill="#111" stroke="#9a8a5a" stroke-width="1"/>` + (n ? `<text x="${x}" y="${y === T ? y + 7 : y - 7}" transform="rotate(${y === T ? 90 : -90} ${x} ${y === T ? y + 7 : y - 7})" fill="#cfe3f5" font-size="5.2" dominant-baseline="middle" font-family="sans-serif">${n}</text>` : "")).join("");
+    const art = [
+      hdr(78.3, 174.3, T), hdr(180, 256.8, T), hdr(112.8, 189.6, B), hdr(199.2, 256.8, B), deco,
+      // USB-B 方口（金屬殼）、DC 電源插座、16 MHz 石英、穩壓器
+      `<rect x="0" y="35" width="62" height="46" rx="2" fill="#c3c6ca" stroke="#808489"/><rect x="5" y="44" width="30" height="28" rx="2" fill="#9ea2a7" stroke="#6e7277"/><rect x="11" y="51" width="18" height="14" fill="#f1f1f1"/>`,
+      `<rect x="2" y="150" width="58" height="36" rx="3" fill="#1d1d1d" stroke="#000"/><circle cx="20" cy="168" r="8" fill="#0d0d0d" stroke="#444"/><circle cx="20" cy="168" r="2.2" fill="#9a9a9a"/>`,
+      `<rect x="90" y="104" width="18" height="8" rx="4" fill="#d9d9d9" stroke="#999"/><text x="99" y="120" fill="#cfe3f5" font-size="5" text-anchor="middle" font-family="sans-serif">16MHz</text>`,
+      `<rect x="70" y="148" width="22" height="16" fill="#2a2a2a" stroke="#000"/><rect x="74" y="164" width="3" height="5" fill="#bbb"/><rect x="80" y="164" width="3" height="5" fill="#bbb"/><rect x="86" y="164" width="3" height="5" fill="#bbb"/>`,
+      // 固定孔
+      ...[[64.9, 192.6], [69.8, 10.4], [261.9, 173.3], [261.9, 67.8]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="5" fill="#e9eef3" stroke="#0d4a80"/><circle cx="${x}" cy="${y}" r="3" fill="#f7f7f7"/>`),
+      // 板載 LED：L（D13）、TX、RX、ON（電源，常亮）
+      `<rect x="129" y="49" width="7" height="4" fill="#d9d1a0"/><text x="140" y="53" fill="#fff" font-size="5.5" font-family="sans-serif">TX</text><rect x="129" y="58" width="7" height="4" fill="#d9d1a0"/><text x="140" y="62" fill="#fff" font-size="5.5" font-family="sans-serif">RX</text>`,
+      `<text x="127" y="42.5" fill="#fff" font-size="5.5" font-family="sans-serif" text-anchor="end">L</text>`,
+      `<circle cx="238" cy="40" r="3.2" fill="#3cff6a" stroke="#1a8f3a"/><text x="244" y="42" fill="#fff" font-size="5.5" font-family="sans-serif">ON</text>`,
+      // 板名（不用官方商標）
+      `<text x="196" y="96" fill="#fff" font-size="17" font-weight="700" text-anchor="middle" font-family="sans-serif" letter-spacing="1">UNO R3</text>`,
+      `<text x="196" y="108" fill="#cfe3f5" font-size="6.5" text-anchor="middle" font-family="sans-serif">ATmega328P · 16 MHz · 5 V</text>`,
+      `<text x="182" y="${T + 34}" fill="#cfe3f5" font-size="5.5" text-anchor="middle" font-family="sans-serif">DIGITAL（~ = PWM）</text>`,
+      `<text x="150" y="${B - 32}" fill="#cfe3f5" font-size="5.5" text-anchor="middle" font-family="sans-serif">POWER</text><text x="228" y="${B - 32}" fill="#cfe3f5" font-size="5.5" text-anchor="middle" font-family="sans-serif">ANALOG IN</text>`,
+      dip,
+    ].join("");
+    return {
+      w: 272, h: 202, color: "#1f6fb2", stroke: "#0d4a80", pcb: { x: 12, y: 0.5, w: 259, h: 201, rx: 6 }, title: "Arduino UNO R3", hideTitle: true, screen: null,
+      art, vlabels: true, pwmMark: [3, 5, 6, 9, 10, 11],
+      buttons: [{ gpio: 99, label: "RESET", x: 28, y: 12, w: 13, h: 13 }],
+      pins, led: { gpio: 13, x: 132.5, y: 40.5 },
+    };
+  })(),
 };

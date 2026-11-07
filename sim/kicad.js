@@ -41,7 +41,7 @@ const KI = {
   stepper: { ref: "M", fp: "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical" },
   joystick: { ref: "U", fp: "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical" },
 };
-const BOARD_FP = { tqt_pro: "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical", xiao_esp32s3: "Connector_PinSocket_2.54mm:PinSocket_2x07_P2.54mm_Vertical", devkit: "Connector_PinSocket_2.54mm:PinSocket_2x15_P2.54mm_Vertical", tdisplay_s3: "Connector_PinSocket_2.54mm:PinSocket_2x15_P2.54mm_Vertical" };
+const BOARD_FP = { tqt_pro: "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical", xiao_esp32s3: "Connector_PinSocket_2.54mm:PinSocket_2x07_P2.54mm_Vertical", devkit: "Connector_PinSocket_2.54mm:PinSocket_2x15_P2.54mm_Vertical", tdisplay_s3: "Connector_PinSocket_2.54mm:PinSocket_2x15_P2.54mm_Vertical", uno: "Module:Arduino_UNO_R3" };
 const POWER = new Set(["3V3", "5V", "VIN"]);
 
 /** 把 symbols.js 的符號轉成 KiCad lib_symbol（方塊＋腳）。回傳 { text, pinNum: {腳名: 編號} } */

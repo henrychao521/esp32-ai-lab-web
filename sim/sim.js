@@ -2,10 +2,10 @@
 // 畫布：拖放元件、腳位拉線（可加轉折點、選色、標籤）、麵包板吸附與導通提示、格線吸附、平移縮放（滾輪／兩指）、多選、對齊、復原重做。
 // 執行：透過 engine.js 的共用介面（docs/sim-engine-api.md），腳位事件 → 電路解法（circuit.js）→ 元件畫面與回灌輸入。
 import { CATALOG, PIN_TABLE, DEVKIT_PINMAP, DEVKIT_PINS, BOARD_ART } from "./catalog.js";
-import { solve, BOARDS, PARTS, DYNAMIC_TYPES } from "./circuit.js";
+import { solve, BOARDS, PARTS, DYNAMIC_TYPES, gpioName, vLogic } from "./circuit.js";
 import { BREADBOARD, holeAt } from "./breadboard.js";
 import { toWokwiDiagram, fromWokwiDiagram } from "./diagram.js";
-import { createEngine } from "./engine.js";
+import { createEngine, engineForBoard } from "./engine.js";
 import { attachPart } from "./parts.js";
 import { routeWire, routeAll } from "./router.js";
 
@@ -28,6 +28,7 @@ export function createSimulator(opts) {
   let selection = new Set();       // "partId" | "wire:3" | "board" | "bb"
   const undoStack = [], redoStack = [];
   let engine = null, running = false, pinState = {}, gridSnap = true, shortNets = [];
+  let lastEngineKind = opts.engine || "micropython-wasm";   // 使用者為 ESP32 板子選的引擎（UNO 一律用引擎 C）
   let hlWires = new Set();          // 步驟提示：高亮的線
   let cards = null;                 // part_cards.json（說明小卡與腳位說明）
   const partRuntime = {};           // 元件層的執行期狀態（解碼器畫面、燈條顏色、步進角度）
@@ -87,10 +88,10 @@ export function createSimulator(opts) {
       title = pin;
       if (gpio !== null) {
         const bc = cards?.boards?.[doc.board]?.pins?.[gpio];
-        const caps = [B.adc.includes(gpio) ? "ADC" : null, !B.input_only.includes(gpio) ? "PWM" : "只能輸入"].filter(Boolean);
-        desc = `GPIO${gpio}（${caps.join("、")}）${bc ? "：" + bc.desc : ""}`;
+        const caps = [B.adc.includes(gpio) ? (doc.board === "uno" ? "類比輸入 analogRead" : "ADC") : null, B.input_only.includes(gpio) ? "只能輸入" : (B.pwm ? (B.pwm.includes(gpio) ? "PWM analogWrite" : null) : "PWM"), doc.board === "uno" && gpio === 18 ? "I2C SDA" : null, doc.board === "uno" && gpio === 19 ? "I2C SCL" : null].filter(Boolean);
+        desc = doc.board === "uno" ? `${gpioName("uno", gpio)}（腳號 ${gpio}${caps.length ? "；" + caps.join("、") : "；數位輸入／輸出"}）${B.onboard?.[gpio] ? "，" + B.onboard[gpio] : ""}${bc ? "：" + bc.desc : ""}` : `GPIO${gpio}（${caps.join("、")}）${bc ? "：" + bc.desc : ""}`;
         if (B.reserved[gpio]) reserved = B.reserved[gpio];
-      } else if (m) desc = cards?.boards?.[doc.board]?.power?.[m] || ({ "3V3": "3.3 V 電源輸出", "5V": "USB 5 V", VIN: "USB 5 V（VIN）", GND: "接地（負極）" }[m] || m);
+      } else if (m) desc = cards?.boards?.[doc.board]?.power?.[m] || (doc.board === "uno" ? { "3V3": "3.3 V 電源輸出（最多約 50 mA）", "5V": "5 V 電源（USB 供電）", VIN: "外接電源輸入（7～12 V；用 USB 供電時約 5 V）", GND: "接地（負極）" } : { "3V3": "3.3 V 電源輸出", "5V": "USB 5 V", VIN: "USB 5 V（VIN）", GND: "接地（負極）" })[m] || m;
       else desc = "不可接（" + pin + "）";
     } else if (id === "bb") { title = "麵包板 " + pin; const h = BREADBOARD.holes.find((x) => x.id === pin); desc = h ? (h.strip.startsWith("top") || h.strip.startsWith("bot") ? "電源軌，整列相通" : "同一欄 5 孔相通") : ""; }
     else { const p = doc.parts[id]; title = id + " 的 " + pin; const pc = cards?.parts?.[p.type]?.pins; desc = pc ? (pc[pin] || (p.type === "led-bar-graph" ? pc[pin[0] + "1"] : "") || "") : ""; }
@@ -137,13 +138,19 @@ export function createSimulator(opts) {
     if (doc.board === "devkit") { const w = document.createElement("wokwi-esp32-devkit-v1"); w.id = "el-board"; el.appendChild(w); el.style.width = "106.6px"; el.style.height = "204.3px"; }
     else {
       const a = BOARD_ART[doc.board]; el.style.width = a.w + "px"; el.style.height = a.h + "px";
-      let s = `<svg xmlns="${SVGNS}" width="${a.w}" height="${a.h}" viewBox="0 0 ${a.w} ${a.h}"><rect x="0.5" y="0.5" width="${a.w - 1}" height="${a.h - 1}" rx="8" fill="${a.color}" stroke="#555"/>`;
-      s += `<text x="${a.w / 2}" y="${a.screen ? a.screen.y + a.screen.h + 12 : 14}" fill="#aaa" font-size="7" text-anchor="middle" font-family="sans-serif">${a.title}</text>`;
+      const pcb = a.pcb || { x: 0.5, y: 0.5, w: a.w - 1, h: a.h - 1, rx: 8 };
+      let s = `<svg xmlns="${SVGNS}" width="${a.w}" height="${a.h}" viewBox="0 0 ${a.w} ${a.h}"><rect x="${pcb.x}" y="${pcb.y}" width="${pcb.w}" height="${pcb.h}" rx="${pcb.rx ?? 8}" fill="${a.color}" stroke="${a.stroke || "#555"}"/>`;
+      if (a.art) s += a.art;   // 板子自己的外觀（UNO：排針座、USB、DC 插座、晶片）
+      if (!a.hideTitle) s += `<text x="${a.w / 2}" y="${a.screen ? a.screen.y + a.screen.h + 12 : 14}" fill="#aaa" font-size="7" text-anchor="middle" font-family="sans-serif">${a.title}</text>`;
       for (const b of a.buttons) s += `<rect class="bbtn" data-gpio="${b.gpio}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="2" fill="#333" stroke="#888"/><text x="${b.x + b.w / 2}" y="${b.y + b.h + 8}" fill="#bbb" font-size="6" text-anchor="middle" font-family="sans-serif">${b.label}</text>`;
       if (a.led) s += `<circle class="bled" cx="${a.led.x}" cy="${a.led.y}" r="4" fill="#553" stroke="#776"/>`;
-      for (const [name, x, y] of a.pins) {
+      for (const [name, x, y, g] of a.pins) {
         const bottomRow = y > a.h - 30 && x > 16 && x < a.w - 16, left = x < a.w / 2;
         s += `<circle cx="${x}" cy="${y}" r="3.2" fill="#111" stroke="#d4af37" stroke-width="1.2"/>`;
+        if (a.vlabels && (y < 30 || bottomRow)) {   // 排針間距 9.6 px：字直排，上排往下、下排往上
+          const ty = y < 30 ? y + 7 : y - 7, lab = name + (a.pwmMark && a.pwmMark.includes(g) ? "~" : "");
+          s += `<text x="${x}" y="${ty}" transform="rotate(${y < 30 ? 90 : -90} ${x} ${ty})" fill="#fff" font-size="5.6" dominant-baseline="middle" font-family="sans-serif">${lab}</text>`; continue;
+        }
         s += bottomRow ? `<text x="${x}" y="${y - 6}" fill="#ddd" font-size="6.5" text-anchor="middle" font-family="sans-serif">${name}</text>` : `<text x="${x + (left ? 6 : -6)}" y="${y + 2.5}" fill="#ddd" font-size="6.5" text-anchor="${left ? "start" : "end"}" font-family="sans-serif">${name}</text>`;
       }
       s += `</svg>`; el.innerHTML = s;
@@ -215,10 +222,10 @@ export function createSimulator(opts) {
   }
   function io() {
     const pins = {}, modes = {}, pulls = {}, pwm = {};
-    for (const [p, s] of Object.entries(pinState)) { modes[p] = s.mode; if (s.mode === "out" || s.mode === "pwm") pins[p] = s.level; if (s.pull) pulls[p] = 1; if (s.pwm) pwm[p] = s.pwm; }
+    for (const [p, s] of Object.entries(pinState)) { if (s.idle) continue; /* 引擎 C 回報全部 20 支腳；程式沒碰過的不算「用了」 */ modes[p] = s.mode; if (s.mode === "out" || s.mode === "pwm") pins[p] = s.level; if (s.pull) pulls[p] = 1; if (s.pwm) pwm[p] = s.pwm; }
     return { pins, modes, pulls, pwm, ui, burned };
   }
-  const boardButtons = () => (doc.board === "tqt_pro" ? [0, 47] : doc.board === "tdisplay_s3" ? [0, 14] : [0]);
+  const boardButtons = () => (doc.board === "tqt_pro" ? [0, 47] : doc.board === "tdisplay_s3" ? [0, 14] : doc.board === "uno" ? [99] : [0]);
   let stoppedForShort = false;
   let lastStructure = "";
   // ---------- 暫態時間步進（電容、555）：有這類元件時每一幀走好幾個 dt，探針記錄節點電壓給示波器 ----------
@@ -280,7 +287,8 @@ export function createSimulator(opts) {
     shortNets = r.warnings.filter((w) => (w.code === "SHORT" || w.code === "SUPPLY_MIX") && w.net).map((w) => w.net);
     if (engine) {
       for (const [g, lv] of Object.entries(r.inputs)) if (!boardButtons().includes(Number(g)) && pinState[g] && pinState[g].mode === "in" && pinState[g].level !== lv) { pinState[g].level = lv; engine.setPin(Number(g), lv); }
-      for (const [g, raw] of Object.entries(r.adc)) if (pinState[g] && pinState[g].mode === "adc") { const v = raw / 4095 * 3.3; if (Math.abs((pinState[g].analog ?? -1) - v) > 0.002) { pinState[g].analog = v; engine.setAnalog(Number(g), v); } }
+      const VL = vLogic(doc.board);
+      for (const [g, raw] of Object.entries(r.adc)) if (pinState[g] && pinState[g].mode === "adc") { const v = raw / 4095 * VL; if (Math.abs((pinState[g].analog ?? -1) - v) > 0.002) { pinState[g].analog = v; engine.setAnalog(Number(g), v); } }
       if (shortNets.length && running && !stoppedForShort) { stoppedForShort = true; engine.stop(); onEvent({ t: "err", s: "⚠ 短路：模擬已暫停，畫紅的線就是直通的路徑。修好接線再按執行。\n" }); }
       if (!shortNets.length) stoppedForShort = false;
     }
@@ -478,7 +486,7 @@ export function createSimulator(opts) {
   function snapshot() { return JSON.stringify({ board: doc.board, parts: doc.parts, wires: doc.wires, boardPos: doc.boardPos, breadboard: doc.breadboard, schematic: doc.schematic || null, perfboard: doc.perfboard || null }); }
   let lastSnap = snapshot();
   function pushUndo() { const s = snapshot(); if (s === lastSnap) return; undoStack.push(lastSnap); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; lastSnap = s; onStatus({ undo: undoStack.length, redo: redoStack.length }); }
-  function restore(s) { resetDynamic(); const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] }); }
+  function restore(s) { resetDynamic(); const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] });  if (engine && engineForBoard(doc.board, lastEngineKind) !== engine.kind) { api._attaching = api.attach(doc.board, lastEngineKind).catch((e) => console.error("換板子重接引擎失敗", e)).finally(() => { api._attaching = null; }); } }
   // ---------- 自動整線（router.js）：直角、避開元件、並行線錯開 ----------
   let autoWire = (() => { try { return localStorage.getItem("sim.autowire") !== "0"; } catch { return true; } })();
   function obstacles() { return bounds().items.map((it) => ({ x: it.x, y: it.y, w: it.w, h: it.h, soft: it.id === "board" || it.id === "bb" })); }   // soft＝板子／麵包板：腳位在本體裡面，線可以穿；元件本體則要繞
@@ -570,7 +578,7 @@ export function createSimulator(opts) {
     undo() { if (!undoStack.length) return; redoStack.push(lastSnap); restore(undoStack.pop()); },
     redo() { if (!redoStack.length) return; undoStack.push(lastSnap); restore(redoStack.pop()); },
     clear() { pushUndo(); doc.parts = {}; doc.wires = []; doc.breadboard = null; burned = new Set(); pushUndo(); render(); tick(); select(null); },
-    async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); pushUndo(); render(); if (engine) await api.attach(kind); tick(); onStatus({ board: kind }); },
+    async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); pushUndo(); render(); if (engine) await api.attach(kind, engineForBoard(kind, lastEngineKind)); tick(); onStatus({ board: kind }); },
     load(d) { restore(JSON.stringify({ board: d.board || "tqt_pro", parts: d.parts || {}, wires: (d.wires || []).map((w) => ({ pts: [], ...w })), boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null, schematic: d.schematic || null, perfboard: d.perfboard || null })); burned = new Set(); undoStack.length = 0; redoStack.length = 0; for (const k of Object.keys(ui)) delete ui[k]; },
     save() { return JSON.parse(snapshot()); },
     exportWokwi() { return toWokwiDiagram(api.save()); },
@@ -605,23 +613,28 @@ export function createSimulator(opts) {
     async attach(kind, engineKind) {
       if (engine) { try { await engine.stop(); } catch (e) {} }
       for (const id of Object.keys(attached)) { attached[id](); delete attached[id]; delete partRuntime[id]; }   // 換引擎：元件層全部重新登記到新引擎
-      engine = await createEngine(engineKind || opts.engine || "micropython-wasm", { board: kind || doc.board, onProgress: opts.onProgress });
+      const want = engineKind || opts.engine || "micropython-wasm";
+      if (!engineForBoard(kind || doc.board, want).startsWith("arduino")) lastEngineKind = want;   // UNO 用的引擎 C 不算使用者選的；換回 ESP32 板子時用回原本的
+      const ek = engineForBoard(kind || doc.board, want);
+      engine = await createEngine(ek, { board: kind || doc.board, onProgress: opts.onProgress });
       pinState = engine.pins();
       const touch = (g) => (pinState[g] = pinState[g] || { mode: "in", level: 0, pull: 0, pwm: null });
-      engine.on("pinmode", (g, mode, pull) => { const s = touch(g); s.mode = mode; s.pull = pull; tick(); });
-      engine.on("pin", (g, level) => { touch(g).level = level; tick(); });
+      engine.on("pinmode", (g, mode, pull) => { const s = touch(g); s.mode = mode; s.pull = pull; s.idle = false; if (mode === "in") s.level = -1; /* 下一次求解一定回灌輸入電位（引擎 C 的上拉預設讀 1） */ tick(); });
+      engine.on("pin", (g, level) => { const s = touch(g); s.level = level; s.idle = false; tick(); });
       engine.on("pwm", (g, hz, duty) => { touch(g).pwm = hz > 0 ? { freq: hz, duty16: Math.round(duty * 65535) } : null; tick(); });
       engine.on("state", (st) => { running = st === "running"; onStatus({ running, engineState: st }); });
       let bootQuiet = engine.kind === "esp32sim";   // 真韌體開機期間（ROM 訊息、raw REPL 回應）不進主控台，第一個 start 之後才顯示
       engine.on("console", (m) => { if (m.t === "start") bootQuiet = false; if (bootQuiet && m.t === "out") return; onEvent(m); });
       engine._setBootQuiet = (v) => { bootQuiet = v && engine.kind === "esp32sim"; };
       engine.on("screen", () => { screenDirty = true; applyState(); });
-      onStatus({ engine: engine.kind, capabilities: engine.capabilities, engineKind: engineKind || opts.engine || "micropython-wasm" }); syncAttachments(); tick(); return engine;
+      onStatus({ engine: engine.kind, capabilities: engine.capabilities, engineKind: ek }); syncAttachments(); tick(); return engine;
     },
     async run(code, name) { if (!engine) await api.attach(); if (shortNets.length) { toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } burned = new Set(); stoppedForShort = false; if (engine._setBootQuiet) engine._setBootQuiet(true); const r = await engine.boot({ program: code, name: name || "main.py", board: doc.board }); if (r.ok) { running = true; onStatus({ running }); } return r; },
+    /** Arduino UNO（引擎 C）：開機跑一份 Intel HEX（範例預編譯的或使用者匯入的）。hex＝文字；name＝顯示用檔名 */
+    async runHex(hex, name) { if (api._attaching) await api._attaching; if (!engine || !engine.capabilities.hex) await api.attach(doc.board); if (!engine.capabilities.hex) return { ok: false, msg: "這塊板子不能跑 .hex" }; if (shortNets.length) { toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } burned = new Set(); stoppedForShort = false; const r = await engine.boot({ hex, name: name || "sketch.hex", board: doc.board }); pinState = engine.pins(); tick(); /* 新開機：上一份程式用過的腳全部回到「沒碰過」 */ if (r.ok) { running = true; onStatus({ running }); } return r; },
     /** 直接開機跑一個韌體映像（Arduino 合併 bin；只有引擎 B）：id 相對 sim-engine/，例如 "arduino/t_qt_weather_clock.bin" */
     async runFirmware(id) { if (!engine) await api.attach(); if (!engine.capabilities.arduino) { toast("快速引擎不能跑 Arduino 映像，請切到真韌體引擎", "warn"); return { ok: false, msg: "engine" }; } burned = new Set(); stoppedForShort = false; if (engine._setBootQuiet) engine._setBootQuiet(false); const r = await engine.boot({ firmware: "arduino:" + id, board: doc.board, fresh: true }); if (r.ok) { running = true; onStatus({ running }); } return r; },
-    async stop() { if (!engine) return true; const ok = await engine.stop(); running = false; onStatus({ running }); return ok; },
+    async stop() { if (!engine) return true; const ok = await engine.stop(); running = false; if (engine.capabilities.hex) { pinState = engine.pins(); tick(); } onStatus({ running }); return ok; },
     pause() { if (engine) engine.pause(); },
     step() { if (engine) engine.step(); },
     async reset() { if (engine) await engine.reset(); for (const k of Object.keys(ui)) delete ui[k]; burned = new Set(); pinState = engine ? engine.pins() : {}; for (const id of Object.keys(partRuntime)) { const rt = partRuntime[id]; if (rt.decoder) { const T = rt.decoder.constructor; partRuntime[id] = {}; } else partRuntime[id] = {}; } for (const id of Object.keys(attached)) { attached[id](); delete attached[id]; } syncAttachments(); tick(); },
