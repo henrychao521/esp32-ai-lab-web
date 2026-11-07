@@ -217,7 +217,7 @@ export function createSimulator(opts) {
   function tick() {
     const r = solve(circuitForSolver(), { ...io(), prevV: lastResult ? lastResult.nodeV : {} }, breadboardLinks());
     const structure = Object.keys(doc.parts).join() + "|" + doc.wires.map((w) => w.a + w.b).join() + "|" + JSON.stringify(Object.values(doc.parts).map((p) => p.snaps));
-    if (structure !== lastStructure) { lastStructure = structure; lastResult = r; queueMicrotask(syncAttachments); }
+    if (structure !== lastStructure) { lastStructure = structure; lastResult = r; queueMicrotask(syncAttachments); if (api.onStructure) queueMicrotask(api.onStructure); }
     for (const w of r.warnings) if (w.code === "LED_BURN" && !burned.has(w.part) && !r.burned.every((k) => burned.has(k))) { toast(w.brief + "，看「問題」分頁", "warn"); break; }
     lastResult = r; burned = new Set(r.burned);
     shortNets = r.warnings.filter((w) => (w.code === "SHORT" || w.code === "SUPPLY_MIX") && w.net).map((w) => w.net);
@@ -227,7 +227,7 @@ export function createSimulator(opts) {
       if (shortNets.length && running && !stoppedForShort) { stoppedForShort = true; engine.stop(); onEvent({ t: "err", s: "⚠ 短路：模擬已暫停，畫紅的線就是直通的路徑。修好接線再按執行。\n" }); }
       if (!shortNets.length) stoppedForShort = false;
     }
-    applyState(); renderWires(); onWarnings(r.warnings);
+    applyState(); renderWires(); onWarnings(r.warnings); if (api.onState) api.onState(r);
     return r;
   }
   function applyState() {
@@ -411,10 +411,10 @@ export function createSimulator(opts) {
   }
 
   // ---------- 編輯 ----------
-  function snapshot() { return JSON.stringify({ board: doc.board, parts: doc.parts, wires: doc.wires, boardPos: doc.boardPos, breadboard: doc.breadboard }); }
+  function snapshot() { return JSON.stringify({ board: doc.board, parts: doc.parts, wires: doc.wires, boardPos: doc.boardPos, breadboard: doc.breadboard, schematic: doc.schematic || null }); }
   let lastSnap = snapshot();
   function pushUndo() { const s = snapshot(); if (s === lastSnap) return; undoStack.push(lastSnap); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; lastSnap = s; onStatus({ undo: undoStack.length, redo: redoStack.length }); }
-  function restore(s) { const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] }); }
+  function restore(s) { const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] }); }
   function bounds() {
     let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9; const add = (x, y, w, h) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h); };
     const bw = doc.board === "devkit" ? [106.6, 204.3] : [BOARD_ART[doc.board].w, BOARD_ART[doc.board].h]; add(doc.boardPos.x, doc.boardPos.y, bw[0], bw[1]);
@@ -444,6 +444,7 @@ export function createSimulator(opts) {
     doc, view, get running() { return running; }, get result() { return lastResult; }, get selected() { return selection.size === 1 ? [...selection][0] : null; }, get selection() { return [...selection]; },
     wireColor: 0, get gridSnap() { return gridSnap; }, set gridSnap(v) { gridSnap = !!v; }, get wireMode() { return wireMode; }, set wireMode(v) { wireMode = !!v; },
     precise: false,   // 精準選取（手指按住時游標在左上方）
+    get ui() { return ui; }, onState: null, onStructure: null,   // 簡圖檢視用：狀態變了／電路結構變了
     pinInfo, nodeVoltage, bounds, tick, render, select, toast,
     highlightWires(idx) { hlWires = new Set(idx || []); renderWires(); },
     /** 老師模式用：正規化的網路表（每個網路＝排序後的元件腳／板子腳清單，忽略麵包板孔與沒接東西的網路） */
@@ -489,7 +490,7 @@ export function createSimulator(opts) {
     redo() { if (!redoStack.length) return; undoStack.push(lastSnap); restore(redoStack.pop()); },
     clear() { pushUndo(); doc.parts = {}; doc.wires = []; doc.breadboard = null; burned = new Set(); pushUndo(); render(); tick(); select(null); },
     async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); pushUndo(); render(); if (engine) await api.attach(kind); tick(); onStatus({ board: kind }); },
-    load(d) { restore(JSON.stringify({ board: d.board || "tqt_pro", parts: d.parts || {}, wires: (d.wires || []).map((w) => ({ pts: [], ...w })), boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null })); burned = new Set(); undoStack.length = 0; redoStack.length = 0; for (const k of Object.keys(ui)) delete ui[k]; },
+    load(d) { restore(JSON.stringify({ board: d.board || "tqt_pro", parts: d.parts || {}, wires: (d.wires || []).map((w) => ({ pts: [], ...w })), boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null, schematic: d.schematic || null })); burned = new Set(); undoStack.length = 0; redoStack.length = 0; for (const k of Object.keys(ui)) delete ui[k]; },
     save() { return JSON.parse(snapshot()); },
     exportWokwi() { return toWokwiDiagram(api.save()); },
     importWokwi(json) { api.load(fromWokwiDiagram(json)); },

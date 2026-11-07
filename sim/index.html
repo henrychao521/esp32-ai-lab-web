@@ -75,6 +75,19 @@ svg.sim-wires path.temp{fill:none;stroke:var(--accent);stroke-width:3;stroke-das
 svg.sim-wires circle.wp{fill:#fff;stroke:var(--accent);stroke-width:2;pointer-events:all;cursor:move}
 svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;stroke:var(--bg);stroke-width:3px;pointer-events:none}
 .canvas-tools{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:4px;z-index:3}
+/* 麵包板／簡圖切換與簡圖檢視層 */
+.sch-toggle{position:absolute;left:10px;top:10px;z-index:6;display:flex;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.sch-toggle button{border:0;border-radius:0;background:transparent;min-height:30px;padding:0 12px;font-size:13px;color:var(--muted)}.sch-toggle button.on{background:var(--accent);color:#fff}
+.sch-layer{position:absolute;inset:0;z-index:5;background:var(--bg);overflow:hidden;touch-action:none;cursor:grab}
+.sch-layer .sch-canvas{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.sch-layer svg{display:block}
+.sch-layer .sch-tools{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:4px;z-index:3}.sch-layer .sch-tools button{background:var(--panel)}
+.sch-layer .sch-hint{position:absolute;left:10px;bottom:10px;max-width:min(60%,420px);font-size:11px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;pointer-events:none}
+.sch-on .canvas-tools,.sch-on #tools-toggle,.sch-on #minimap{display:none!important}
+.pb-layer .pb-bar{position:absolute;left:10px;top:48px;z-index:3;display:flex;gap:6px;align-items:center}.pb-layer .pb-bar select{max-width:170px;min-height:30px}.pb-layer .pb-bar button{background:var(--panel);min-height:30px}
+.pb-layer .pb-panel{position:absolute;right:10px;top:48px;z-index:4;width:min(320px,70%);max-height:60%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px}.pb-panel-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.pb-panel ol{margin:0 0 6px 18px;padding:0}.pb-panel li{margin:2px 0}.pb-w{background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:4px 6px;margin:4px 0}.pb-w.bad{background:#fee2e2;border-color:#f87171}
+@media (prefers-color-scheme:dark){.pb-w{background:#3a2a12;border-color:#9a5b1a;color:#f3e4d0}.pb-w.bad{background:#4a1d1d;border-color:#b33}}
+@media (prefers-color-scheme:dark){.sch-layer svg{--sch-ink:#e7e5e4;--sch-wire:#7cb3ff;--sch-muted:#9a9ea8}}
 .canvas-tools button{background:var(--panel)}
 #minimap{position:absolute;left:10px;bottom:10px;width:150px;height:100px;background:rgba(127,127,127,.15);border:1px solid var(--line);border-radius:6px;z-index:3;cursor:pointer;pointer-events:none;opacity:.55}   /* 只顯示、不吃點擊：原本會蓋住左下角的腳位，拉線變成平移 */
 #tooltip{position:absolute;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;pointer-events:none;display:none;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
@@ -155,6 +168,7 @@ html,body{touch-action:manipulation}
  #btn-bigpanel{display:inline-block!important;position:absolute;right:4px;top:2px;z-index:3}
  #editor-note{display:none}
  .canvas-tools{display:none;bottom:52px}
+ .sch-layer .sch-hint{display:none}.sch-layer .sch-tools{bottom:52px}
  .canvas-tools.open{display:flex}
  #tools-toggle{display:inline-block!important}
  #steps{max-width:min(320px,calc(100vw - 20px))}
@@ -263,6 +277,16 @@ dialog{position:relative}
     </div>
   </dialog>
   <div id="assign" style="display:none;position:absolute;right:10px;top:10px;z-index:4;background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;max-width:300px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px"><b id="assign-title"></b><div id="assign-text" class="muted"></div><div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap"><input id="assign-name" type="text" placeholder="座號 姓名" style="flex:1;min-width:120px"><button id="assign-submit" class="primary">交作業</button><button id="assign-close" class="icon">✕</button></div><div id="assign-result" style="margin-top:6px"></div></div>
+  <dialog id="export-dlg" style="border:0;border-radius:12px;padding:0;max-width:520px;width:94vw;background:var(--panel);color:var(--ink)">
+    <div class="hd" style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)"><b>匯出</b><span class="muted" style="font-size:12px">把這個電路帶到其他工具</span><span style="flex:1"></span><button id="export-close" class="icon dlg-x">✕</button></div>
+    <div style="padding:12px 16px;display:grid;gap:8px">
+      <button data-x="sch" style="text-align:left"><b>KiCad 簡圖</b>（.kicad_sch）<br><span class="muted" style="font-size:12px">KiCad 8 以上直接開；EasyEDA Pro 可匯入。符號、腳位、網路標籤、建議封裝都在裡面，接著就能畫真的 PCB。</span></button>
+      <button data-x="net" style="text-align:left"><b>KiCad 網路表</b>（.net）<br><span class="muted" style="font-size:12px">只有元件與連線，給 PCB 編輯器「匯入網路表」用。</span></button>
+      <button data-x="bom" style="text-align:left"><b>零件清單</b>（.csv）<br><span class="muted" style="font-size:12px">參考代號、元件、數值、封裝，採購與點料用。</span></button>
+      <button data-x="wokwi" style="text-align:left"><b>Wokwi diagram.json</b><br><span class="muted" style="font-size:12px">到 wokwi.com 用更精確的模擬。</span></button>
+      <div class="muted" style="font-size:11px">簡圖與萬用板的圖片用各自分頁右下的 PNG／SVG 按鈕。</div>
+    </div>
+  </dialog>
   <dialog id="examples-dlg"><div class="hd"><b>範例電路</b><span class="muted">點一個：電路、程式、接線步驟一起載入</span><span style="flex:1"></span><select id="ex-board" title="哪塊板子的範例"><option value="">全部板子</option><option value="tqt_pro">T-QT Pro</option><option value="xiao_esp32s3">XIAO ESP32S3</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option></select><button id="examples-close">關閉</button></div><div class="grid" id="examples-grid"></div></dialog>
   <div id="tour"><div class="box">
     <h3>第一次用？三步驟</h3>
@@ -312,6 +336,9 @@ dialog{position:relative}
 <script type="module" src="./relay-element.js"></script>
 <script type="module">
 import { createSimulator, WIRE_COLORS } from "./sim.js";
+import { mountSchematic } from "./schematic-view.js";
+import { mountPerfboard } from "./perfboard-view.js";
+import { exportKiCad } from "./kicad.js";
 import { ENGINES } from "./engine.js";
 import { CATALOG, BOARD_ART } from "./catalog.js";
 import { BOARDS } from "./circuit.js";
@@ -397,6 +424,10 @@ const sim = createSimulator({
     if ("board" in s) $("board").value = s.board;
   },
 });
+const schematicView = mountSchematic(sim, { viewport: document.querySelector(".sim-viewport"), toast });
+window.schematicView = schematicView;
+const perfboardView = mountPerfboard(sim, { viewport: document.querySelector(".sim-viewport"), toast });
+window.perfboardView = perfboardView;
 window.sim = sim;
 fetch("part_cards.json").then((r) => (r.ok ? r.json() : null)).then((c) => { if (c) { cards = c; sim.setCards(c); } }).catch(() => {});
 
@@ -430,7 +461,23 @@ $("z-in").addEventListener("click", () => sim.zoom(1.2)); $("z-out").addEventLis
 $("btn-clear").addEventListener("click", () => { if (confirm("清空畫布？")) sim.clear(); });
 $("btn-clear-console").addEventListener("click", () => { con.innerHTML = ""; });
 $("btn-save").addEventListener("click", () => { saveLocal(); toast("已存到這個瀏覽器"); });
-$("btn-export").addEventListener("click", () => { download("diagram.json", JSON.stringify(sim.exportWokwi(), null, 2), "application/json"); log("已匯出 diagram.json：到 wokwi.com 新專案，把內容貼到 diagram.json 分頁；程式貼到 main.py。", "sys"); });
+$("btn-export").addEventListener("click", () => { $("export-dlg").showModal(); });
+$("export-close").addEventListener("click", () => $("export-dlg").close());
+$("export-dlg").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-x]"); if (!b) return;
+  const name = (sim.doc.title || "circuit").replace(/[^\w\u4e00-\u9fff-]+/g, "_");
+  if (b.dataset.x === "wokwi") { download("diagram.json", JSON.stringify(sim.exportWokwi(), null, 2), "application/json"); log("已匯出 diagram.json：到 wokwi.com 新專案，把內容貼到 diagram.json 分頁；程式貼到 main.py。", "sys"); }
+  else {
+    if (!sim.result) return;
+    const r = exportKiCad({ doc: sim.doc, nets: sim.result.nets.nets, title: name });
+    if (b.dataset.x === "sch") download(name + ".kicad_sch", r.sch, "text/plain");
+    if (b.dataset.x === "net") download(name + ".net", r.net, "text/plain");
+    if (b.dataset.x === "bom") download(name + "_零件清單.csv", r.bom, "text/csv");
+    window.__lastExport = { kind: b.dataset.x, size: (r[b.dataset.x] || "").length, nets: Object.keys(r.nets).length };
+    log("已匯出 " + b.textContent.trim() + "。KiCad：開啟 .kicad_sch 即可；EasyEDA Pro：檔案 → 匯入 → KiCad。", "sys");
+  }
+  $("export-dlg").close();
+});
 $("btn-png").addEventListener("click", async () => { try { const url = await sim.exportPNG(2); const a = document.createElement("a"); a.href = url; a.download = "circuit.png"; a.click(); } catch (e) { toast("PNG 匯出失敗：" + e.message, "bad"); } });
 $("btn-import").addEventListener("click", () => { const i = document.createElement("input"); i.type = "file"; i.accept = ".json"; i.onchange = async () => { const t = await i.files[0].text(); try { const j = JSON.parse(t); if (j.editor === "wokwi" || j.connections) sim.importWokwi(j); else sim.load(j); if (j.code) setCode(j.code); $("board").value = sim.doc.board; toast("已匯入"); } catch (e) { alert("匯入失敗：" + e.message); } }; i.click(); });
 $("btn-share").addEventListener("click", async () => { const data = { d: sim.save(), c: getCode() }; const s = await compress(JSON.stringify(data)); const url = location.origin + location.pathname + "#s=" + s; try { await navigator.clipboard.writeText(url); toast("分享網址已複製（" + Math.round(url.length / 1024) + " KB）"); } catch { prompt("分享網址", url); } });
