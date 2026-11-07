@@ -26,6 +26,10 @@ header b{margin-right:6px;font-size:15px}
 .pal .item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:grab;font-size:11px;text-align:center;height:88px;min-width:0;overflow:hidden;justify-content:flex-end;user-select:none;-webkit-user-select:none;touch-action:pan-y}
 .pal .item .nm{max-width:100%;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pal .item.soon{opacity:.45;cursor:not-allowed}
+.pal .item.ex{cursor:pointer;background:color-mix(in srgb,var(--accent) 8%,var(--bg));border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.pal .item.ex .lv{font-size:10px;color:var(--muted)}
+.pal .item.ex-toggle{cursor:pointer}.pal .item.ex-toggle .thumb{font-size:26px}
+.pal .ex-note{margin:0 8px 4px;font-size:11px;color:var(--muted)}
 .pal .thumb{height:40px;width:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .pal .thumb>*{transform-origin:center;transform:scale(var(--s,.6))}
 .sim-viewport{grid-area:canvas;position:relative;overflow:hidden;touch-action:none;background:linear-gradient(var(--line) 1px,transparent 1px) 0 0/24px 24px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/24px 24px,var(--bg);cursor:grab}
@@ -69,7 +73,7 @@ svg.sim-wires path.wire-hit{fill:none;stroke:transparent;stroke-width:18;stroke-
 .ex-card{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);cursor:pointer;display:flex;flex-direction:column;gap:4px}
 .ex-card:hover{border-color:var(--accent)}
 .ex-card b{font-size:14px}.ex-card .lv{font-size:11px;color:var(--accent)}.ex-card .sm{font-size:12px;color:var(--muted)}
-#steps{display:none;position:absolute;left:10px;top:10px;z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px}
+#steps{display:none;position:absolute;left:10px;top:52px;z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px}
 #steps b{display:block;margin-bottom:4px}#steps .nav{display:flex;gap:6px;margin-top:8px;align-items:center}#steps .muted{font-size:12px}
 svg.sim-wires path.temp{fill:none;stroke:var(--accent);stroke-width:3;stroke-dasharray:6 4;display:none}
 svg.sim-wires circle.wp{fill:#fff;stroke:var(--accent);stroke-width:2;pointer-events:all;cursor:move}
@@ -346,15 +350,16 @@ import * as CM from "./vendor/codemirror.bundle.js";
 const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const CATS = [
-  ["板子", ["__board"]], ["基本", ["resistor", "led", "rgb-led", "led-bar-graph", "__bb"]], ["輸入", ["pushbutton", "slide-switch", "potentiometer", "photoresistor-sensor"]],
+  ["板子", ["__board", "__examples"]], ["基本", ["resistor", "led", "rgb-led", "led-bar-graph", "__bb"]], ["輸入", ["pushbutton", "slide-switch", "potentiometer", "photoresistor-sensor"]],
   ["輸出", ["buzzer", "servo"]], ["顯示", ["ssd1306", "lcd1602"]], ["感測", ["hc-sr04", "dht22", "pir"]],
   ["致動", ["relay", "stepper", "neopixel-strip"]], ["通訊／控制", ["joystick"]],
 ];
+let EXAMPLES = [];   // examples.json 載入後填入；元件庫的範例卡和「更多→範例電路」共用
 const nm = (t) => { const s = document.createElement("span"); s.className = "nm"; s.textContent = t; return s; };
 function buildPalette(filter = "") {
   const body = $("pal-body"); body.innerHTML = "";
   for (const [cat, items] of CATS) {
-    const list = items.filter((t) => { const label = t.startsWith("soon:") ? t.slice(5) : t === "__bb" ? "麵包板" : t === "__board" ? "板子" : CATALOG[t].label; return !filter || label.includes(filter) || t.includes(filter); });
+    const list = items.filter((t) => { const label = t.startsWith("soon:") ? t.slice(5) : t === "__bb" ? "麵包板" : t === "__board" ? "板子" : t === "__examples" ? "範例電路" : CATALOG[t].label; return !filter || label.includes(filter) || t.includes(filter); });
     if (!list.length) continue;
     const h = document.createElement("h4"); h.textContent = cat; body.appendChild(h);
     const grid = document.createElement("div"); grid.className = "items"; body.appendChild(grid);
@@ -364,16 +369,40 @@ function buildPalette(filter = "") {
       if (t.startsWith("soon:")) { th.textContent = "…"; d.append(th, nm(t.slice(5))); grid.appendChild(d); continue; }
       if (t === "__bb") { th.innerHTML = `<svg width="60" height="34" viewBox="0 0 60 34"><rect width="60" height="34" rx="3" fill="#f3f1ec" stroke="#c9c5bd"/>${Array.from({ length: 30 }, (_, i) => `<circle cx="${6 + (i % 10) * 5.4}" cy="${8 + Math.floor(i / 10) * 9}" r="1.2" fill="#2b2b2b"/>`).join("")}</svg>`; d.append(th, nm("麵包板")); }
       else if (t === "__board") { th.innerHTML = `<svg width="44" height="44" viewBox="0 0 44 44"><rect x="2" y="2" width="40" height="40" rx="5" fill="#141414" stroke="#555"/><rect x="9" y="7" width="26" height="26" fill="#000" stroke="#333"/></svg>`; d.append(th, nm("板子（「更多」裡換板）")); }
+      else if (t === "__examples") { d.className = "item ex-toggle"; th.textContent = exOpen ? "📂" : "📁"; d.append(th, nm("範例電路" + (EXAMPLES.length ? "（" + EXAMPLES.filter((e) => e.board === ((window.sim && window.sim.doc.board) || $("board").value)).length + " 個）" : "")));
+        d.addEventListener("click", () => { exOpen = !exOpen; try { localStorage.setItem("sim.exOpen", exOpen ? "1" : "0"); } catch {} buildPalette($("search").value.trim()); }); }
       else { const c = CATALOG[t]; const el = document.createElement(c.tag); for (const [k, v] of Object.entries(c.attrs)) el.setAttribute(k, v); th.style.setProperty("--s", Math.min(0.9, 60 / Math.max(c.w, 1), 40 / Math.max(c.h, 1)).toFixed(2)); th.appendChild(el); d.append(th, nm(c.label)); }
       grid.appendChild(d);
     }
+    if (cat === "板子") buildExampleCards(body, filter);
   }
 }
+/** 元件庫裡的範例電路：點一下整個電路（板子、元件、接線、程式）載進畫布，再照右下角的接線步驟做一遍 */
+let exOpen = (() => { try { return localStorage.getItem("sim.exOpen") !== "0"; } catch { return true; } })();
+function buildExampleCards(body, filter) {
+  if (!exOpen) return;
+  const board = (window.sim && window.sim.doc.board) || $("board").value;   // 首次 buildPalette 時 sim 還沒建好
+  const list = EXAMPLES.map((e, i) => [e, i]).filter(([e]) => e.board === board && (!filter || e.title.includes(filter) || e.summary.includes(filter) || e.level.includes(filter)));
+  const note = document.createElement("div"); note.className = "ex-note"; note.textContent = EXAMPLES.length ? (list.length ? "點一下載入整個電路與程式（會換掉畫布上的東西），右下角會出現接線步驟。" : (filter ? "沒有符合的範例" : "這塊板子還沒有範例")) : "範例載入中…"; body.appendChild(note);
+  if (!list.length) return;
+  const grid = document.createElement("div"); grid.className = "items"; body.appendChild(grid);
+  for (const [ex, i] of list) {
+    const d = document.createElement("div"); d.className = "item ex"; d.dataset.ex = i; d.title = ex.summary;
+    const th = document.createElement("div"); th.className = "thumb";
+    // 縮圖：挑這個電路最有代表性的元件（不是電阻的那個），沒有就畫板子
+    const key = Object.values(ex.parts).map((p) => p.type).find((t) => t !== "resistor" && CATALOG[t]) || Object.values(ex.parts).map((p) => p.type).find((t) => CATALOG[t]);
+    if (key) { const c = CATALOG[key]; const el = document.createElement(c.tag); for (const [k, v] of Object.entries(c.attrs)) el.setAttribute(k, v); th.style.setProperty("--s", Math.min(0.9, 60 / Math.max(c.w, 1), 40 / Math.max(c.h, 1)).toFixed(2)); th.appendChild(el); }
+    else th.textContent = "▦";
+    const lv = document.createElement("span"); lv.className = "lv"; lv.textContent = ex.level + " · " + Object.keys(ex.parts).length + " 元件";
+    d.append(th, nm(ex.title), lv); grid.appendChild(d);
+  }
+}
+$("pal-body").addEventListener("click", (ev) => { const it = ev.target.closest(".item.ex"); if (!it) return; const ex = EXAMPLES[Number(it.dataset.ex)]; if (!ex) return; loadExample(ex); if (window.innerWidth <= 900 && $("palette").classList.contains("open")) $("btn-pal").click(); });
 buildPalette();
 $("search").addEventListener("input", function() { buildPalette(this.value.trim()); });
 let palDrag = null;
 $("palette").addEventListener("pointerdown", (ev) => {
-  const it = ev.target.closest(".item"); if (!it || it.classList.contains("soon")) return;
+  const it = ev.target.closest(".item"); if (!it || it.classList.contains("soon") || it.classList.contains("ex") || it.classList.contains("ex-toggle")) return;
   palDrag = { type: it.dataset.type, sx: ev.clientX, sy: ev.clientY, moved: false, ghost: null }; it.setPointerCapture(ev.pointerId);
   it.addEventListener("pointermove", palMove); it.addEventListener("pointerup", palUp, { once: true }); it.addEventListener("pointercancel", palCancel, { once: true });
 });
@@ -432,7 +461,7 @@ window.sim = sim;
 fetch("part_cards.json").then((r) => (r.ok ? r.json() : null)).then((c) => { if (c) { cards = c; sim.setCards(c); } }).catch(() => {});
 
 $("board").value = sim.doc.board;
-$("board").addEventListener("change", function() { sim.setBoard(this.value); });
+$("board").addEventListener("change", function() { sim.setBoard(this.value); buildPalette($("search").value.trim()); });
 $("engine").addEventListener("change", async function() {
   const kind = this.value; engineChosen = true; if (sim.engine && sim.engine.kind === kind) return;
   $("engine").disabled = true; $("btn-run").disabled = true;
@@ -648,9 +677,9 @@ if (q.get("bench") === "1") (async () => {
 })();
 $("tour-close").addEventListener("click", () => { $("tour").style.display = "none"; localStorage.setItem("sim.toured", "1"); });
 // ---------- 範例電路（sim/examples.json）＋步驟式接線提示 ----------
-let EXAMPLES = []; let stepState = null;
+let stepState = null;
 function renderExamples(board) { const g = $("examples-grid"); g.innerHTML = ""; for (const ex of EXAMPLES) { if (board && ex.board !== board) continue; const d = document.createElement("div"); d.className = "ex-card"; d.innerHTML = `<b></b><span class="lv"></span><span class="sm"></span>`; d.querySelector("b").textContent = ex.title; d.querySelector(".lv").textContent = (ex.boardName || ex.board) + " · " + ex.level + " · " + Object.keys(ex.parts).length + " 個元件 · " + ex.wires.length + " 條線"; d.querySelector(".sm").textContent = ex.summary; d.addEventListener("click", () => { loadExample(ex); $("examples-dlg").close(); }); g.appendChild(d); } }
-fetch("examples.json").then((r) => r.json()).then((arr) => { EXAMPLES = arr; renderExamples($("ex-board").value); }).catch(() => {});
+fetch("examples.json").then((r) => r.json()).then((arr) => { EXAMPLES = arr; renderExamples($("ex-board").value); buildPalette($("search").value.trim()); }).catch(() => {});
 $("ex-board").addEventListener("change", function() { renderExamples(this.value); });
 // 開範例清單時預設只列目前板子的範例（四塊板子各有一套）
 $("btn-examples").addEventListener("click", () => { if (!EXAMPLES.length) { toast("範例清單載入中…"); return; } $("ex-board").value = sim.doc.board; renderExamples(sim.doc.board); $("examples-dlg").showModal(); });
@@ -658,7 +687,7 @@ $("examples-close").addEventListener("click", () => $("examples-dlg").close());
 function loadExample(ex) {
   sim.stop();
   sim.load({ board: ex.board, parts: JSON.parse(JSON.stringify(ex.parts)), wires: ex.wires.map((w) => ({ ...w, pts: [] })), boardPos: { x: 60, y: 40 }, breadboard: ex.breadboard || null });
-  if (ex.board) $("board").value = ex.board; setCode(ex.code); sim.fit(); showPane("editor");
+  if (ex.board) $("board").value = ex.board; setCode(ex.code); sim.fit(); showPane("editor"); buildPalette($("search").value.trim());
   stepState = { ex, i: 0 }; renderStep(); toast("已載入「" + ex.title + "」。預期：" + ex.expect);
 }
 function renderStep() {
