@@ -452,7 +452,7 @@ if (localStorage.getItem("sim.precise") === "1" || (localStorage.getItem("sim.pr
 $("wire-color").addEventListener("change", function() { sim.wireColor = Number(this.value); });
 $("btn-del").addEventListener("click", () => sim.deleteSelected());
 $("btn-undo").addEventListener("click", () => sim.undo()); $("btn-redo").addEventListener("click", () => sim.redo());
-$("btn-rotate").addEventListener("click", () => sim.rotateSelected());
+$("btn-rotate").addEventListener("click", () => perfboardView.visible ? perfboardView.rotate() : sim.rotateSelected());
 $("btn-selall").addEventListener("click", () => sim.selectAll());
 $("btn-align-l").addEventListener("click", () => sim.align("left")); $("btn-align-t").addEventListener("click", () => sim.align("top"));
 $("btn-grid").addEventListener("click", function() { sim.gridSnap = !sim.gridSnap; this.classList.toggle("on", sim.gridSnap); });
@@ -677,7 +677,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Delete" || e.key === "Backspace") { sim.deleteSelected(); e.preventDefault(); }
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") { e.shiftKey ? sim.redo() : sim.undo(); e.preventDefault(); }
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") { sim.selectAll(); e.preventDefault(); }
-  if (e.key === "r" || e.key === "R") sim.rotateSelected();
+  if (e.key === "r" || e.key === "R") { if (perfboardView.visible) perfboardView.rotate(); else sim.rotateSelected(); }
   if (e.key === "f" || e.key === "F") sim.fit();
   if (e.key === "Escape") sim.select(null);
 });

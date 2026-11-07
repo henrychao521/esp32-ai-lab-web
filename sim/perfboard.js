@@ -39,6 +39,22 @@ function boardFoot(board) {
   return { pins: left.map((p, i) => [p[0], 0, i]).concat(right.map((p, i) => [p[0], 10, i])), body: [-0.5, -1, 11, left.length + 1.2], title: "ESP32 DevKit" };
 }
 
+/** 把腳位表順時針轉 rot 度（0/90/180/270；孔單位，以元件原點為中心）。 */
+export function rotFoot(foot, rot = 0) {
+  const k = ((Math.round(rot / 90) % 4) + 4) % 4; if (!k) return foot;
+  const R = ([x, y]) => { for (let i = 0; i < k; i++) [x, y] = [-y, x]; return [x, y]; };
+  const pins = foot.pins.map(([n, dc, dr]) => { const [x, y] = R([dc, dr]); return [n, x, y]; });
+  const [bx, by, bw, bh] = foot.body; const cs = [[bx, by], [bx + bw, by], [bx, by + bh], [bx + bw, by + bh]].map(R);
+  const xs = cs.map((c) => c[0]), ys = cs.map((c) => c[1]); const x0 = Math.min(...xs), y0 = Math.min(...ys);
+  return { ...foot, pins, body: [x0, y0, Math.max(...xs) - x0, Math.max(...ys) - y0], rot: k * 90 };
+}
+/** 某個元件（或 "board"）的腳位表（未旋轉）。 */
+export function footFor(doc, id) {
+  if (id === "board") return boardFoot(doc.board);
+  const p = (doc.parts || {})[id]; if (!p) return null;
+  return FOOT[p.type] || { pins: (PARTS[p.type]?.pins || []).map((n, i) => [n, i, 0]), body: [-0.5, -1.2, (PARTS[p.type]?.pins || []).length, 1.6], tall: 2 };
+}
+
 const key = (c, r) => c + "," + r;
 const POWER = new Set(["3V3", "5V", "VIN", "GND"]);
 
@@ -62,21 +78,32 @@ export function buildPerfboard({ doc, nets, size = "5x7" }) {
   // ---- 2. 腳位→孔：先擺板子，再擺元件 ----
   const occ = new Map();     // "c,r" → { ref, net, part }
   const place = {};          // part id → { c, r, rot }
-  const bf = boardFoot(board);
+  const feet = {};           // part id → 實際用的（已旋轉）腳位表
+  const manual = (doc.perfboard && doc.perfboard.place) || {};   // 使用者拖過／轉過的位置
+  const bf0 = boardFoot(board);
+  const bf = manual.board ? rotFoot(bf0, manual.board.rot || 0) : bf0;
   const bodyCells = (foot, c0, r0) => { const [bx, by, bw, bh] = foot.body; const cells = []; for (let c = Math.floor(c0 + bx); c < Math.ceil(c0 + bx + bw); c++) for (let r = Math.floor(r0 + by); r < Math.ceil(r0 + by + bh); r++) cells.push([c, r]); return cells; };
   const fits = (foot, c0, r0) => { for (const [c, r] of bodyCells(foot, c0, r0)) { if (c < 0 || r < 0 || c >= C || r >= R) return false; const o = occ.get(key(c, r)); if (o && o.body) return false; } for (const [, dc, dr] of foot.pins) { const c = c0 + dc, r = r0 + dr; if (c < 0 || r < 0 || c >= C || r >= R || occ.get(key(c, r))) return false; } return true; };
-  const put = (foot, id, c0, r0, refOf) => { for (const [c, r] of bodyCells(foot, c0, r0)) if (!occ.get(key(c, r))) occ.set(key(c, r), { body: true, part: id }); for (const [name, dc, dr] of foot.pins) { const ref = refOf(name); occ.set(key(c0 + dc, r0 + dr), { ref, net: netOf[ref] || null, part: id, pin: name }); } place[id] = { c: c0, r: r0 }; };
-  // 板子放左上（body 在腳位上方或左方）
-  const bc0 = Math.max(1, Math.ceil(-bf.body[0])), br0 = Math.max(1, Math.ceil(-bf.body[1]));
+  const put = (foot, id, c0, r0, refOf) => { for (const [c, r] of bodyCells(foot, c0, r0)) if (!occ.get(key(c, r))) occ.set(key(c, r), { body: true, part: id }); for (const [name, dc, dr] of foot.pins) { const ref = refOf(name); occ.set(key(c0 + dc, r0 + dr), { ref, net: netOf[ref] || null, part: id, pin: name }); } place[id] = { c: c0, r: r0, rot: foot.rot || 0 }; feet[id] = foot; };
+  // 板子：有手動位置就用，否則放左上（body 在腳位上方或左方）
+  let bc0 = Math.max(1, Math.ceil(-bf.body[0])), br0 = Math.max(1, Math.ceil(-bf.body[1]));
+  if (manual.board) { if (fits(bf, manual.board.c, manual.board.r)) { bc0 = manual.board.c; br0 = manual.board.r; } else warnings.push({ code: "MANUAL_BAD", part: "board", brief: `${bf.title} 放到那裡會超出板子，退回自動位置` }); }
   if (!fits(bf, bc0, br0)) warnings.push({ code: "BOARD_TOO_BIG", brief: `${bf.title} 放不進 ${B.label}，改用大一點的板子` });
   const boardRefOf = (name) => { const base = name.replace(/\.\d$/, ""); if (POWER.has(base)) return "board:" + base; const ref = Object.keys(netOf).find((r) => r.startsWith("board:") && printedPinName(board, r) === name); if (ref) return ref; if (board === "devkit") { const v = DEVKIT_PINMAP[name]; if (v != null) return "board:" + v; } return "board:" + name; };
   put(bf, "board", bc0, br0, (name) => boardRefOf(name));
-  // 元件：依「和板子／已擺元件的連線」決定順序，掃描空位挑分數最好的
-  const ids = Object.keys(parts).sort((a, b) => conn(b) - conn(a));
+  // 手動擺過的元件先放（放不下就警示並退回自動），其餘依「和板子／已擺元件的連線」決定順序，掃描空位挑分數最好的
+  const auto = [];
+  for (const id of Object.keys(parts).sort()) {
+    const m = manual[id]; if (!m) { auto.push(id); continue; }
+    const foot = rotFoot(footFor(doc, id), m.rot || 0);
+    if (fits(foot, m.c, m.r)) put(foot, id, m.c, m.r, (name) => id + ":" + name);
+    else { warnings.push({ code: "MANUAL_BAD", part: id, brief: `${id} 放到那裡會和別的元件重疊或超出板子，退回自動位置` }); auto.push(id); }
+  }
+  const ids = auto.sort((a, b) => conn(b) - conn(a));
   function conn(id) { return Object.values(netPins).filter((refs) => refs.some((r) => r.split(":")[0] === id) && refs.some((r) => r.startsWith("board:"))).length; }
   const pinCell = (ref) => { for (const [k, o] of occ) if (o.ref === ref) { const [c, r] = k.split(",").map(Number); return [c, r]; } return null; };
   for (const id of ids) {
-    const p = parts[id]; const foot = FOOT[p.type] || { pins: (PARTS[p.type]?.pins || []).map((n, i) => [n, i, 0]), body: [-0.5, -1.2, (PARTS[p.type]?.pins || []).length, 1.6], tall: 2 };
+    const p = parts[id]; const foot = footFor(doc, id);
     let best = null;
     for (let r0 = 0; r0 < R; r0++) for (let c0 = 0; c0 < C; c0++) {
       if (!fits(foot, c0, r0)) continue;
@@ -150,31 +177,32 @@ export function buildPerfboard({ doc, nets, size = "5x7" }) {
   const orderList = Object.keys(place).filter((id) => id !== "board").map((id) => ({ id, type: parts[id].type, tall: (FOOT[parts[id].type] || { tall: 2 }).tall, label: PARTS[parts[id].type]?.label || parts[id].type })).sort((a, b) => a.tall - b.tall || a.id.localeCompare(b.id));
   const steps = orderList.map((o, i) => `${i + 1}. ${o.id}（${o.label}）`); steps.push(`${steps.length + 1}. 排母：${bf.title} 用排母插上，先焊對角兩腳固定再焊其餘`); if (jumpers.length) steps.push(`${steps.length + 1}. 正面跳線 ${jumpers.length} 條`); steps.push(`${steps.length + 1}. 背面錫橋 ${bridges.length} 段，照背面圖一段一段連，連完用電表對照網路表`);
   // ---- 6. SVG ----
-  const svgFront = renderFront({ C, R, occ, place, parts, bf, jumpers, netOf });
-  const svgBack = renderBack({ C, R, occ, bridges, netPins, parts, bf, place });
+  const svgFront = renderFront({ C, R, occ, place, parts, bf, jumpers, netOf, feet });
+  const svgBack = renderBack({ C, R, occ, bridges, netPins, parts, bf, place, feet });
   const pinCells = {}; const netCells = {}; for (const [k, o] of occ) if (o.ref) { const c = k.split(",").map(Number); pinCells[o.ref] = c; if (o.net) (netCells[o.net] = netCells[o.net] || []).push({ c, ref: o.ref }); }
-  return { netCells, size, cols: C, rows: R, place, bridges, jumpers, warnings, steps, nets: netPins, pinCells, svgFront, svgBack, w: (C + 1) * PITCH, h: (R + 1) * PITCH };
+  return { netCells, size, cols: C, rows: R, place, feet, manual: Object.keys(manual), bridges, jumpers, warnings, steps, nets: netPins, pinCells, svgFront, svgBack, w: (C + 1) * PITCH, h: (R + 1) * PITCH };
 }
 
 const COLORS = ["#d33", "#e90", "#2a7", "#36c", "#93c", "#0aa", "#c36", "#777"];
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
-const CSS = `.pb-hole{fill:#fff;stroke:#b8a98a;stroke-width:.8}.pb-board{fill:#d9c9a3;stroke:#8a7a55}.pb-body{fill:rgba(255,255,255,.85);stroke:#333;stroke-width:1}.pb-pin{fill:#c9a227;stroke:#6b5a1e;stroke-width:.8}.pb-txt{font:7px -apple-system,PingFang TC,sans-serif;fill:#222}.pb-title{font:600 8px -apple-system,PingFang TC,sans-serif;fill:#111}.pb-bridge{stroke-width:5;stroke-linecap:round;opacity:.9}.pb-pad{fill:#aaa;stroke:#666;stroke-width:.6}.pb-jumper{fill:none;stroke-width:2.2;stroke-linecap:round}`;
+const CSS = `.pb-hole{fill:#fff;stroke:#b8a98a;stroke-width:.8}.pb-board{fill:#d9c9a3;stroke:#8a7a55}.pb-body{fill:rgba(255,255,255,.85);stroke:#333;stroke-width:1}.pb-pin{fill:#c9a227;stroke:#6b5a1e;stroke-width:.8}.pb-txt{font:7px -apple-system,PingFang TC,sans-serif;fill:#222}.pb-title{font:600 8px -apple-system,PingFang TC,sans-serif;fill:#111}.pb-bridge{stroke-width:5;stroke-linecap:round;opacity:.9}.pb-pad{fill:#aaa;stroke:#666;stroke-width:.6}.pb-jumper{fill:none;stroke-width:2.2;stroke-linecap:round}.pb-part{cursor:move}.pb-body.back{pointer-events:all}.pb-part.selected .pb-body{stroke:#0a84ff;stroke-width:2;stroke-dasharray:none}.pb-part.ghost{opacity:.55}`;
 function holes(C, R) { let s = ""; for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) s += `<circle class="pb-hole" cx="${(c + 1) * PITCH}" cy="${(r + 1) * PITCH}" r="2.4"/>`; return s; }
-function renderFront({ C, R, occ, place, parts, bf, jumpers, netOf }) {
+function renderFront({ C, R, occ, place, parts, bf, jumpers, netOf, feet }) {
   const W = (C + 1) * PITCH, H = (R + 1) * PITCH; let s = `<rect class="pb-board" x="2" y="2" width="${W - 4}" height="${H - 4}" rx="6"/>` + holes(C, R);
   const X = (c) => (c + 1) * PITCH, Y = (r) => (r + 1) * PITCH;
   for (const [id, p] of Object.entries(place)) {
-    const foot = id === "board" ? bf : (FOOT[parts[id].type] || { pins: [], body: [0, 0, 1, 1] });
+    const foot = feet[id] || (id === "board" ? bf : { pins: [], body: [0, 0, 1, 1] });
     const [bx, by, bw, bh] = foot.body;
-    s += `<rect class="pb-body" x="${X(p.c + bx) - 0}" y="${Y(p.r + by)}" width="${bw * PITCH}" height="${bh * PITCH}" rx="3"/>`;
+    s += `<g class="pb-part" data-id="${esc(id)}"><rect class="pb-body" x="${X(p.c + bx) - 0}" y="${Y(p.r + by)}" width="${bw * PITCH}" height="${bh * PITCH}" rx="3"/>`;
     for (const [name, dc, dr] of foot.pins) { const x = X(p.c + dc), y = Y(p.r + dr); s += `<rect class="pb-pin" x="${x - 3}" y="${y - 3}" width="6" height="6"/>`; if (name.length <= 1) s += `<text class="pb-txt" x="${x}" y="${y - 5}" text-anchor="middle">${esc(name)}</text>`; else s += `<text class="pb-txt" x="${x}" y="${y - 5}" text-anchor="start" transform="rotate(-90 ${x} ${y - 5})">${esc(name)}</text>`; }
     const label = id === "board" ? bf.title : id + (parts[id].attrs?.value ? " " + parts[id].attrs.value + "Ω" : "");
     s += id === "board" ? `<text class="pb-title" x="${X(p.c + bx) + 3}" y="${Y(p.r + by) + 9}">${esc(label)}</text>` : `<text class="pb-title" x="${X(p.c + bx)}" y="${Y(p.r + by) - 2}">${esc(label)}</text>`;
+    s += `</g>`;
   }
   jumpers.forEach(([a, b, net], i) => { const col = COLORS[i % COLORS.length]; const mx = (X(a[0]) + X(b[0])) / 2, my = (Y(a[1]) + Y(b[1])) / 2 - 10; s += `<path class="pb-jumper" stroke="${col}" d="M${X(a[0])},${Y(a[1])} Q${mx},${my} ${X(b[0])},${Y(b[1])}"/>`; });
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><style>${CSS}</style>${s}<text class="pb-title" x="${W / 2}" y="${H - 3}" text-anchor="middle">正面（元件面）</text></svg>`;
 }
-function renderBack({ C, R, occ, bridges, netPins, parts, bf, place }) {
+function renderBack({ C, R, occ, bridges, netPins, parts, bf, place, feet }) {
   const W = (C + 1) * PITCH, H = (R + 1) * PITCH;
   // 背面鏡像：x 翻轉
   const X = (c) => W - (c + 1) * PITCH, Y = (r) => (r + 1) * PITCH;
@@ -183,7 +211,7 @@ function renderBack({ C, R, occ, bridges, netPins, parts, bf, place }) {
   for (const [k, o] of occ) if (o.ref) { const [c, r] = k.split(",").map(Number); s += `<circle class="pb-pad" cx="${X(c)}" cy="${Y(r)}" r="4.2"/>`; }
   for (const [a, b, net] of bridges) s += `<line class="pb-bridge" stroke="${COLORS[netIdx[net] % COLORS.length]}" x1="${X(a[0])}" y1="${Y(a[1])}" x2="${X(b[0])}" y2="${Y(b[1])}"/>`;
   for (const [k, o] of occ) if (o.ref) { const [c, r] = k.split(",").map(Number); const name = o.pin; s += name.length <= 1 ? `<text class="pb-txt" x="${X(c)}" y="${Y(r) + 11}" text-anchor="middle" fill="#333">${esc(name)}</text>` : `<text class="pb-txt" x="${X(c) + 3}" y="${Y(r) + 6}" text-anchor="end" fill="#333" transform="rotate(-90 ${X(c) + 3} ${Y(r) + 6})">${esc(name)}</text>`; }
-  for (const [id, p] of Object.entries(place)) { const foot = id === "board" ? bf : (FOOT[parts[id].type] || { body: [0, 0, 1, 1] }); const [bx, by, bw, bh] = foot.body; s += `<rect fill="none" stroke="#999" stroke-dasharray="3 2" x="${X(p.c + bx + bw) }" y="${Y(p.r + by)}" width="${bw * PITCH}" height="${bh * PITCH}" rx="3"/>` + `<text class="pb-title" x="${X(p.c + bx + bw) + 3}" y="${Y(p.r + by) + 9}" fill="#666">${esc(id === "board" ? bf.title : id)}</text>`; }
+  for (const [id, p] of Object.entries(place)) { const foot = feet[id] || (id === "board" ? bf : { body: [0, 0, 1, 1] }); const [bx, by, bw, bh] = foot.body; s += `<g class="pb-part" data-id="${esc(id)}"><rect class="pb-body back" fill="none" stroke="#999" stroke-dasharray="3 2" x="${X(p.c + bx + bw) }" y="${Y(p.r + by)}" width="${bw * PITCH}" height="${bh * PITCH}" rx="3"/>` + `<text class="pb-title" x="${X(p.c + bx + bw) + 3}" y="${Y(p.r + by) + 9}" fill="#666">${esc(id === "board" ? bf.title : id)}</text></g>`; }
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><style>${CSS}</style>${s}<text class="pb-title" x="${W / 2}" y="${H - 3}" text-anchor="middle">背面（焊接面，左右鏡像）</text></svg>`;
 }
 

@@ -63,7 +63,7 @@ export function mountSchematic(sim, { viewport, toast = () => {} }) {
     if (ev.target.closest("button")) return;
     pointers.set(ev.pointerId, [ev.clientX, ev.clientY]);
     if (pointers.size === 2) { const [a, b] = [...pointers.values()]; drag = { kind: "pinch", d0: Math.hypot(a[0] - b[0], a[1] - b[1]), z0: view.z, c0: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], v0: { ...view } }; return; }
-    layer.setPointerCapture(ev.pointerId);
+    try { layer.setPointerCapture(ev.pointerId); } catch {}
     const g = ev.target.closest && ev.target.closest(".sch-part");
     if (g && g.dataset.id !== "board") { const [lx, ly] = toLocal(ev.clientX, ev.clientY); const p = built.positions[g.dataset.id]; drag = { kind: "part", id: g.dataset.id, sx: lx, sy: ly, ox: p.x, oy: p.y, moved: false }; return; }
     if (g) { drag = { kind: "click", id: "board" }; }

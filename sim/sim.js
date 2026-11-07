@@ -411,10 +411,10 @@ export function createSimulator(opts) {
   }
 
   // ---------- 編輯 ----------
-  function snapshot() { return JSON.stringify({ board: doc.board, parts: doc.parts, wires: doc.wires, boardPos: doc.boardPos, breadboard: doc.breadboard, schematic: doc.schematic || null }); }
+  function snapshot() { return JSON.stringify({ board: doc.board, parts: doc.parts, wires: doc.wires, boardPos: doc.boardPos, breadboard: doc.breadboard, schematic: doc.schematic || null, perfboard: doc.perfboard || null }); }
   let lastSnap = snapshot();
   function pushUndo() { const s = snapshot(); if (s === lastSnap) return; undoStack.push(lastSnap); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; lastSnap = s; onStatus({ undo: undoStack.length, redo: redoStack.length }); }
-  function restore(s) { const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] }); }
+  function restore(s) { const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] }); }
   function bounds() {
     let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9; const add = (x, y, w, h) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h); };
     const bw = doc.board === "devkit" ? [106.6, 204.3] : [BOARD_ART[doc.board].w, BOARD_ART[doc.board].h]; add(doc.boardPos.x, doc.boardPos.y, bw[0], bw[1]);
@@ -490,7 +490,7 @@ export function createSimulator(opts) {
     redo() { if (!redoStack.length) return; undoStack.push(lastSnap); restore(redoStack.pop()); },
     clear() { pushUndo(); doc.parts = {}; doc.wires = []; doc.breadboard = null; burned = new Set(); pushUndo(); render(); tick(); select(null); },
     async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); pushUndo(); render(); if (engine) await api.attach(kind); tick(); onStatus({ board: kind }); },
-    load(d) { restore(JSON.stringify({ board: d.board || "tqt_pro", parts: d.parts || {}, wires: (d.wires || []).map((w) => ({ pts: [], ...w })), boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null, schematic: d.schematic || null })); burned = new Set(); undoStack.length = 0; redoStack.length = 0; for (const k of Object.keys(ui)) delete ui[k]; },
+    load(d) { restore(JSON.stringify({ board: d.board || "tqt_pro", parts: d.parts || {}, wires: (d.wires || []).map((w) => ({ pts: [], ...w })), boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null, schematic: d.schematic || null, perfboard: d.perfboard || null })); burned = new Set(); undoStack.length = 0; redoStack.length = 0; for (const k of Object.keys(ui)) delete ui[k]; },
     save() { return JSON.parse(snapshot()); },
     exportWokwi() { return toWokwiDiagram(api.save()); },
     importWokwi(json) { api.load(fromWokwiDiagram(json)); },
