@@ -93,10 +93,12 @@ export async function createVirtualBoard(opts = {}) {
     pins: {}, pinModes: {}, pinPulls: {}, inputs: {}, adc: {}, servos: {}, pwm: {},
     buttons: {}, battery: 3.92, rssi: -55, startedAt: 0,
   };
-  const buttonPins = board === "tqt_pro" ? [0, 47] : [0];
+  const buttonPins = board === "tqt_pro" ? [0, 47] : board === "tdisplay_s3" ? [0, 14] : [0];
   for (const p of buttonPins) { st.inputs[p] = 1; st.buttons[p] = false; }   // 上拉：沒按＝1
   const hooks = opts.hooks || {};   // 周邊轉接：i2cInit/i2cScan/i2cWrite/i2cRead/spiWrite/rmt/pulse/sensor（由引擎介面層設定）
-  const screenRGBA = new Uint8ClampedArray(128 * 128 * 4);
+  const SCREEN = { tqt_pro: [128, 128], tdisplay_s3: [170, 320] };   // 板上彩色螢幕（有的板子才有）
+  const [SW, SH] = SCREEN[board] || [0, 0];
+  const screenRGBA = new Uint8ClampedArray(SW * SH * 4);
   let screenDirty = false, runPromise = null, mp = null;
 
   const emit = (msg) => { try { onEvent(msg); } catch (e) {} };
@@ -115,7 +117,7 @@ export async function createVirtualBoard(opts = {}) {
     battery: () => st.battery,
     pin_mode: (gpio, mode, pull) => { st.pinModes[gpio] = mode; st.pinPulls[gpio] = pull ? 1 : 0; if (mode === "in" && !(gpio in st.inputs)) st.inputs[gpio] = pull ? 1 : 0; changed(); },
     pin_read: (gpio) => (gpio in st.inputs ? st.inputs[gpio] : 0),
-    pin_write: (gpio, v) => { st.pins[gpio] = v ? 1 : 0; if (gpio === 2 && board !== "tqt_pro") st.led = !!v; changed(); },
+    pin_write: (gpio, v) => { st.pins[gpio] = v ? 1 : 0; if (gpio === 2 && board === "devkit") st.led = !!v; if (gpio === 21 && board === "xiao_esp32s3") st.led = !v; changed(); },
     pin_irq: () => {},
     pwm: (gpio, freq, duty16) => {
       st.pwm[gpio] = { freq, duty16 }; st.pinModes[gpio] = freq > 0 ? "pwm" : "out";
@@ -151,7 +153,7 @@ export async function createVirtualBoard(opts = {}) {
   function blitScreen() {
     let buf;
     try { buf = mp.FS.readFile("/screen.bin"); } catch (e) { return; }
-    for (let i = 0, j = 0; i < 128 * 128 * 2; i += 2, j += 4) {
+    for (let i = 0, j = 0; i < SW * SH * 2 && i + 1 < buf.length; i += 2, j += 4) {
       const c = (buf[i] << 8) | buf[i + 1];   // 已交換位元組的 RGB565 → 還原
       const r = (c >> 11) & 0x1f, g = (c >> 5) & 0x3f, b = c & 0x1f;
       screenRGBA[j] = (r << 3) | (r >> 2); screenRGBA[j + 1] = (g << 2) | (g >> 4); screenRGBA[j + 2] = (b << 3) | (b >> 2); screenRGBA[j + 3] = 255;
@@ -172,6 +174,7 @@ export async function createVirtualBoard(opts = {}) {
     board, state: st, info, hooks,
     get running() { return st.status === "running"; },
     screenRGBA: () => screenRGBA,
+    screenSize: () => [SW, SH],
     takeScreenDirty: () => { const d = screenDirty; screenDirty = false; return d; },
 
     /** 推送並執行（像 /run）：回 {ok, msg}；執行中回 busy（像 409）。 */

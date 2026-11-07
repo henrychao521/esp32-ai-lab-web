@@ -71,7 +71,7 @@ export const BOARD_ART = {
     led: null,
   },
   tdisplay_s3: {
-    w: 150, h: 280, color: "#141414", title: "T-Display S3", screen: { x: 40, y: 60, w: 70, h: 130, text: true },
+    w: 150, h: 280, color: "#141414", title: "T-Display S3", screen: { x: 40, y: 60, w: 70, h: 130, native: [170, 320] },
     buttons: [{ gpio: 0, label: "BOOT", x: 2, y: 100, w: 7, h: 26 }, { gpio: 14, label: "KEY", x: 2, y: 140, w: 7, h: 26 }],
     pins: (() => { const L = [["3V3", "3V3"], ["GND", "GND"], ["G43", 43], ["G44", 44], ["G18", 18], ["G17", 17], ["G21", 21], ["G16", 16], ["G1", 1], ["G2", 2], ["G3", 3], ["G10", 10], ["G11", 11], ["G12", 12], ["G13", 13]];
       const R = [["5V", "5V"], ["GND", "GND"], ["3V3", "3V3"]]; const out = [];

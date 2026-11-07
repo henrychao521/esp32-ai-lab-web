@@ -137,14 +137,15 @@ async function createWasmEngine(opts) {
       if (!o || o.level !== s.level) em.emit("pin", g, s.level, t);
       if (JSON.stringify(o?.pwm || null) !== JSON.stringify(s.pwm)) em.emit("pwm", g, s.pwm ? s.pwm.hz : 0, s.pwm ? s.pwm.duty : 0);
     }
-    if (board === "tqt_pro" && vb.takeScreenDirty()) { screenDirty = true; em.emit("screen"); }
+    if (hasScreen && vb.takeScreenDirty()) { screenDirty = true; em.emit("screen"); }
     prev = cur;
   }
   let screenDirty = false;
   const held = {};
+  const hasScreen = board === "tqt_pro" || board === "tdisplay_s3";   // 板上彩色螢幕：lab.display
   return {
     apiVersion: API_VERSION, kind: "micropython-wasm", board,
-    capabilities: { screen: board === "tqt_pro", i2c: true, spi: true, uart: false, rmt: true, step: false, cycleAccurate: false, arduino: false },
+    capabilities: { screen: hasScreen, i2c: true, spi: true, uart: false, rmt: true, step: false, cycleAccurate: false, arduino: false },
     get running() { return status === "running"; },
     on: em.on,
     async boot({ program, name } = {}) { t0 = performance.now(); prev = {}; const r = await vb.run(program || "", name || "main.py"); diff(); return r; },
@@ -169,7 +170,8 @@ async function createWasmEngine(opts) {
     registerI2CDevice(bus, addr, on = true) { i2cDevices[bus] = i2cDevices[bus] || {}; if (on) i2cDevices[bus][addr] = true; else delete i2cDevices[bus][addr]; },
     registerPulseSource(gpio, fn) { if (fn) pulseSources[gpio] = fn; else delete pulseSources[gpio]; },
     registerSensor(gpio, fn) { if (fn) sensors[gpio] = fn; else delete sensors[gpio]; },
-    screenRGBA: () => (board === "tqt_pro" ? vb.screenRGBA() : null),
+    screenRGBA: () => (hasScreen ? vb.screenRGBA() : null),
+    screenSize: () => (vb.screenSize ? vb.screenSize() : [128, 128]),
     takeScreenDirty() { const d = screenDirty; screenDirty = false; return d; },
     sensorValue() { return null; },
     _vb: vb,

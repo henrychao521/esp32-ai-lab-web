@@ -141,7 +141,7 @@ export function createSimulator(opts) {
         s += bottomRow ? `<text x="${x}" y="${y - 6}" fill="#ddd" font-size="6.5" text-anchor="middle" font-family="sans-serif">${name}</text>` : `<text x="${x + (left ? 6 : -6)}" y="${y + 2.5}" fill="#ddd" font-size="6.5" text-anchor="${left ? "start" : "end"}" font-family="sans-serif">${name}</text>`;
       }
       s += `</svg>`; el.innerHTML = s;
-      if (a.screen) { const cv = document.createElement("canvas"); cv.className = "sim-screen"; cv.width = 128; cv.height = 128; cv.style.cssText = `position:absolute;left:${a.screen.x}px;top:${a.screen.y}px;width:${a.screen.w}px;height:${a.screen.h}px;background:#000;image-rendering:pixelated;border-radius:3px`; el.appendChild(cv); }
+      if (a.screen) { const cv = document.createElement("canvas"); cv.className = "sim-screen"; cv.width = a.screen.native ? a.screen.native[0] : 128; cv.height = a.screen.native ? a.screen.native[1] : 128; cv.style.cssText = `position:absolute;left:${a.screen.x}px;top:${a.screen.y}px;width:${a.screen.w}px;height:${a.screen.h}px;background:#000;image-rendering:pixelated;border-radius:3px`; el.appendChild(cv); }
     }
     return el;
   }
@@ -260,7 +260,7 @@ export function createSimulator(opts) {
       if (a.led) { const c = boardEl.querySelector(".bled"); const lv = level(a.led.gpio); const on = lv === null ? false : (a.led.inverted ? lv === 0 : lv === 1); c.setAttribute("fill", on ? "#ff3" : "#553"); }
       for (const b of boardEl.querySelectorAll(".bbtn")) b.setAttribute("fill", pressedButtons.has(Number(b.dataset.gpio)) ? "#777" : "#333");
       const cv = boardEl.querySelector(".sim-screen");
-      if (cv && engine.capabilities.screen && (engine.takeScreenDirty ? engine.takeScreenDirty() : takeDirty())) { const rgba = engine.screenRGBA(); if (rgba) cv.getContext("2d").putImageData(new ImageData(rgba instanceof Uint8ClampedArray ? rgba : new Uint8ClampedArray(rgba.buffer || rgba), 128, 128), 0, 0); }
+      if (cv && engine.capabilities.screen && (engine.takeScreenDirty ? engine.takeScreenDirty() : takeDirty())) { const rgba = engine.screenRGBA(); if (rgba) { const [sw, sh] = engine.screenSize ? engine.screenSize() : [128, 128]; if (rgba.length >= sw * sh * 4) cv.getContext("2d").putImageData(new ImageData(rgba instanceof Uint8ClampedArray ? rgba : new Uint8ClampedArray(rgba.buffer || rgba), sw, sh), 0, 0); } }
     }
   }
 
@@ -504,7 +504,7 @@ export function createSimulator(opts) {
       const b = bounds(); const pad = 20, W = b.maxX - b.minX + pad * 2, H = b.maxY - b.minY + pad * 2;
       let s = `<svg xmlns="${SVGNS}" width="${W * scale}" height="${H * scale}" viewBox="${b.minX - pad} ${b.minY - pad} ${W} ${H}"><rect x="${b.minX - pad}" y="${b.minY - pad}" width="${W}" height="${H}" fill="#f4f4f5"/>`;
       if (doc.breadboard) s += `<g transform="translate(${doc.breadboard.x},${doc.breadboard.y})">${BREADBOARD.svg}</g>`;
-      const inner = (el) => { const sr = el.shadowRoot; const svgEl = sr ? sr.querySelector("svg") : el.querySelector("svg"); return svgEl ? svgEl.outerHTML.replace(/<style[\s\S]*?<\/style>/g, "") : ""; };
+      const inner = (el) => { if (!el) return ""; const sr = el.shadowRoot; const svgEl = el.tagName && el.tagName.toLowerCase() === "svg" ? el : (sr ? sr.querySelector("svg") : el.querySelector("svg")); return svgEl ? svgEl.outerHTML.replace(/<style[\s\S]*?<\/style>/g, "") : ""; };
       const boardEl = partsLayer.querySelector(".sim-board"); if (boardEl) s += `<g transform="translate(${doc.boardPos.x},${doc.boardPos.y})">${inner(boardEl.firstChild)}</g>`;
       for (const [id, p] of Object.entries(doc.parts)) { const c = CATALOG[p.type]; s += `<g transform="translate(${p.x},${p.y}) rotate(${p.rot || 0} ${c.w / 2} ${c.h / 2})">${inner(partEls[id].firstChild)}</g>`; }
       for (const w of doc.wires) { const d = wirePath(w); if (d) s += `<path d="${d}" fill="none" stroke="${w.color}" stroke-width="3" stroke-linecap="round"/>`; }

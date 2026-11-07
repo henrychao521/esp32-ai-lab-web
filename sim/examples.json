@@ -1,5 +1,926 @@
 [
  {
+  "id": "td_hello@tdisplay_s3",
+  "title": "螢幕 Hello",
+  "level": "入門",
+  "summary": "不用接線：板上的 170×320 彩色螢幕出字、換底色；按 KEY 換顏色、按 BOOT 換字。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "這個範例不用接線，直接按 ▶ 執行，然後按畫面上板子的 KEY 和 BOOT 鍵",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\ncolors = [d.BLUE, d.RED, d.GREEN, color(120, 0, 160), d.BLACK]\nwords = ['Hello', 'T-Display', 'ESP32', 'AI Lab']\nci = wi = 0\ndef draw():\n    d.fill(colors[ci])\n    d.text(words[wi], 50, 150, d.WHITE)\n    d.text('KEY: color', 10, 290, d.YELLOW)\n    d.text('BOOT: word', 10, 304, d.YELLOW)\n    d.show()\ndraw()\nwhile lab.running():\n    if key.value() == 0:\n        ci = (ci + 1) % len(colors); draw(); print('底色', ci)\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    if boot.value() == 0:\n        wi = (wi + 1) % len(words); draw(); print('文字', words[wi])\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "螢幕先是藍底白字 Hello；按 KEY 底色輪流換，按 BOOT 換字。",
+  "try": [
+   "把 colors 裡的 color(120, 0, 160) 改成你喜歡的 RGB",
+   "把文字放到螢幕正中央：算一下 170 減文字寬（每個字 8 點）再除以 2"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "底色",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_two_buttons@tdisplay_s3",
+  "title": "兩鍵控燈",
+  "level": "入門",
+  "summary": "BOOT 控左邊綠燈、KEY 控右邊紅燈；螢幕同步顯示哪顆亮著。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 110,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 400,
+    "y": 90,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led2": {
+    "type": "led",
+    "x": 400,
+    "y": 180,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "board:G17",
+    "b": "r2:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r2:2",
+    "b": "led2:A",
+    "color": "#d33"
+   },
+   {
+    "a": "led2:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "G16 → 220Ω → 綠 LED 長腳，短腳接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "G17 → 220Ω → 紅 LED 長腳，短腳接 GND",
+    "wires": [
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "按 ▶ 執行，再按板子上的 BOOT 和 KEY",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\ng = Pin(16, Pin.OUT); r = Pin(17, Pin.OUT)\nwhile lab.running():\n    a, b = boot.value() == 0, key.value() == 0\n    g.value(1 if a else 0); r.value(1 if b else 0)\n    d.fill(d.BLACK)\n    d.fill_rect(20, 100, 50, 50, d.GREEN if a else color(0, 60, 0))\n    d.fill_rect(100, 100, 50, 50, d.RED if b else color(60, 0, 0))\n    d.text('BOOT', 25, 160, d.WHITE); d.text('KEY', 110, 160, d.WHITE)\n    d.show()\n    lab.sleep(0.05)\n",
+  "expect": "按住 BOOT 綠燈亮、螢幕左方塊變亮綠；按住 KEY 紅燈亮、右方塊變亮紅。",
+  "try": [
+   "改成按一下切換、再按一下關（提示：記住上一次的狀態）",
+   "兩鍵同時按時讓螢幕顯示 BOTH"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_breathing@tdisplay_s3",
+  "title": "呼吸燈",
+  "level": "入門",
+  "summary": "PWM 讓 LED 慢慢亮、慢慢暗；螢幕畫出目前亮度長條。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 400,
+    "y": 130,
+    "rot": 0,
+    "attrs": {
+     "color": "blue"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "r1:1",
+    "color": "#36c"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#36c"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "G16 → 220Ω → LED 長腳",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "LED 短腳接 GND",
+    "wires": [
+     2
+    ]
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\n\nfrom machine import Pin, PWM\npwm = PWM(Pin(16), freq=1000)\nwhile lab.running():\n    for duty in list(range(0, 65535, 4000)) + list(range(65535, 0, -4000)):\n        pwm.duty_u16(duty)\n        d.fill(d.BLACK)\n        d.rect(20, 100, 130, 24, d.WHITE)\n        d.fill_rect(22, 102, int(126 * duty / 65535), 20, d.BLUE)\n        d.text('%3d %%' % (duty * 100 // 65535), 60, 140, d.WHITE)\n        d.show()\n        lab.sleep(0.04)\n",
+  "expect": "LED 由暗到亮再到暗循環，螢幕長條跟著伸縮並顯示百分比。",
+  "try": [
+   "把 4000 改小，呼吸變慢",
+   "改成只亮到 50%（duty 上限 32767）"
+  ],
+  "verify": {
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_clock@tdisplay_s3",
+  "title": "數位時鐘",
+  "level": "入門",
+  "summary": "螢幕顯示 時:分:秒 一直跳；BOOT 調時、KEY 調分（模擬器沒有網路校時，所以自己調）。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。按 ▶ 執行，BOOT 加 1 小時、KEY 加 1 分鐘",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport time, math\nh, m, s = 9, 41, 0\nlast = time.ticks_ms()\ndef draw():\n    d.fill(d.BLACK)\n    d.text('%02d:%02d:%02d' % (h, m, s), 50, 40, d.WHITE)\n    # 秒針圓盤\n    cx, cy, r = 85, 180, 60\n    for k in range(12):\n        a = k * math.pi / 6\n        d.pixel(int(cx + r * math.sin(a)), int(cy - r * math.cos(a)), d.WHITE)\n    a = s * math.pi / 30\n    d.line(cx, cy, int(cx + (r - 8) * math.sin(a)), int(cy - (r - 8) * math.cos(a)), d.RED)\n    a = (m + s / 60) * math.pi / 30\n    d.line(cx, cy, int(cx + (r - 20) * math.sin(a)), int(cy - (r - 20) * math.cos(a)), d.CYAN)\n    a = (h % 12 + m / 60) * math.pi / 6\n    d.line(cx, cy, int(cx + (r - 32) * math.sin(a)), int(cy - (r - 32) * math.cos(a)), d.YELLOW)\n    d.text('BOOT +h  KEY +m', 10, 300, color(120, 120, 120))\n    d.show()\ndraw()\nwhile lab.running():\n    if time.ticks_diff(time.ticks_ms(), last) >= 1000:\n        last = time.ticks_add(last, 1000)\n        s += 1\n        if s == 60: s = 0; m += 1\n        if m == 60: m = 0; h = (h + 1) % 24\n        draw(); print('%02d:%02d:%02d' % (h, m, s))\n    if boot.value() == 0:\n        h = (h + 1) % 24; draw()\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    if key.value() == 0:\n        m = (m + 1) % 60; draw()\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "數字每秒跳一次，圓盤秒針轉；按 BOOT 小時加一、KEY 分鐘加一。",
+  "try": [
+   "改成 12 小時制並顯示 AM／PM",
+   "加一個鬧鐘：到 9:42 時螢幕閃紅"
+  ],
+  "verify": {
+   "console": "\\d\\d:\\d\\d:\\d\\d",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_face@tdisplay_s3",
+  "title": "互動笑臉",
+  "level": "入門",
+  "summary": "螢幕畫一張大臉：KEY 換表情（笑、驚訝、生氣、眨眼），BOOT 餵食變開心；放著不管會打瞌睡。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。執行後按 KEY 換表情、BOOT 餵食；放 10 秒看它睡著",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport time\nmoods = ['smile', 'wow', 'angry', 'wink']\nmi = 0; happy = 0; idle = time.ticks_ms()\ndef face(mood):\n    d.fill(color(255, 220, 120))\n    d.fill_rect(0, 0, 170, 40, d.BLACK); d.text(mood, 60, 16, d.WHITE)\n    # 眼睛\n    if mood == 'sleep':\n        d.line(40, 130, 70, 130, d.BLACK); d.line(100, 130, 130, 130, d.BLACK)\n        d.text('z z z', 110, 90, d.BLACK)\n    elif mood == 'wink':\n        d.ellipse(55, 130, 12, 14, d.BLACK, True); d.line(100, 130, 130, 130, d.BLACK)\n    elif mood == 'wow':\n        d.ellipse(55, 130, 12, 18, d.BLACK, True); d.ellipse(115, 130, 12, 18, d.BLACK, True)\n    elif mood == 'angry':\n        d.ellipse(55, 130, 12, 10, d.BLACK, True); d.ellipse(115, 130, 12, 10, d.BLACK, True)\n        d.line(38, 108, 70, 118, d.BLACK); d.line(132, 108, 100, 118, d.BLACK)\n    else:\n        d.ellipse(55, 130, 12, 14, d.BLACK, True); d.ellipse(115, 130, 12, 14, d.BLACK, True)\n    # 嘴巴\n    if mood == 'smile' or mood == 'wink':\n        d.ellipse(85, 200, 40, 25, d.BLACK, True, 12)      # 下半圓＝笑\n    elif mood == 'wow':\n        d.ellipse(85, 215, 15, 22, d.BLACK, True)\n    elif mood == 'angry':\n        d.ellipse(85, 230, 40, 20, d.BLACK, True, 3)       # 上半圓＝嘴角下垂\n    else:\n        d.line(60, 215, 110, 215, d.BLACK)\n    d.text('fed: %d' % happy, 5, 305, d.BLACK)\n    d.show()\nface(moods[mi])\nwhile lab.running():\n    now = time.ticks_ms()\n    if key.value() == 0:\n        mi = (mi + 1) % len(moods); idle = now; face(moods[mi]); print('表情', moods[mi])\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    if boot.value() == 0:\n        happy += 1; mi = 0; idle = now; face('smile'); print('餵食', happy)\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    if time.ticks_diff(now, idle) > 10000:\n        face('sleep'); idle = now + 1000000\n    lab.sleep(0.02)\n",
+  "expect": "黃色大臉；按 KEY 輪流換四種表情，按 BOOT 餵食次數加一並變笑臉，放 10 秒會閉眼睡覺。",
+  "try": [
+   "加一種表情：吐舌頭（畫一個小紅半圓）",
+   "眨眼改成每 3 秒自動眨一次"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "表情",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_dice@tdisplay_s3",
+  "title": "電子骰子",
+  "level": "入門",
+  "summary": "按 KEY 擲骰：螢幕骰子點數快速滾動後停住，蜂鳴器叮一聲。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "G16 → 220Ω → 蜂鳴器一腳，另一腳接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "執行後按板子的 KEY 擲骰",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport random\nfrom machine import PWM\nbz = PWM(Pin(16), freq=880); bz.duty_u16(0)\nDOTS = {1: [(85, 160)], 2: [(50, 125), (120, 195)], 3: [(50, 125), (85, 160), (120, 195)],\n        4: [(50, 125), (120, 125), (50, 195), (120, 195)], 5: [(50, 125), (120, 125), (85, 160), (50, 195), (120, 195)],\n        6: [(50, 120), (120, 120), (50, 160), (120, 160), (50, 200), (120, 200)]}\ndef show(n, rolling=False):\n    d.fill(d.BLACK)\n    d.fill_rect(25, 100, 120, 120, d.WHITE if not rolling else color(200, 200, 200))\n    for x, y in DOTS[n]: d.ellipse(x, y, 11, 11, d.RED, True)\n    d.text('press KEY', 45, 260, d.YELLOW)\n    d.show()\nn = 6; show(n)\nwhile lab.running():\n    if key.value() == 0:\n        for i in range(12):\n            n = random.randint(1, 6); show(n, True); lab.sleep(0.05 + i * 0.02)\n        show(n); bz.duty_u16(30000); lab.sleep(0.12); bz.duty_u16(0)\n        print('擲出', n)\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "按 KEY 後骰子滾 12 次變慢停住，蜂鳴器響一下，主控台印出點數。",
+  "try": [
+   "改成兩顆骰子並顯示總和",
+   "連續擲到 6 時螢幕閃黃"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "擲出",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_timer@tdisplay_s3",
+  "title": "倒數計時器",
+  "level": "入門",
+  "summary": "BOOT 加 10 秒、KEY 開始；螢幕畫環形進度倒數，歸零蜂鳴器響、畫面閃紅。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "G16 → 220Ω → 蜂鳴器，另一腳 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "執行後按 BOOT 設秒數、KEY 開始",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport time, math\nfrom machine import PWM\nbz = PWM(Pin(16), freq=1000); bz.duty_u16(0)\ntotal = 30\ndef ring(frac, c):\n    cx, cy, r = 85, 170, 60\n    steps = int(72 * frac)\n    for i in range(steps):\n        a = i * 2 * math.pi / 72\n        d.line(int(cx + (r - 6) * math.sin(a)), int(cy - (r - 6) * math.cos(a)), int(cx + r * math.sin(a)), int(cy - r * math.cos(a)), c)\ndef draw(left, running):\n    d.fill(d.BLACK)\n    ring(left / total if total else 0, d.GREEN if left > 5 else d.RED)\n    d.text('%02d:%02d' % (left // 60, left % 60), 65, 165, d.WHITE)\n    d.text('BOOT +10s' if not running else 'running', 45, 280, d.YELLOW)\n    d.text('KEY start' if not running else '', 45, 296, d.YELLOW)\n    d.show()\ndraw(total, False)\nwhile lab.running():\n    if boot.value() == 0:\n        total = min(total + 10, 590); draw(total, False); print('設定', total, '秒')\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    if key.value() == 0:\n        left = total; last = time.ticks_ms(); print('開始倒數', total)\n        while lab.running() and left > 0:\n            if time.ticks_diff(time.ticks_ms(), last) >= 1000:\n                last = time.ticks_add(last, 1000); left -= 1; draw(left, True)\n            lab.sleep(0.02)\n        print('時間到！')\n        for i in range(4):\n            d.fill(d.RED if i % 2 == 0 else d.BLACK); d.text('TIME UP', 55, 160, d.WHITE); d.show()\n            bz.duty_u16(30000 if i % 2 == 0 else 0); lab.sleep(0.3)\n        bz.duty_u16(0); draw(total, False)\n    lab.sleep(0.02)\n",
+  "expect": "綠色進度環隨秒數縮短，最後 5 秒變紅；歸零時蜂鳴器響四下、畫面紅黑閃。",
+  "try": [
+   "加 KEY 長按歸零",
+   "改成番茄鐘：25 分鐘工作、5 分鐘休息自動切換"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "開始倒數",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_stopwatch@tdisplay_s3",
+  "title": "兩鍵碼表",
+  "level": "入門",
+  "summary": "KEY 開始／暫停，BOOT 記分段（最多 5 段）或長按歸零；螢幕大字顯示。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。KEY 開始與暫停，BOOT 記一段，停止時 BOOT 歸零",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport time\nrunning = False; t0 = 0; acc = 0; laps = []\ndef fmt(ms): return '%02d:%02d.%d' % (ms // 60000, (ms // 1000) % 60, (ms // 100) % 10)\ndef draw(ms):\n    d.fill(d.BLACK)\n    d.text(fmt(ms), 45, 40, d.GREEN if running else d.WHITE)\n    for i, l in enumerate(laps[-5:]): d.text('L%d %s' % (i + 1, fmt(l)), 30, 90 + i * 16, d.CYAN)\n    d.text('KEY start/stop', 25, 280, d.YELLOW); d.text('BOOT lap/reset', 25, 296, d.YELLOW)\n    d.show()\ndraw(0)\nwhile lab.running():\n    now = time.ticks_ms(); ms = acc + (time.ticks_diff(now, t0) if running else 0)\n    if key.value() == 0:\n        if running: acc = ms; running = False; print('暫停', fmt(ms))\n        else: t0 = now; running = True; print('開始')\n        draw(ms)\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    if boot.value() == 0:\n        if running: laps.append(ms); print('分段', fmt(ms))\n        else: acc = 0; laps = []; print('歸零')\n        draw(ms)\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    if running and (ms // 100) != ((ms - 20) // 100): draw(ms)\n    lab.sleep(0.02)\n",
+  "expect": "按 KEY 數字開始跑並變綠，再按暫停；跑動中按 BOOT 記分段，暫停時按 BOOT 歸零。",
+  "try": [
+   "分段超過 5 段時自動捲動",
+   "把最快的一段用紅色標出來"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "開始",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_weather@tdisplay_s3",
+  "title": "天氣站",
+  "level": "進階",
+  "summary": "DHT22 的溫濕度顯示在螢幕上，並依濕度畫太陽／雲／雨圖示；拖右側滑桿改濕度，圖示立刻換。",
+  "breadboard": null,
+  "parts": {
+   "dht1": {
+    "type": "dht22",
+    "x": 330,
+    "y": 100,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "dht1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "dht1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "dht1:SDA",
+    "b": "board:G16",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "DHT22 的 VCC 接 3V3、GND 接 GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "SDA（資料腳）接 G16",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "text": "執行後點 DHT22，用右側屬性面板的滑桿改溫濕度",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\n\nimport dht\nfrom machine import Pin\nsensor = dht.DHT22(Pin(16))\ndef sun():\n    d.ellipse(85, 110, 28, 28, d.YELLOW, True)\n    for dx, dy in ((40, 0), (-40, 0), (0, 40), (0, -40), (30, 30), (-30, 30), (30, -30), (-30, -30)):\n        d.line(85 + dx // 2, 110 + dy // 2, 85 + dx, 110 + dy, d.YELLOW)\ndef cloud(c):\n    d.ellipse(70, 115, 25, 18, c, True); d.ellipse(100, 110, 28, 22, c, True); d.ellipse(125, 120, 20, 15, c, True)\n    d.fill_rect(50, 118, 95, 18, c)\ndef rain():\n    cloud(color(130, 130, 150))\n    for x in range(55, 140, 16): d.line(x, 145, x - 6, 170, d.CYAN)\nwhile lab.running():\n    try:\n        sensor.measure(); t, h = sensor.temperature(), sensor.humidity()\n    except OSError:\n        t, h = None, None\n    d.fill(color(10, 20, 60))\n    if h is None:\n        d.text('no sensor', 40, 110, d.RED)\n    elif h > 80: rain(); kind = 'rain'\n    elif h > 55: cloud(d.WHITE); kind = 'cloud'\n    else: sun(); kind = 'sun'\n    if h is not None:\n        d.text('%.1f C' % t, 20, 210, d.WHITE); d.text('%.0f %%' % h, 110, 210, d.WHITE)\n        d.text(kind, 70, 240, d.YELLOW)\n        d.rect(20, 265, 130, 10, d.WHITE); d.fill_rect(21, 266, int(128 * h / 100), 8, d.CYAN)\n        print('溫度', t, '濕度', h, kind); lab.send(temp=t, humi=h)\n    d.show()\n    lab.sleep(2)\n",
+  "expect": "螢幕每 2 秒更新：濕度 55% 以下是太陽、55～80 是雲、80 以上下雨，數字與濕度長條同步。",
+  "try": [
+   "把門檻改成 70／90，看圖示什麼時候換",
+   "溫度高於 30 度時把底色改成橘紅色"
+  ],
+  "verify": {
+   "console": "濕度",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_pong@tdisplay_s3",
+  "title": "接球遊戲",
+  "level": "進階",
+  "summary": "球在螢幕裡彈跳，BOOT 左移、KEY 右移板子接球；接到加分、漏接扣命。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。執行後用 BOOT／KEY 左右移動板子",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport random\nW, H = 170, 320\npx, pw = 60, 50\nbx, by, vx, vy = 85, 60, 3, 3\nscore, lives = 0, 3\nwhile lab.running() and lives > 0:\n    if boot.value() == 0: px = max(0, px - 6)\n    if key.value() == 0: px = min(W - pw, px + 6)\n    bx += vx; by += vy\n    if bx <= 4 or bx >= W - 4: vx = -vx\n    if by <= 4: vy = -vy\n    if by >= H - 24 and px <= bx <= px + pw and vy > 0:\n        vy = -vy; score += 1; print('接到！分數', score)\n    if by >= H:\n        lives -= 1; by, bx = 60, random.randint(20, 150); print('漏接，剩', lives)\n    d.fill(d.BLACK)\n    d.fill_rect(px, H - 16, pw, 8, d.CYAN)\n    d.ellipse(bx, by, 5, 5, d.YELLOW, True)\n    d.text('S:%d  L:%d' % (score, lives), 5, 5, d.WHITE)\n    d.show()\n    lab.sleep(0.03)\nd.fill(d.RED); d.text('GAME OVER', 45, 150, d.WHITE); d.text('score %d' % score, 50, 170, d.WHITE); d.show()\n",
+  "expect": "黃球彈跳，青色板子接到會加分；漏三次顯示 GAME OVER。",
+  "try": [
+   "讓球每接到 5 次就變快（vx、vy 乘 1.2）",
+   "板子寬度隨分數變窄，增加難度"
+  ],
+  "verify": {
+   "console": "接到|漏接",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_reaction@tdisplay_s3",
+  "title": "反應測試",
+  "level": "進階",
+  "summary": "螢幕黑一陣子後突然變綠，看到就按 KEY，顯示你的反應時間（毫秒）；太早按會被抓到。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。執行後盯著螢幕，變綠立刻按 KEY",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport random, time\nbest = None\nwhile lab.running():\n    d.fill(d.BLACK); d.text('wait...', 55, 150, d.WHITE); d.show()\n    wait = random.randint(1500, 4000); t0 = time.ticks_ms(); early = False\n    while lab.running() and time.ticks_diff(time.ticks_ms(), t0) < wait:\n        if key.value() == 0: early = True; break\n        lab.sleep(0.01)\n    if early:\n        d.fill(d.RED); d.text('too early!', 40, 150, d.WHITE); d.show(); print('太早按'); lab.sleep(1.5); continue\n    d.fill(d.GREEN); d.text('PRESS!', 60, 150, d.BLACK); d.show(); t1 = time.ticks_ms()\n    while lab.running() and key.value() != 0: lab.sleep(0.001)\n    ms = time.ticks_diff(time.ticks_ms(), t1)\n    if best is None or ms < best: best = ms\n    d.fill(d.BLACK); d.text('%d ms' % ms, 60, 140, d.YELLOW); d.text('best %d' % best, 50, 170, d.WHITE); d.show()\n    print('反應', ms, 'ms，最佳', best)\n    while lab.running() and key.value() == 0: lab.sleep(0.02)\n    lab.sleep(2)\n",
+  "expect": "等 1.5～4 秒螢幕變綠，按 KEY 後顯示毫秒數與最佳成績；綠之前按會顯示 too early。",
+  "try": [
+   "改成用 BOOT 和 KEY 兩人對戰，誰先按誰贏",
+   "把等待改成 LED 亮起（接一顆 LED 到 G16）"
+  ],
+  "verify": {
+   "console": "反應|太早",
+   "press": [
+    "key"
+   ],
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_ultrasonic@tdisplay_s3",
+  "title": "超音波測距",
+  "level": "進階",
+  "summary": "HC-SR04 量距離，螢幕畫一支會動的尺和數字；太近整個畫面變紅。",
+  "breadboard": null,
+  "parts": {
+   "us1": {
+    "type": "hc-sr04",
+    "x": 320,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "us1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "us1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "us1:TRIG",
+    "b": "board:G17",
+    "color": "#dc2"
+   },
+   {
+    "a": "us1:ECHO",
+    "b": "board:G16",
+    "color": "#2a7"
+   }
+  ],
+  "steps": [
+   {
+    "text": "HC-SR04 的 VCC 接 5V、GND 接 GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "TRIG 接 G17、ECHO 接 G16",
+    "wires": [
+     2,
+     3
+    ]
+   },
+   {
+    "text": "執行後在感測器上按住往下拖（或右側滑桿）改距離",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\n\nfrom machine import Pin, time_pulse_us\ntrig = Pin(17, Pin.OUT); echo = Pin(16, Pin.IN)\nwhile lab.running():\n    trig.value(1); trig.value(0)\n    us = time_pulse_us(echo, 1, 30000)\n    cm = us / 58 if us > 0 else None\n    if cm is None:\n        d.fill(d.BLACK); d.text('no echo', 50, 150, d.RED)\n    else:\n        near = cm < 20\n        d.fill(d.RED if near else d.BLACK)\n        d.text('%.1f cm' % cm, 45, 30, d.WHITE)\n        h = int(min(cm, 200) / 200 * 240)\n        d.rect(70, 60, 30, 240, d.WHITE); d.fill_rect(72, 300 - h, 26, h, d.WHITE if near else d.CYAN)\n        for k in range(0, 201, 50):\n            y = 300 - int(k / 200 * 240); d.hline(60, y, 10, d.WHITE); d.text(str(k), 105, y - 4, d.WHITE)\n        print('距離 %.1f cm' % cm); lab.send(cm=round(cm, 1))\n    d.show()\n    lab.sleep(0.2)\n",
+  "expect": "螢幕的尺隨距離升降；拖到 20 cm 以內整個螢幕變紅。",
+  "try": [
+   "把紅色門檻改成 50 cm",
+   "加蜂鳴器：越近嗶越快"
+  ],
+  "verify": {
+   "console": "距離",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_neopixel@tdisplay_s3",
+  "title": "跑馬燈",
+  "level": "進階",
+  "summary": "NeoPixel 燈條跑彩色動畫，KEY 切換圖案（追逐、彩虹、呼吸），螢幕顯示目前模式。",
+  "breadboard": null,
+  "parts": {
+   "np1": {
+    "type": "neopixel-strip",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "np1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "np1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "np1:DIN",
+    "b": "board:G16",
+    "color": "#2a7"
+   }
+  ],
+  "steps": [
+   {
+    "text": "燈條 VCC 接 5V、GND 接 GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "DIN 接 G16",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "text": "執行後按 KEY 換模式",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport neopixel\nnp = neopixel.NeoPixel(Pin(16), 8)\nmodes = ['chase', 'rainbow', 'breathe']; mi = 0; t = 0\ndef wheel(p):\n    p = p % 255\n    if p < 85: return (255 - p * 3, p * 3, 0)\n    if p < 170: p -= 85; return (0, 255 - p * 3, p * 3)\n    p -= 170; return (p * 3, 0, 255 - p * 3)\nwhile lab.running():\n    if key.value() == 0:\n        mi = (mi + 1) % 3; print('模式', modes[mi])\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    m = modes[mi]\n    for i in range(8):\n        if m == 'chase': np[i] = (255, 60, 0) if i == t % 8 else (0, 0, 0)\n        elif m == 'rainbow': np[i] = wheel(i * 32 + t * 8)\n        else:\n            b = (t % 40) if (t % 80) < 40 else 40 - (t % 40)\n            np[i] = (0, b * 6, b * 3)\n    np.write()\n    d.fill(d.BLACK); d.text(m, 60, 150, d.WHITE); d.text('KEY: next', 45, 290, d.YELLOW); d.show()\n    t += 1\n    lab.sleep(0.08)\n",
+  "expect": "燈條預設一顆橘燈追逐；按 KEY 換成彩虹、再按變成青色呼吸，螢幕顯示模式名。",
+  "try": [
+   "加第四種模式：隨機閃",
+   "把 8 顆改成 16 顆（要加顆數也要改燈條）"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "模式",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_drum@tdisplay_s3",
+  "title": "兩鍵鼓機",
+  "level": "進階",
+  "summary": "BOOT 是大鼓（低音）、KEY 是小鼓（高音），蜂鳴器發聲、螢幕畫出跳動的音波。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "G16 → 220Ω → 蜂鳴器，另一腳 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "執行後交替按 BOOT／KEY 打節奏",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport math\nfrom machine import PWM\nbz = PWM(Pin(16), freq=100); bz.duty_u16(0)\nwave = [160] * 170; hits = 0\ndef hit(freq, amp, name):\n    global hits\n    bz.freq(freq); bz.duty_u16(30000)\n    for i in range(170): wave[i] = 160 + int(amp * math.sin(i / 170 * 2 * math.pi * (freq / 100)))\n    hits += 1; print(name, hits)\nwhile lab.running():\n    if boot.value() == 0: hit(110, 60, '大鼓')\n    elif key.value() == 0: hit(660, 30, '小鼓')\n    else:\n        bz.duty_u16(0)\n        for i in range(170): wave[i] = 160 + (wave[i] - 160) * 3 // 4   # 音波慢慢回到中線\n    d.fill(d.BLACK)\n    for i in range(1, 170): d.line(i - 1, wave[i - 1], i, wave[i], d.CYAN)\n    d.text('BOOT bass  KEY snare', 5, 300, d.YELLOW); d.text('hits %d' % hits, 5, 5, d.WHITE)\n    d.show()\n    lab.sleep(0.03)\n",
+  "expect": "按 BOOT 低音、KEY 高音，蜂鳴器響，螢幕音波跳起再慢慢平靜。",
+  "try": [
+   "加第三種音：兩鍵同時按是鈸",
+   "做一段自動播放的節奏（用 list 存下按的時間）"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "小鼓",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_joystick_paint@tdisplay_s3",
+  "title": "搖桿畫板",
+  "level": "專題",
+  "summary": "搖桿移動游標在螢幕上畫線，按下搖桿換顏色，BOOT 清除畫面。",
+  "breadboard": null,
+  "parts": {
+   "joy1": {
+    "type": "joystick",
+    "x": 320,
+    "y": 90,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "joy1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "joy1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "joy1:HORZ",
+    "b": "board:G1",
+    "color": "#dc2"
+   },
+   {
+    "a": "joy1:VERT",
+    "b": "board:G2",
+    "color": "#2a7"
+   },
+   {
+    "a": "joy1:SEL",
+    "b": "board:G16",
+    "color": "#36c"
+   }
+  ],
+  "steps": [
+   {
+    "text": "搖桿 VCC 接 3V3、GND 接 GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "HORZ 接 G1、VERT 接 G2（兩支都能讀 ADC）",
+    "wires": [
+     2,
+     3
+    ]
+   },
+   {
+    "text": "SEL（按下）接 G16",
+    "wires": [
+     4
+    ]
+   },
+   {
+    "text": "執行後在搖桿上按住拖動",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)    # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(14, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nfrom machine import ADC\nhx = ADC(Pin(1), atten=ADC.ATTN_11DB); vy = ADC(Pin(2), atten=ADC.ATTN_11DB)\nsel = Pin(16, Pin.IN, Pin.PULL_UP)\ncolors = [d.WHITE, d.RED, d.GREEN, d.CYAN, d.YELLOW]\nci = 0; x, y = 85, 160\nd.fill(d.BLACK); d.show()\nwhile lab.running():\n    dx = (hx.read() - 2048) // 400; dy = (vy.read() - 2048) // 400\n    nx = max(0, min(169, x + dx)); ny = max(0, min(319, y + dy))\n    if (nx, ny) != (x, y):\n        d.line(x, y, nx, ny, colors[ci]); x, y = nx, ny; d.show(); print('游標', x, y)\n    if sel.value() == 0:\n        ci = (ci + 1) % len(colors); print('顏色', ci)\n        while lab.running() and sel.value() == 0: lab.sleep(0.02)\n    if boot.value() == 0:\n        d.fill(d.BLACK); d.show(); print('清除')\n    lab.sleep(0.03)\n",
+  "expect": "搖桿往哪推，螢幕就往哪畫線；按下搖桿換色，BOOT 清空。",
+  "try": [
+   "加 KEY 變粗細（畫 3 條平行線）",
+   "把游標位置顯示在螢幕角落"
+  ],
+  "verify": {
+   "adc": {
+    "1": 3500
+   },
+   "console": "游標",
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "td_scope@tdisplay_s3",
+  "title": "迷你示波器",
+  "level": "專題",
+  "summary": "可變電阻接 ADC，螢幕畫出電壓隨時間的波形捲動，像一台小示波器。",
+  "breadboard": null,
+  "parts": {
+   "pot1": {
+    "type": "potentiometer",
+    "x": 320,
+    "y": 100,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "board:G1",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "可變電阻 VCC 接 3V3、GND 接 GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "SIG（中間腳）接 G1",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "text": "執行後在可變電阻上按住上下拖",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 170×320 彩色螢幕\n\nfrom machine import Pin, ADC\npot = ADC(Pin(1), atten=ADC.ATTN_11DB)\nbuf = [160] * 170\nwhile lab.running():\n    v = pot.read()\n    buf.pop(0); buf.append(300 - int(v / 4095 * 260))\n    d.fill(d.BLACK)\n    for y in range(40, 301, 65): d.hline(0, y, 170, color(50, 50, 50))\n    for i in range(1, 170): d.line(i - 1, buf[i - 1], i, buf[i], d.GREEN)\n    d.text('%.2f V' % (v / 4095 * 3.3), 5, 5, d.WHITE); d.text('ADC %d' % v, 90, 5, d.WHITE)\n    d.show(); lab.send(adc=v)\n    lab.sleep(0.05)\n",
+  "expect": "綠色波形從右往左捲動，轉旋鈕波形上下移動，左上角顯示電壓。",
+  "try": [
+   "加第二個通道（G2）用另一種顏色畫",
+   "把時間軸改快一點（sleep 0.02）"
+  ],
+  "verify": {
+   "adc": {
+    "1": 3000
+   },
+   "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
   "id": "blink",
   "title": "LED 閃爍",
   "level": "入門",
@@ -239,7 +1160,7 @@
  {
   "id": "pot_brightness",
   "title": "可變電阻調亮度",
-  "level": "感測",
+  "level": "進階",
   "summary": "ADC 讀可變電阻的分壓（0～4095），再用 PWM 把它變成亮度。",
   "board": "tqt_pro",
   "breadboard": null,
@@ -336,7 +1257,7 @@
  {
   "id": "ldr_nightlight",
   "title": "光敏夜燈",
-  "level": "感測",
+  "level": "進階",
   "summary": "光敏模組的 AO 隨光線改變電壓，暗到門檻以下就自動開燈。",
   "board": "tqt_pro",
   "breadboard": null,
@@ -433,7 +1354,7 @@
  {
   "id": "buzzer_scale",
   "title": "蜂鳴器音階",
-  "level": "感測",
+  "level": "進階",
   "summary": "PWM 改頻率就是改音高：Do Re Mi 的頻率是 262、294、330…。",
   "board": "tqt_pro",
   "breadboard": null,
@@ -503,7 +1424,7 @@
  {
   "id": "servo_sweep",
   "title": "伺服掃描",
-  "level": "遙控",
+  "level": "進階",
   "summary": "伺服馬達吃 50 Hz 的 PWM，脈寬 0.5～2.5 ms 對應 0～180 度。",
   "board": "tqt_pro",
   "breadboard": null,
@@ -564,7 +1485,7 @@
  {
   "id": "rgb_mix",
   "title": "RGB 混色",
-  "level": "遙控",
+  "level": "進階",
   "summary": "共陰極 RGB LED：三色各一支 PWM，調工作比就能混出任何顏色。",
   "board": "tqt_pro",
   "breadboard": null,
@@ -681,7 +1602,7 @@
  {
   "id": "oled_text",
   "title": "OLED 顯示文字",
-  "level": "顯示",
+  "level": "進階",
   "summary": "I2C 介面的 SSD1306：兩條線（SDA、SCL）就能顯示文字與圖形。",
   "board": "tqt_pro",
   "breadboard": null,
@@ -748,7 +1669,7 @@
  {
   "id": "ultrasonic",
   "title": "超音波測距",
-  "level": "感測",
+  "level": "進階",
   "summary": "HC-SR04：TRIG 送 10 µs 脈衝，ECHO 的高電位時間 ÷ 58 就是公分。",
   "board": "tqt_pro",
   "breadboard": null,
@@ -856,7 +1777,7 @@
  {
   "id": "dht_display",
   "title": "溫濕度顯示",
-  "level": "顯示",
+  "level": "進階",
   "summary": "DHT22 一條資料線回傳溫濕度，讀到的值顯示在 OLED 上。",
   "board": "tqt_pro",
   "breadboard": null,
@@ -953,7 +1874,7 @@
  {
   "id": "neopixel_chase",
   "title": "NeoPixel 跑馬燈",
-  "level": "顯示",
+  "level": "進階",
   "summary": "WS2812 只用一條資料線控制很多顆全彩 LED，程式用 neopixel 模組。",
   "board": "tqt_pro",
   "breadboard": null,
@@ -1005,1013 +1926,6 @@
    "把顏色亮度降到 (30, 0, 0) 省電"
   ],
   "boardName": "T-QT Pro"
- },
- {
-  "id": "blink@tdisplay_s3",
-  "title": "LED 閃爍",
-  "level": "入門",
-  "summary": "最基本的數位輸出：GPIO 高低電位切換，LED 一定要串限流電阻。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 150,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 130,
-    "rot": 0,
-    "attrs": {
-     "color": "red"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "220Ω 電阻的一端接到板子的 G16（這支腳當輸出）",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻另一端接 LED 的長腳（A，正極）",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "LED 的短腳（C，負極）接板子的 GND，形成回路",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin\n\nled = Pin(16, Pin.OUT)   # G16 經 220Ω 接 LED\nn = 0\nwhile lab.running():\n    led.value(1)         # 亮\n    lab.sleep(0.5)\n    led.value(0)         # 滅\n    lab.sleep(0.5)\n    n += 1\n    print('閃了', n, '次')\n",
-  "expect": "LED 每 0.5 秒亮滅一次，主控台印出閃了幾次。",
-  "try": [
-   "把 0.5 改成 0.1，看閃得多快",
-   "把電阻刪掉直接接，看 LED 怎麼燒毀（模擬器會告訴你為什麼）"
-  ],
-  "boardName": "T-Display S3"
- },
- {
-  "id": "button_led@tdisplay_s3",
-  "title": "按鍵控燈",
-  "level": "入門",
-  "summary": "數位輸入：按鍵一側接 GPIO、另一側接 GND，程式開內部上拉，按下讀到 0。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 120,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {
-     "color": "green"
-    }
-   },
-   "btn1": {
-    "type": "pushbutton",
-    "x": 320,
-    "y": 260,
-    "rot": 0,
-    "attrs": {
-     "color": "green"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "board:G17",
-    "b": "btn1:1.l",
-    "color": "#27d"
-   },
-   {
-    "a": "btn1:2.l",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "先接 LED：G16 → 220Ω → LED 長腳，短腳回 GND",
-    "wires": [
-     0,
-     1,
-     2
-    ]
-   },
-   {
-    "text": "按鍵一側接 G17（輸入腳）",
-    "wires": [
-     3
-    ]
-   },
-   {
-    "text": "按鍵另一側接 GND；程式用 Pin.PULL_UP，沒按＝1、按下＝0",
-    "wires": [
-     4
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin\n\nled = Pin(16, Pin.OUT)\nbtn = Pin(17, Pin.IN, Pin.PULL_UP)   # 內部上拉：沒按＝1，按下＝0\nn = 0\nwhile lab.running():\n    if btn.value() == 0:\n        led.value(1)\n        n += 1\n        print('按下第', n, '次')\n        while lab.running() and btn.value() == 0:\n            lab.sleep(0.02)      # 等放開，避免一次算很多下\n    else:\n        led.value(0)\n    lab.sleep(0.02)\n",
-  "expect": "執行中按住畫布上的按鍵，LED 亮；放開就滅，主控台印出按了幾次。",
-  "try": [
-   "改成按一下切換亮滅（記住上一次的狀態）",
-   "把按鍵另一側改接 3V3，看模擬器提示為什麼會浮接"
-  ],
-  "boardName": "T-Display S3"
- },
- {
-  "id": "breathing@tdisplay_s3",
-  "title": "呼吸燈",
-  "level": "入門",
-  "summary": "PWM：用工作比控制平均亮度，數值慢慢加減就像呼吸。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 150,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 130,
-    "rot": 0,
-    "attrs": {
-     "color": "blue"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "G16 → 220Ω 電阻",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻 → LED 長腳",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "LED 短腳 → GND",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\npwm = PWM(Pin(16), freq=1000)   # 1 kHz 的 PWM\nwhile lab.running():\n    for d in range(0, 65535, 3000):      # 漸亮\n        pwm.duty_u16(d)\n        lab.sleep(0.02)\n    for d in range(65535, 0, -3000):     # 漸暗\n        pwm.duty_u16(d)\n        lab.sleep(0.02)\n    print('一次呼吸')\n",
-  "expect": "LED 慢慢變亮再慢慢變暗，主控台每一輪印一次。",
-  "try": [
-   "把 3000 改成 500，呼吸變慢",
-   "改 freq=50 看看 LED 會不會閃（頻率太低眼睛看得出來）"
-  ],
-  "boardName": "T-Display S3"
- },
- {
-  "id": "pot_brightness@tdisplay_s3",
-  "title": "可變電阻調亮度",
-  "level": "感測",
-  "summary": "ADC 讀可變電阻的分壓（0～4095），再用 PWM 把它變成亮度。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "pot1": {
-    "type": "potentiometer",
-    "x": 300,
-    "y": 260,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 120,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {
-     "color": "yellow"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "pot1:VCC",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "pot1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "pot1:SIG",
-    "b": "board:G18",
-    "color": "#27d"
-   },
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "可變電阻兩端接 3V3 與 GND（它是一個分壓器）",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "中間腳 SIG 接 G18，程式用 ADC 讀電壓",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "LED：G16 → 220Ω → LED → GND",
-    "wires": [
-     3,
-     4,
-     5
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM, ADC\n\npot = ADC(Pin(18), atten=ADC.ATTN_11DB)   # 模擬器允許 G18 當 ADC；實機請改用 ADC 腳位\npwm = PWM(Pin(16), freq=1000)\nwhile lab.running():\n    v = pot.read()               # 0～4095\n    pwm.duty_u16(v * 16)         # 0～65520\n    print('ADC', v, '亮度', v * 100 // 4095, '%')\n    lab.send(adc=v)\n    lab.sleep(0.1)\n",
-  "expect": "執行中在可變電阻上按住上下拖（或右側滑桿），LED 亮度跟著變，主控台印 ADC 值。",
-  "try": [
-   "把亮度對應改成反的：轉到底反而最暗",
-   "加上門檻：ADC 小於 500 就把 LED 關掉"
-  ],
-  "boardName": "T-Display S3"
- },
- {
-  "id": "ldr_nightlight@tdisplay_s3",
-  "title": "光敏夜燈",
-  "level": "感測",
-  "summary": "光敏模組的 AO 隨光線改變電壓，暗到門檻以下就自動開燈。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "ldr1": {
-    "type": "photoresistor-sensor",
-    "x": 290,
-    "y": 260,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 120,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {
-     "color": "white"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "ldr1:VCC",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "ldr1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "ldr1:AO",
-    "b": "board:G18",
-    "color": "#27d"
-   },
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "光敏模組 VCC 接 3V3、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "AO（類比輸出）接 G18",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "LED：G16 → 220Ω → LED → GND",
-    "wires": [
-     3,
-     4,
-     5
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, ADC\n\nldr = ADC(Pin(18), atten=ADC.ATTN_11DB)   # 模擬器允許 G18 當 ADC；實機請改用 ADC 腳位\nled = Pin(16, Pin.OUT)\nwhile lab.running():\n    v = ldr.read()\n    dark = v < 1500          # 門檻：越暗 AO 越低\n    led.value(1 if dark else 0)\n    print('光線', v, '→', '開燈' if dark else '關燈')\n    lab.send(light=v)\n    lab.sleep(0.2)\n",
-  "expect": "執行中在光敏模組上按住往下拖（變暗），LED 亮起；往上拖（變亮）就熄滅。",
-  "try": [
-   "把門檻 1500 改成 3000，看什麼亮度才會開燈",
-   "改成用 PWM 讓越暗越亮"
-  ],
-  "boardName": "T-Display S3"
- },
- {
-  "id": "buzzer_scale@tdisplay_s3",
-  "title": "蜂鳴器音階",
-  "level": "感測",
-  "summary": "PWM 改頻率就是改音高：Do Re Mi 的頻率是 262、294、330…。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 150,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "bz1": {
-    "type": "buzzer",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "bz1:1",
-    "color": "#e90"
-   },
-   {
-    "a": "bz1:2",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "G16 → 220Ω 電阻（限流，蜂鳴器直接接腳位會超過 40 mA）",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻 → 蜂鳴器 1 腳",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "蜂鳴器 2 腳 → GND",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nbz = PWM(Pin(16), freq=262)\nnotes = [262, 294, 330, 349, 392, 440, 494, 523]   # Do Re Mi Fa So La Si Do\nnames = ['Do', 'Re', 'Mi', 'Fa', 'So', 'La', 'Si', 'Do']\nwhile lab.running():\n    for f, n in zip(notes, names):\n        bz.freq(f)\n        bz.duty_u16(32768)   # 50% 工作比\n        print(n, f, 'Hz')\n        lab.sleep(0.3)\n        bz.duty_u16(0)       # 停一下\n        lab.sleep(0.05)\n",
-  "expect": "主控台依序印出 Do～Do 與頻率；蜂鳴器上出現音符記號代表有訊號（模擬器不發聲）。",
-  "try": [
-   "把 notes 改成你喜歡的旋律",
-   "每個音的長度改成不一樣（節奏）"
-  ],
-  "boardName": "T-Display S3"
- },
- {
-  "id": "servo_sweep@tdisplay_s3",
-  "title": "伺服掃描",
-  "level": "遙控",
-  "summary": "伺服馬達吃 50 Hz 的 PWM，脈寬 0.5～2.5 ms 對應 0～180 度。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "servo1": {
-    "type": "servo",
-    "x": 320,
-    "y": 230,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "servo1:V+",
-    "b": "board:5V",
-    "color": "#d33"
-   },
-   {
-    "a": "servo1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "servo1:PWM",
-    "b": "board:G17",
-    "color": "#e90"
-   }
-  ],
-  "steps": [
-   {
-    "text": "伺服的 V+（紅）接 5V，馬達要另外吃電",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "GND（棕）接 GND",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "PWM（橘）接 G17，程式用 50 Hz 的 PWM 控制角度",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nservo = PWM(Pin(17), freq=50)\n\ndef angle(a):\n    ms = 0.5 + a / 180 * 2.0          # 0.5～2.5 ms\n    servo.duty_u16(int(ms / 20 * 65535))\n\nwhile lab.running():\n    for a in (0, 45, 90, 135, 180, 135, 90, 45):\n        angle(a)\n        print('角度', a)\n        lab.sleep(0.5)\n",
-  "expect": "伺服的擺臂依 0→180→0 度來回掃，主控台印出角度。",
-  "try": [
-   "把 V+ 改接 3V3，看模擬器怎麼說",
-   "加一個可變電阻，用 ADC 值決定角度"
-  ],
-  "boardName": "T-Display S3"
- },
- {
-  "id": "rgb_mix@tdisplay_s3",
-  "title": "RGB 混色",
-  "level": "遙控",
-  "summary": "共陰極 RGB LED：三色各一支 PWM，調工作比就能混出任何顏色。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "rgb1": {
-    "type": "rgb-led",
-    "x": 480,
-    "y": 60,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 110,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "r2": {
-    "type": "resistor",
-    "x": 300,
-    "y": 160,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "r3": {
-    "type": "resistor",
-    "x": 300,
-    "y": 210,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "rgb1:R",
-    "color": "#d33"
-   },
-   {
-    "a": "board:G17",
-    "b": "r2:1",
-    "color": "#2a7"
-   },
-   {
-    "a": "r2:2",
-    "b": "rgb1:G",
-    "color": "#2a7"
-   },
-   {
-    "a": "board:G18",
-    "b": "r3:1",
-    "color": "#27d"
-   },
-   {
-    "a": "r3:2",
-    "b": "rgb1:B",
-    "color": "#27d"
-   },
-   {
-    "a": "rgb1:COM",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "紅：G16 → 220Ω → R 腳",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "綠：G17 → 220Ω → G 腳",
-    "wires": [
-     2,
-     3
-    ]
-   },
-   {
-    "text": "藍：G18 → 220Ω → B 腳",
-    "wires": [
-     4,
-     5
-    ]
-   },
-   {
-    "text": "共陰極 COM（最長腳）接 GND",
-    "wires": [
-     6
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nr = PWM(Pin(16), freq=1000)\ng = PWM(Pin(17), freq=1000)\nb = PWM(Pin(18), freq=1000)\ncolors = [('紅', 65535, 0, 0), ('綠', 0, 65535, 0), ('藍', 0, 0, 65535), ('黃', 65535, 65535, 0), ('青', 0, 65535, 65535), ('紫', 65535, 0, 65535), ('白', 65535, 65535, 65535)]\nwhile lab.running():\n    for name, rv, gv, bv in colors:\n        r.duty_u16(rv); g.duty_u16(gv); b.duty_u16(bv)\n        print(name)\n        lab.sleep(0.6)\n",
-  "expect": "RGB LED 依序變紅、綠、藍、黃、青、紫、白，主控台印顏色名。",
-  "try": [
-   "做漸層：讓紅慢慢變成藍",
-   "只用兩色混出橘色（紅滿、綠一半）"
-  ],
-  "boardName": "T-Display S3"
- },
- {
-  "id": "oled_text@tdisplay_s3",
-  "title": "OLED 顯示文字",
-  "level": "顯示",
-  "summary": "I2C 介面的 SSD1306：兩條線（SDA、SCL）就能顯示文字與圖形。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "oled1": {
-    "type": "ssd1306",
-    "x": 320,
-    "y": 230,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "oled1:3V3",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "oled1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "oled1:DATA",
-    "b": "board:G16",
-    "color": "#27d"
-   },
-   {
-    "a": "oled1:CLK",
-    "b": "board:G17",
-    "color": "#2a7"
-   }
-  ],
-  "steps": [
-   {
-    "text": "OLED 的 3V3 接 3V3、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "DATA（SDA）接 G16",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "CLK（SCL）接 G17；程式用 I2C(0, scl=Pin(17), sda=Pin(16))",
-    "wires": [
-     3
-    ]
-   }
-  ],
-  "code": "import lab\nimport ssd1306\nfrom machine import Pin, I2C\n\ni2c = I2C(0, scl=Pin(17), sda=Pin(16))\nprint('I2C 掃到', i2c.scan())      # 應該看到 [60]（0x3C）\noled = ssd1306.SSD1306_I2C(128, 64, i2c)\nn = 0\nwhile lab.running():\n    oled.fill(0)\n    oled.text('ESP32 AI Lab', 0, 0)\n    oled.text('count: %d' % n, 0, 16)\n    oled.rect(0, 32, 128, 12, 1)\n    oled.fill_rect(2, 34, (n % 32) * 4, 8, 1)   # 進度條\n    oled.show()\n    print('畫面更新', n)\n    n += 1\n    lab.sleep(0.5)\n",
-  "expect": "OLED 顯示 ESP32 AI Lab、計數與一條會長的進度條；主控台印 I2C 掃到 [60]。",
-  "try": [
-   "用 oled.pixel(x, y, 1) 畫一個笑臉",
-   "把 GND 線拔掉，看模擬器怎麼提示「沒有供電」"
-  ],
-  "boardName": "T-Display S3"
- },
- {
-  "id": "ultrasonic@tdisplay_s3",
-  "title": "超音波測距",
-  "level": "感測",
-  "summary": "HC-SR04：TRIG 送 10 µs 脈衝，ECHO 的高電位時間 ÷ 58 就是公分。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "us1": {
-    "type": "hc-sr04",
-    "x": 300,
-    "y": 240,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 110,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 90,
-    "rot": 0,
-    "attrs": {
-     "color": "red"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "us1:VCC",
-    "b": "board:5V",
-    "color": "#d33"
-   },
-   {
-    "a": "us1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "us1:TRIG",
-    "b": "board:G17",
-    "color": "#2a7"
-   },
-   {
-    "a": "us1:ECHO",
-    "b": "board:G16",
-    "color": "#e90"
-   },
-   {
-    "a": "board:G18",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "HC-SR04 的 VCC 接 5V、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "TRIG 接 G17（輸出）",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "ECHO 接 G16（輸入；實機建議加分壓，5 V 回到 3.3 V 腳位）",
-    "wires": [
-     3
-    ]
-   },
-   {
-    "text": "警示 LED：G18 → 220Ω → LED → GND",
-    "wires": [
-     4,
-     5,
-     6
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, time_pulse_us\n\ntrig = Pin(17, Pin.OUT)\necho = Pin(16, Pin.IN)\nled = Pin(18, Pin.OUT)\nwhile lab.running():\n    trig.value(1)\n    trig.value(0)                          # 10 µs 的脈衝（模擬器近似）\n    us = time_pulse_us(echo, 1, 30000)     # ECHO 高電位多久（微秒）\n    if us < 0:\n        print('沒有回波')\n    else:\n        cm = us / 58\n        led.value(1 if cm < 20 else 0)      # 20 公分內亮燈\n        print('距離 %.1f cm' % cm)\n        lab.send(cm=round(cm, 1))\n    lab.sleep(0.3)\n",
-  "expect": "主控台印出距離（預設 100 cm）；執行中在感測器上按住往下拖把距離拉到 20 cm 以內，LED 亮。",
-  "try": [
-   "把門檻改成 50 cm",
-   "距離越近讓 LED 閃越快"
-  ],
-  "boardName": "T-Display S3"
- },
- {
-  "id": "dht_display@tdisplay_s3",
-  "title": "溫濕度顯示",
-  "level": "顯示",
-  "summary": "DHT22 一條資料線回傳溫濕度，讀到的值顯示在 OLED 上。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "dht1": {
-    "type": "dht22",
-    "x": 520,
-    "y": 60,
-    "rot": 0,
-    "attrs": {}
-   },
-   "oled1": {
-    "type": "ssd1306",
-    "x": 320,
-    "y": 230,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "dht1:VCC",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "dht1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "dht1:SDA",
-    "b": "board:G18",
-    "color": "#27d"
-   },
-   {
-    "a": "oled1:3V3",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "oled1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "oled1:DATA",
-    "b": "board:G16",
-    "color": "#27d"
-   },
-   {
-    "a": "oled1:CLK",
-    "b": "board:G17",
-    "color": "#2a7"
-   }
-  ],
-  "steps": [
-   {
-    "text": "DHT22：VCC 接 3V3、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "DHT22 的 SDA 接 G18",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "OLED：3V3、GND",
-    "wires": [
-     3,
-     4
-    ]
-   },
-   {
-    "text": "OLED 的 DATA 接 G16、CLK 接 G17",
-    "wires": [
-     5,
-     6
-    ]
-   }
-  ],
-  "code": "import lab\nimport dht, ssd1306\nfrom machine import Pin, I2C\n\nsensor = dht.DHT22(Pin(18))\ni2c = I2C(0, scl=Pin(17), sda=Pin(16))\noled = ssd1306.SSD1306_I2C(128, 64, i2c)\nwhile lab.running():\n    try:\n        sensor.measure()\n        t, h = sensor.temperature(), sensor.humidity()\n        oled.fill(0)\n        oled.text('Temp: %.1f C' % t, 0, 0)\n        oled.text('Humi: %.0f %%' % h, 0, 16)\n        oled.show()\n        print('溫度', t, '濕度', h)\n        lab.send(temp=t, humi=h)\n    except OSError as e:\n        print('讀不到 DHT22：', e)\n    lab.sleep(2)       # DHT22 兩秒才能讀一次\n",
-  "expect": "OLED 與主控台每 2 秒更新溫濕度；右側屬性面板的滑桿可以改溫濕度。",
-  "try": [
-   "溫度超過 30 度在 OLED 顯示「太熱」",
-   "把 SDA 線拔掉，看 except 會印什麼"
-  ],
-  "boardName": "T-Display S3"
- },
- {
-  "id": "neopixel_chase@tdisplay_s3",
-  "title": "NeoPixel 跑馬燈",
-  "level": "顯示",
-  "summary": "WS2812 只用一條資料線控制很多顆全彩 LED，程式用 neopixel 模組。",
-  "board": "tdisplay_s3",
-  "breadboard": null,
-  "parts": {
-   "np1": {
-    "type": "neopixel-strip",
-    "x": 300,
-    "y": 260,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "np1:VCC",
-    "b": "board:5V",
-    "color": "#d33"
-   },
-   {
-    "a": "np1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "np1:DIN",
-    "b": "board:G16",
-    "color": "#27d"
-   }
-  ],
-  "steps": [
-   {
-    "text": "燈條 VCC 接 5V、GND 接 GND（8 顆全亮約 480 mA，不要再多）",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "DIN（資料入）接 G16",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nimport neopixel\nfrom machine import Pin\n\nnp = neopixel.NeoPixel(Pin(16), 8)   # 8 顆\ncolors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]\ni = 0\nwhile lab.running():\n    np.fill((0, 0, 0))\n    np[i % 8] = colors[(i // 8) % 4]\n    np[(i + 1) % 8] = (20, 20, 20)     # 尾巴淡淡的\n    np.write()\n    print('亮第', i % 8, '顆')\n    i += 1\n    lab.sleep(0.12)\n",
-  "expect": "一顆亮點在 8 顆燈上跑，每跑一圈換一種顏色。",
-  "try": [
-   "改成彩虹：每顆不同顏色一起往前移",
-   "把顏色亮度降到 (30, 0, 0) 省電"
-  ],
-  "boardName": "T-Display S3"
  },
  {
   "id": "blink@xiao_esp32s3",
@@ -2253,7 +2167,7 @@
  {
   "id": "pot_brightness@xiao_esp32s3",
   "title": "可變電阻調亮度",
-  "level": "感測",
+  "level": "進階",
   "summary": "ADC 讀可變電阻的分壓（0～4095），再用 PWM 把它變成亮度。",
   "board": "xiao_esp32s3",
   "breadboard": null,
@@ -2350,7 +2264,7 @@
  {
   "id": "ldr_nightlight@xiao_esp32s3",
   "title": "光敏夜燈",
-  "level": "感測",
+  "level": "進階",
   "summary": "光敏模組的 AO 隨光線改變電壓，暗到門檻以下就自動開燈。",
   "board": "xiao_esp32s3",
   "breadboard": null,
@@ -2447,7 +2361,7 @@
  {
   "id": "buzzer_scale@xiao_esp32s3",
   "title": "蜂鳴器音階",
-  "level": "感測",
+  "level": "進階",
   "summary": "PWM 改頻率就是改音高：Do Re Mi 的頻率是 262、294、330…。",
   "board": "xiao_esp32s3",
   "breadboard": null,
@@ -2517,7 +2431,7 @@
  {
   "id": "servo_sweep@xiao_esp32s3",
   "title": "伺服掃描",
-  "level": "遙控",
+  "level": "進階",
   "summary": "伺服馬達吃 50 Hz 的 PWM，脈寬 0.5～2.5 ms 對應 0～180 度。",
   "board": "xiao_esp32s3",
   "breadboard": null,
@@ -2578,7 +2492,7 @@
  {
   "id": "rgb_mix@xiao_esp32s3",
   "title": "RGB 混色",
-  "level": "遙控",
+  "level": "進階",
   "summary": "共陰極 RGB LED：三色各一支 PWM，調工作比就能混出任何顏色。",
   "board": "xiao_esp32s3",
   "breadboard": null,
@@ -2695,7 +2609,7 @@
  {
   "id": "oled_text@xiao_esp32s3",
   "title": "OLED 顯示文字",
-  "level": "顯示",
+  "level": "進階",
   "summary": "I2C 介面的 SSD1306：兩條線（SDA、SCL）就能顯示文字與圖形。",
   "board": "xiao_esp32s3",
   "breadboard": null,
@@ -2762,7 +2676,7 @@
  {
   "id": "ultrasonic@xiao_esp32s3",
   "title": "超音波測距",
-  "level": "感測",
+  "level": "進階",
   "summary": "HC-SR04：TRIG 送 10 µs 脈衝，ECHO 的高電位時間 ÷ 58 就是公分。",
   "board": "xiao_esp32s3",
   "breadboard": null,
@@ -2870,7 +2784,7 @@
  {
   "id": "dht_display@xiao_esp32s3",
   "title": "溫濕度顯示",
-  "level": "顯示",
+  "level": "進階",
   "summary": "DHT22 一條資料線回傳溫濕度，讀到的值顯示在 OLED 上。",
   "board": "xiao_esp32s3",
   "breadboard": null,
@@ -2967,7 +2881,7 @@
  {
   "id": "neopixel_chase@xiao_esp32s3",
   "title": "NeoPixel 跑馬燈",
-  "level": "顯示",
+  "level": "進階",
   "summary": "WS2812 只用一條資料線控制很多顆全彩 LED，程式用 neopixel 模組。",
   "board": "xiao_esp32s3",
   "breadboard": null,
@@ -3260,7 +3174,7 @@
  {
   "id": "pot_brightness@devkit",
   "title": "可變電阻調亮度",
-  "level": "感測",
+  "level": "進階",
   "summary": "ADC 讀可變電阻的分壓（0～4095），再用 PWM 把它變成亮度。",
   "board": "devkit",
   "breadboard": null,
@@ -3357,7 +3271,7 @@
  {
   "id": "ldr_nightlight@devkit",
   "title": "光敏夜燈",
-  "level": "感測",
+  "level": "進階",
   "summary": "光敏模組的 AO 隨光線改變電壓，暗到門檻以下就自動開燈。",
   "board": "devkit",
   "breadboard": null,
@@ -3454,7 +3368,7 @@
  {
   "id": "buzzer_scale@devkit",
   "title": "蜂鳴器音階",
-  "level": "感測",
+  "level": "進階",
   "summary": "PWM 改頻率就是改音高：Do Re Mi 的頻率是 262、294、330…。",
   "board": "devkit",
   "breadboard": null,
@@ -3524,7 +3438,7 @@
  {
   "id": "servo_sweep@devkit",
   "title": "伺服掃描",
-  "level": "遙控",
+  "level": "進階",
   "summary": "伺服馬達吃 50 Hz 的 PWM，脈寬 0.5～2.5 ms 對應 0～180 度。",
   "board": "devkit",
   "breadboard": null,
@@ -3585,7 +3499,7 @@
  {
   "id": "rgb_mix@devkit",
   "title": "RGB 混色",
-  "level": "遙控",
+  "level": "進階",
   "summary": "共陰極 RGB LED：三色各一支 PWM，調工作比就能混出任何顏色。",
   "board": "devkit",
   "breadboard": null,
@@ -3702,7 +3616,7 @@
  {
   "id": "oled_text@devkit",
   "title": "OLED 顯示文字",
-  "level": "顯示",
+  "level": "進階",
   "summary": "I2C 介面的 SSD1306：兩條線（SDA、SCL）就能顯示文字與圖形。",
   "board": "devkit",
   "breadboard": null,
@@ -3769,7 +3683,7 @@
  {
   "id": "ultrasonic@devkit",
   "title": "超音波測距",
-  "level": "感測",
+  "level": "進階",
   "summary": "HC-SR04：TRIG 送 10 µs 脈衝，ECHO 的高電位時間 ÷ 58 就是公分。",
   "board": "devkit",
   "breadboard": null,
@@ -3877,7 +3791,7 @@
  {
   "id": "dht_display@devkit",
   "title": "溫濕度顯示",
-  "level": "顯示",
+  "level": "進階",
   "summary": "DHT22 一條資料線回傳溫濕度，讀到的值顯示在 OLED 上。",
   "board": "devkit",
   "breadboard": null,
@@ -3974,7 +3888,7 @@
  {
   "id": "neopixel_chase@devkit",
   "title": "NeoPixel 跑馬燈",
-  "level": "顯示",
+  "level": "進階",
   "summary": "WS2812 只用一條資料線控制很多顆全彩 LED，程式用 neopixel 模組。",
   "board": "devkit",
   "breadboard": null,
