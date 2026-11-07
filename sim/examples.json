@@ -1,5 +1,2621 @@
 [
  {
+  "id": "tq_hello",
+  "title": "螢幕 Hello",
+  "level": "入門",
+  "summary": "不用接線：128×128 彩色螢幕出字、換底色；KEY 換顏色、BOOT 換字。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線，按 ▶ 執行後按板子上的 KEY／BOOT",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\ncolors = [d.BLUE, d.RED, d.GREEN, color(120, 0, 160), d.BLACK]\nwords = ['Hello', 'T-QT Pro', 'ESP32', 'AI Lab']\nci = wi = 0\ndef draw():\n    d.fill(colors[ci]); d.text(words[wi], 30, 56, d.WHITE)\n    d.text('KEY:color', 4, 108, d.YELLOW); d.text('BOOT:word', 4, 118, d.YELLOW); d.show()\ndraw()\nwhile lab.running():\n    if key.value() == 0:\n        ci = (ci + 1) % len(colors); draw(); print('底色', ci)\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    if boot.value() == 0:\n        wi = (wi + 1) % len(words); draw(); print('文字', words[wi])\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "藍底白字 Hello；KEY 換底色、BOOT 換字。",
+  "try": [
+   "改成你的名字",
+   "讓文字每秒自動換"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "底色",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_clock",
+  "title": "數位時鐘",
+  "level": "入門",
+  "summary": "螢幕顯示 時:分:秒 與指針圓盤；BOOT 調時、KEY 調分。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。BOOT 加 1 小時、KEY 加 1 分鐘",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport time, math\nh, m, s = 9, 41, 0; last = time.ticks_ms()\ndef draw():\n    d.fill(d.BLACK); d.text('%02d:%02d:%02d' % (h, m, s), 32, 8, d.WHITE)\n    cx, cy, r = 64, 76, 44\n    for k in range(12):\n        a = k * math.pi / 6; d.pixel(int(cx + r * math.sin(a)), int(cy - r * math.cos(a)), d.WHITE)\n    for val, div, ln, c in ((s, 30, r - 6, d.RED), (m + s / 60, 30, r - 14, d.CYAN), (h % 12 + m / 60, 6, r - 24, d.YELLOW)):\n        a = val * math.pi / div; d.line(cx, cy, int(cx + ln * math.sin(a)), int(cy - ln * math.cos(a)), c)\n    d.show()\ndraw()\nwhile lab.running():\n    if time.ticks_diff(time.ticks_ms(), last) >= 1000:\n        last = time.ticks_add(last, 1000); s += 1\n        if s == 60: s = 0; m += 1\n        if m == 60: m = 0; h = (h + 1) % 24\n        draw(); print('%02d:%02d:%02d' % (h, m, s))\n    if boot.value() == 0:\n        h = (h + 1) % 24; draw()\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    if key.value() == 0:\n        m = (m + 1) % 60; draw()\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "數字每秒跳、指針轉；BOOT 小時加一、KEY 分鐘加一。",
+  "try": [
+   "改 12 小時制",
+   "加鬧鐘：到某個時間閃紅"
+  ],
+  "verify": {
+   "console": "\\d\\d:\\d\\d:\\d\\d",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_pet",
+  "title": "互動笑臉",
+  "level": "入門",
+  "summary": "螢幕一張大臉：KEY 換表情、BOOT 餵食變開心、放 10 秒會打瞌睡，像養一隻電子寵物。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。KEY 換表情、BOOT 餵食，放著 10 秒看它睡著",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport time\nmoods = ['smile', 'wow', 'angry', 'wink']; mi = 0; fed = 0; idle = time.ticks_ms()\ndef face(mood):\n    d.fill(color(255, 220, 120)); d.fill_rect(0, 0, 128, 14, d.BLACK); d.text(mood, 40, 3, d.WHITE)\n    if mood == 'sleep':\n        d.line(30, 50, 52, 50, d.BLACK); d.line(76, 50, 98, 50, d.BLACK); d.text('zzz', 90, 28, d.BLACK)\n    elif mood == 'wink':\n        d.ellipse(41, 50, 9, 10, d.BLACK, True); d.line(76, 50, 98, 50, d.BLACK)\n    elif mood == 'wow':\n        d.ellipse(41, 50, 9, 13, d.BLACK, True); d.ellipse(87, 50, 9, 13, d.BLACK, True)\n    elif mood == 'angry':\n        d.ellipse(41, 52, 9, 7, d.BLACK, True); d.ellipse(87, 52, 9, 7, d.BLACK, True)\n        d.line(28, 36, 52, 43, d.BLACK); d.line(100, 36, 76, 43, d.BLACK)\n    else:\n        d.ellipse(41, 50, 9, 10, d.BLACK, True); d.ellipse(87, 50, 9, 10, d.BLACK, True)\n    if mood in ('smile', 'wink'): d.ellipse(64, 86, 30, 18, d.BLACK, True, 12)\n    elif mood == 'wow': d.ellipse(64, 96, 11, 15, d.BLACK, True)\n    elif mood == 'angry': d.ellipse(64, 106, 30, 14, d.BLACK, True, 3)\n    else: d.line(46, 98, 82, 98, d.BLACK)\n    d.text('fed %d' % fed, 2, 118, d.BLACK); d.show()\nface('smile')\nwhile lab.running():\n    now = time.ticks_ms()\n    if key.value() == 0:\n        mi = (mi + 1) % 4; idle = now; face(moods[mi]); print('表情', moods[mi])\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    if boot.value() == 0:\n        fed += 1; mi = 0; idle = now; face('smile'); print('餵食', fed)\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    if time.ticks_diff(now, idle) > 10000: face('sleep'); idle = now + 1000000\n    lab.sleep(0.02)\n",
+  "expect": "黃色大臉；KEY 輪流四種表情，BOOT 餵食次數加一，放 10 秒閉眼睡覺。",
+  "try": [
+   "加吐舌頭表情",
+   "每 3 秒自動眨眼"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "表情",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_dice",
+  "title": "電子骰子",
+  "level": "入門",
+  "summary": "按 KEY 擲骰：螢幕點數滾動後停住，蜂鳴器叮一聲。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 120,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "G16 → 220Ω → 蜂鳴器一腳，另一腳接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "執行後按 KEY 擲骰",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport random\nfrom machine import PWM\nbz = PWM(Pin(16), freq=880); bz.duty_u16(0)\nP = {1: [(64, 64)], 2: [(40, 40), (88, 88)], 3: [(40, 40), (64, 64), (88, 88)], 4: [(40, 40), (88, 40), (40, 88), (88, 88)],\n     5: [(40, 40), (88, 40), (64, 64), (40, 88), (88, 88)], 6: [(40, 36), (88, 36), (40, 64), (88, 64), (40, 92), (88, 92)]}\ndef show(n, rolling=False):\n    d.fill(d.BLACK); d.fill_rect(20, 20, 88, 88, color(200, 200, 200) if rolling else d.WHITE)\n    for x, y in P[n]: d.ellipse(x, y, 8, 8, d.RED, True)\n    d.text('KEY', 52, 114, d.YELLOW); d.show()\nn = 6; show(n)\nwhile lab.running():\n    if key.value() == 0:\n        for i in range(12): n = random.randint(1, 6); show(n, True); lab.sleep(0.05 + i * 0.02)\n        show(n); bz.duty_u16(30000); lab.sleep(0.12); bz.duty_u16(0); print('擲出', n)\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "KEY 後骰子滾動變慢停住、響一聲，主控台印點數。",
+  "try": [
+   "兩顆骰子顯示總和",
+   "連擲到 6 螢幕閃黃"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "擲出",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_battery",
+  "title": "電量表",
+  "level": "入門",
+  "summary": "讀板子的電池電壓（G4 ADC）畫成電池圖示與百分比；在右側屬性面板拖電壓看變化。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。執行後點板子，右側面板有「電池電壓」滑桿",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\n\nwhile lab.running():\n    v = lab.battery()                      # 3.0～4.2 V\n    pct = max(0, min(100, int((v - 3.3) / (4.2 - 3.3) * 100)))\n    c = d.GREEN if pct > 50 else (d.YELLOW if pct > 20 else d.RED)\n    d.fill(d.BLACK); d.rect(24, 40, 76, 40, d.WHITE); d.fill_rect(100, 52, 6, 16, d.WHITE)\n    d.fill_rect(27, 43, int(70 * pct / 100), 34, c)\n    d.text('%.2f V' % v, 36, 92, d.WHITE); d.text('%d %%' % pct, 48, 106, c); d.show()\n    print('電池', v, 'V', pct, '%'); lab.send(batt=v)\n    lab.sleep(0.5)\n",
+  "expect": "電池圖示的綠色隨電壓變長，低於 20% 變紅。",
+  "try": [
+   "低電量時閃爍",
+   "加「充電中」動畫"
+  ],
+  "verify": {
+   "console": "電池",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_pomodoro",
+  "title": "番茄鐘",
+  "level": "入門",
+  "summary": "KEY 開始 25 分鐘專注倒數、BOOT 切換成 5 分鐘休息；螢幕環形進度，時間到蜂鳴器響、畫面閃。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 120,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "G16 → 220Ω → 蜂鳴器一腳，另一腳接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "執行後 KEY 開始；BOOT 在專注／休息間切換（示範版縮短成 25 秒／5 秒）",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport time, math\nfrom machine import PWM\nbz = PWM(Pin(16), freq=1000); bz.duty_u16(0)\nWORK, REST = 25, 5          # 示範用秒；實際用 25*60、5*60\nmode, total = 'work', WORK\ndef ring(frac, c):\n    for i in range(int(60 * frac)):\n        a = i * 2 * math.pi / 60; d.line(int(64 + 38 * math.sin(a)), int(64 - 38 * math.cos(a)), int(64 + 46 * math.sin(a)), int(64 - 46 * math.cos(a)), c)\ndef draw(left, running):\n    d.fill(d.BLACK); ring(left / total, d.RED if mode == 'work' else d.GREEN)\n    d.text('%02d:%02d' % (left // 60, left % 60), 44, 58, d.WHITE); d.text(mode, 50, 74, d.YELLOW)\n    d.text('KEY go' if not running else 'running', 36, 116, color(150, 150, 150)); d.show()\ndraw(total, False)\nwhile lab.running():\n    if boot.value() == 0:\n        mode, total = ('rest', REST) if mode == 'work' else ('work', WORK); draw(total, False); print('模式', mode)\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    if key.value() == 0:\n        left = total; last = time.ticks_ms(); print('開始', mode, total, '秒')\n        while lab.running() and left > 0:\n            if time.ticks_diff(time.ticks_ms(), last) >= 1000: last = time.ticks_add(last, 1000); left -= 1; draw(left, True)\n            lab.sleep(0.02)\n        print('時間到')\n        for i in range(4):\n            d.fill(d.RED if i % 2 == 0 else d.BLACK); d.text('TIME UP', 36, 60, d.WHITE); d.show(); bz.duty_u16(30000 if i % 2 == 0 else 0); lab.sleep(0.3)\n        bz.duty_u16(0); mode, total = ('rest', REST) if mode == 'work' else ('work', WORK); draw(total, False)\n    lab.sleep(0.02)\n",
+  "expect": "進度環隨秒數縮短，歸零時蜂鳴器響四下並自動切到下一個模式。",
+  "try": [
+   "把 WORK、REST 改成分鐘",
+   "完成幾個番茄就畫幾顆番茄"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "開始",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_weather",
+  "title": "天氣站",
+  "level": "進階",
+  "summary": "DHT22 溫濕度顯示在螢幕，依濕度畫太陽／雲／雨；拖滑桿改濕度圖示立刻換。",
+  "breadboard": null,
+  "parts": {
+   "dht1": {
+    "type": "dht22",
+    "x": 330,
+    "y": 100,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "dht1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "dht1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "dht1:SDA",
+    "b": "board:G16",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "DHT22 VCC 接 3V3、GND 接 GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "SDA 接 G16",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "text": "執行後點 DHT22，用右側滑桿改溫濕度",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\n\nimport dht\nfrom machine import Pin\nsensor = dht.DHT22(Pin(16))\ndef sun():\n    d.ellipse(64, 40, 18, 18, d.YELLOW, True)\n    for dx, dy in ((26, 0), (-26, 0), (0, 26), (0, -26), (19, 19), (-19, 19), (19, -19), (-19, -19)): d.line(64 + dx // 2, 40 + dy // 2, 64 + dx, 40 + dy, d.YELLOW)\ndef cloud(c):\n    d.ellipse(50, 44, 16, 12, c, True); d.ellipse(72, 40, 19, 15, c, True); d.ellipse(90, 46, 13, 10, c, True); d.fill_rect(36, 46, 68, 12, c)\ndef rain():\n    cloud(color(130, 130, 150))\n    for x in range(40, 100, 12): d.line(x, 62, x - 4, 78, d.CYAN)\nwhile lab.running():\n    try: sensor.measure(); t, h = sensor.temperature(), sensor.humidity()\n    except OSError: t, h = None, None\n    d.fill(color(10, 20, 60))\n    if h is None: d.text('no sensor', 28, 60, d.RED)\n    else:\n        if h > 80: rain(); kind = 'rain'\n        elif h > 55: cloud(d.WHITE); kind = 'cloud'\n        else: sun(); kind = 'sun'\n        d.text('%.1f C' % t, 8, 90, d.WHITE); d.text('%.0f %%' % h, 80, 90, d.WHITE); d.text(kind, 50, 104, d.YELLOW)\n        d.rect(8, 116, 112, 8, d.WHITE); d.fill_rect(9, 117, int(110 * h / 100), 6, d.CYAN)\n        print('溫度', t, '濕度', h, kind); lab.send(temp=t, humi=h)\n    d.show(); lab.sleep(2)\n",
+  "expect": "每 2 秒更新：濕度 55% 以下太陽、55～80 雲、80 以上雨。",
+  "try": [
+   "改門檻",
+   "30 度以上底色變橘"
+  ],
+  "verify": {
+   "console": "濕度",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_steps",
+  "title": "計步器",
+  "level": "進階",
+  "summary": "外接按鍵當震動開關：每按一下算一步，螢幕畫步數與目標進度環，到目標畫面閃綠。",
+  "breadboard": null,
+  "parts": {
+   "btn1": {
+    "type": "pushbutton",
+    "x": 320,
+    "y": 100,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "btn1:1.l",
+    "color": "#36c"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "按鍵一側接 G16、對角接 GND（用內部上拉）",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "執行後猛按按鍵模擬走路；BOOT 改目標",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport math\nsw = Pin(16, Pin.IN, Pin.PULL_UP)\nsteps, goal = 0, 20\ndef ring(frac, c):\n    for i in range(int(60 * frac)):\n        a = i * 2 * math.pi / 60; d.line(int(64 + 40 * math.sin(a)), int(70 - 40 * math.cos(a)), int(64 + 48 * math.sin(a)), int(70 - 48 * math.cos(a)), c)\ndef draw(flash=False):\n    d.fill(d.GREEN if flash else d.BLACK); ring(min(1, steps / goal), d.CYAN)\n    d.text('%d' % steps, 56 if steps < 10 else 48, 60, d.WHITE); d.text('/%d' % goal, 48, 76, color(150, 150, 150))\n    d.text('BOOT: goal', 24, 116, d.YELLOW); d.show()\ndraw()\nwhile lab.running():\n    if sw.value() == 0:\n        steps += 1; print('步數', steps); draw(steps >= goal)\n        while lab.running() and sw.value() == 0: lab.sleep(0.02)\n    if boot.value() == 0:\n        goal = goal + 10 if goal < 100 else 10; steps = 0; draw(); print('目標', goal)\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "每按一下外接按鍵步數加一、青色進度環變長；到目標整個畫面閃綠。",
+  "try": [
+   "用卡路里換算顯示",
+   "按 KEY 歸零"
+  ],
+  "verify": {
+   "console": "目標|步數",
+   "press": [
+    "boot"
+   ],
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_pong",
+  "title": "接球遊戲",
+  "level": "進階",
+  "summary": "球在螢幕彈跳，BOOT 左移、KEY 右移板子接球；接到加分、漏三次結束。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。BOOT／KEY 左右移動",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport random\npx, pw = 44, 40; bx, by, vx, vy = 64, 30, 2, 2; score, lives = 0, 3\nwhile lab.running() and lives > 0:\n    if boot.value() == 0: px = max(0, px - 4)\n    if key.value() == 0: px = min(128 - pw, px + 4)\n    bx += vx; by += vy\n    if bx <= 3 or bx >= 125: vx = -vx\n    if by <= 3: vy = -vy\n    if by >= 112 and px <= bx <= px + pw and vy > 0: vy = -vy; score += 1; print('接到！分數', score)\n    if by >= 128: lives -= 1; by, bx = 30, random.randint(10, 118); print('漏接，剩', lives)\n    d.fill(d.BLACK); d.fill_rect(px, 118, pw, 6, d.CYAN); d.ellipse(bx, by, 3, 3, d.YELLOW, True)\n    d.text('S:%d L:%d' % (score, lives), 2, 2, d.WHITE); d.show(); lab.sleep(0.03)\nd.fill(d.RED); d.text('GAME OVER', 28, 56, d.WHITE); d.text('score %d' % score, 32, 72, d.WHITE); d.show()\n",
+  "expect": "黃球彈跳，青色板子接到加分；漏三次 GAME OVER。",
+  "try": [
+   "每接 5 次變快",
+   "板子隨分數變窄"
+  ],
+  "verify": {
+   "console": "接到|漏接",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_reaction",
+  "title": "反應測試",
+  "level": "進階",
+  "summary": "螢幕黑一陣子突然變綠，看到就按 KEY，顯示反應毫秒；太早按會被抓到。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。變綠立刻按 KEY",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport random, time\nbest = None\nwhile lab.running():\n    d.fill(d.BLACK); d.text('wait...', 36, 60, d.WHITE); d.show()\n    wait = random.randint(1500, 4000); t0 = time.ticks_ms(); early = False\n    while lab.running() and time.ticks_diff(time.ticks_ms(), t0) < wait:\n        if key.value() == 0: early = True; break\n        lab.sleep(0.01)\n    if early:\n        d.fill(d.RED); d.text('too early', 28, 60, d.WHITE); d.show(); print('太早按'); lab.sleep(1.5); continue\n    d.fill(d.GREEN); d.text('PRESS!', 40, 60, d.BLACK); d.show(); t1 = time.ticks_ms()\n    while lab.running() and key.value() != 0: lab.sleep(0.001)\n    ms = time.ticks_diff(time.ticks_ms(), t1); best = ms if best is None or ms < best else best\n    d.fill(d.BLACK); d.text('%d ms' % ms, 40, 52, d.YELLOW); d.text('best %d' % best, 32, 70, d.WHITE); d.show()\n    print('反應', ms, 'ms，最佳', best)\n    while lab.running() and key.value() == 0: lab.sleep(0.02)\n    lab.sleep(2)\n",
+  "expect": "變綠後按 KEY 顯示毫秒與最佳成績；太早按顯示 too early。",
+  "try": [
+   "BOOT／KEY 兩人對戰",
+   "改成 LED 亮起當信號"
+  ],
+  "verify": {
+   "console": "反應|太早",
+   "press": [
+    "key"
+   ],
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_palette",
+  "title": "調色盤",
+  "level": "進階",
+  "summary": "轉可變電阻改色相，整個螢幕換色並顯示 RGB 值，像一台色票機。",
+  "breadboard": null,
+  "parts": {
+   "pot1": {
+    "type": "potentiometer",
+    "x": 320,
+    "y": 100,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "board:G18",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "可變電阻 VCC 接 3V3、GND 接 GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "SIG 接 G18",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "text": "執行後在可變電阻上按住上下拖",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\n\nfrom machine import Pin, ADC\npot = ADC(Pin(18), atten=ADC.ATTN_11DB)\ndef hue(h):\n    h = h % 360; x = int(255 * (1 - abs((h / 60) % 2 - 1)))\n    r, g, b = [(255, x, 0), (x, 255, 0), (0, 255, x), (0, x, 255), (x, 0, 255), (255, 0, x)][int(h // 60)]\n    return r, g, b\nwhile lab.running():\n    v = pot.read(); r, g, b = hue(v * 360 // 4095)\n    d.fill(color(r, g, b)); d.fill_rect(0, 96, 128, 32, d.BLACK)\n    d.text('H %3d' % (v * 360 // 4095), 8, 100, d.WHITE); d.text('%3d %3d %3d' % (r, g, b), 8, 114, d.WHITE); d.show()\n    print('色相', v * 360 // 4095, 'RGB', r, g, b); lab.send(adc=v)\n    lab.sleep(0.1)\n",
+  "expect": "旋鈕轉到哪，螢幕就是那個顏色，下方顯示色相與 RGB。",
+  "try": [
+   "加第二個旋鈕控亮度",
+   "按 KEY 把目前顏色存成色票列在下方"
+  ],
+  "verify": {
+   "adc": {
+    "18": 3000
+   },
+   "console": "色相",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_lux",
+  "title": "光度儀",
+  "level": "進階",
+  "summary": "光敏模組的亮度畫成長條與歷史曲線，暗到門檻螢幕提示開燈。",
+  "breadboard": null,
+  "parts": {
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 300,
+    "y": 100,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "ldr1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "board:G18",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "光敏模組 VCC 接 3V3、GND 接 GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "AO 接 G18",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "text": "執行後在模組上按住往下拖變暗",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\n\nfrom machine import Pin, ADC\nldr = ADC(Pin(18), atten=ADC.ATTN_11DB); hist = [100] * 128\nwhile lab.running():\n    v = ldr.read(); hist.pop(0); hist.append(100 - int(v / 4095 * 60))\n    d.fill(d.BLACK); d.text('light %4d' % v, 8, 4, d.WHITE)\n    d.rect(8, 16, 112, 10, d.WHITE); d.fill_rect(9, 17, int(110 * v / 4095), 8, d.YELLOW)\n    for i in range(1, 128): d.line(i - 1, hist[i - 1], i, hist[i], d.CYAN)\n    if v < 1500: d.text('DARK: light on', 8, 112, d.RED)\n    d.show(); print('光線', v); lab.send(light=v); lab.sleep(0.1)\n",
+  "expect": "長條與曲線跟著亮度變；拖到很暗時出現紅字提示。",
+  "try": [
+   "把門檻改成 800",
+   "暗了之後點亮 G16 的 LED"
+  ],
+  "verify": {
+   "ui": {
+    "ldr1": {
+     "light": 0.05
+    }
+   },
+   "console": "DARK|光線",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_radar",
+  "title": "距離雷達",
+  "level": "進階",
+  "summary": "HC-SR04 的距離畫成雷達扇形與數字，太近變紅並叫蜂鳴器（越近嗶越快）。",
+  "breadboard": null,
+  "parts": {
+   "us1": {
+    "type": "hc-sr04",
+    "x": 320,
+    "y": 70,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 170,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "us1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "us1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "us1:TRIG",
+    "b": "board:G17",
+    "color": "#dc2"
+   },
+   {
+    "a": "us1:ECHO",
+    "b": "board:G18",
+    "color": "#2a7"
+   },
+   {
+    "a": "board:G16",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "HC-SR04 VCC 接 5V、GND 接 GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "TRIG 接 G17、ECHO 接 G18",
+    "wires": [
+     2,
+     3
+    ]
+   },
+   {
+    "text": "G16 → 220Ω → 蜂鳴器 → GND",
+    "wires": [
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "執行後在感測器上按住往下拖改距離",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\n\nimport math\nfrom machine import Pin, PWM, time_pulse_us\ntrig = Pin(17, Pin.OUT); echo = Pin(18, Pin.IN); bz = PWM(Pin(16), freq=1500); bz.duty_u16(0); ang = 0\nwhile lab.running():\n    trig.value(1); trig.value(0); us = time_pulse_us(echo, 1, 30000); cm = us / 58 if us > 0 else 200\n    near = cm < 20\n    d.fill(d.BLACK)\n    for r in (30, 60, 90): d.ellipse(64, 120, r, r, color(0, 90, 0), False, 3)\n    a = ang * math.pi / 180; d.line(64, 120, int(64 + 90 * math.cos(a)), int(120 - 90 * math.sin(a)), d.GREEN)\n    rr = int(min(cm, 200) / 200 * 90); d.ellipse(int(64 + rr * math.cos(a)), int(120 - rr * math.sin(a)), 3, 3, d.RED if near else d.YELLOW, True)\n    d.text('%.0f cm' % cm, 8, 4, d.RED if near else d.WHITE); d.show()\n    if near: bz.duty_u16(20000); lab.sleep(0.05); bz.duty_u16(0)\n    else: bz.duty_u16(0)\n    ang = (ang + 10) % 180; print('距離 %.1f cm' % cm); lab.send(cm=round(cm, 1))\n    lab.sleep(0.12 if near else 0.25)\n",
+  "expect": "綠色掃描線來回掃，障礙物光點隨距離遠近移動；20 cm 內變紅、蜂鳴器急叫。",
+  "try": [
+   "把紅色門檻改 50 cm",
+   "讓光點留下尾巴"
+  ],
+  "verify": {
+   "console": "距離",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_metronome",
+  "title": "節拍器",
+  "level": "進階",
+  "summary": "兩鍵調 BPM，螢幕擺針左右擺，蜂鳴器每拍打一聲。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 120,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "G16 → 220Ω → 蜂鳴器一腳，另一腳接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "執行後 BOOT 減、KEY 加 BPM",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport time, math\nfrom machine import PWM\nbz = PWM(Pin(16), freq=1200); bz.duty_u16(0)\nbpm = 100; last = time.ticks_ms(); beat = 0\ndef draw(phase):\n    d.fill(d.BLACK); d.text('%d BPM' % bpm, 36, 4, d.WHITE)\n    a = math.sin(phase * math.pi) * 0.8; d.line(64, 118, int(64 + 70 * math.sin(a)), int(118 - 70 * math.cos(a)), d.YELLOW)\n    d.fill_rect(54, 112, 20, 10, color(120, 80, 20)); d.text('-   +', 44, 100, color(150, 150, 150)); d.show()\nwhile lab.running():\n    if boot.value() == 0:\n        bpm = max(40, bpm - 5); print('BPM', bpm)\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    if key.value() == 0:\n        bpm = min(240, bpm + 5); print('BPM', bpm)\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    period = 60000 // bpm; el = time.ticks_diff(time.ticks_ms(), last)\n    if el >= period:\n        last = time.ticks_add(last, period); beat += 1; bz.freq(1600 if beat % 4 == 0 else 1200); bz.duty_u16(25000); lab.sleep(0.03); bz.duty_u16(0); el = 0; print('拍', beat)\n    draw((el / period) + (beat % 2)); lab.sleep(0.03)\n",
+  "expect": "擺針左右擺、每拍蜂鳴器響，每四拍重音；BOOT／KEY 調快慢。",
+  "try": [
+   "改成 3/4 拍",
+   "顯示小節數"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "BPM|拍",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_servo_gauge",
+  "title": "伺服指針表",
+  "level": "進階",
+  "summary": "兩鍵調角度，伺服馬達轉到該角度，螢幕同步畫指針表盤與度數。",
+  "breadboard": null,
+  "parts": {
+   "servo1": {
+    "type": "servo",
+    "x": 300,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "servo1:V+",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "servo1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "servo1:PWM",
+    "b": "board:G17",
+    "color": "#e90"
+   }
+  ],
+  "steps": [
+   {
+    "text": "伺服 V+ 接 5V、GND 接 GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "PWM 接 G17",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "text": "執行後 BOOT 減、KEY 加 15 度",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport math\nfrom machine import PWM\nservo = PWM(Pin(17), freq=50); ang = 90\ndef set_angle(a): servo.duty_u16(int((0.5 + a / 180 * 2.0) / 20 * 65535))\ndef draw():\n    d.fill(d.BLACK); d.text('%3d deg' % ang, 36, 4, d.WHITE)\n    for k in range(0, 181, 30):\n        t = math.pi - k * math.pi / 180; d.line(int(64 + 48 * math.cos(t)), int(100 - 48 * math.sin(t)), int(64 + 54 * math.cos(t)), int(100 - 54 * math.sin(t)), d.WHITE)\n    t = math.pi - ang * math.pi / 180; d.line(64, 100, int(64 + 46 * math.cos(t)), int(100 - 46 * math.sin(t)), d.RED); d.show()\nset_angle(ang); draw()\nwhile lab.running():\n    if boot.value() == 0:\n        ang = max(0, ang - 15); set_angle(ang); draw(); print('角度', ang)\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    if key.value() == 0:\n        ang = min(180, ang + 15); set_angle(ang); draw(); print('角度', ang)\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "按鍵每次 15 度，伺服擺臂與螢幕紅色指針一起轉。",
+  "try": [
+   "改成可變電阻控制",
+   "加「掃描」模式自動來回"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "角度",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_scope",
+  "title": "迷你示波器",
+  "level": "專題",
+  "summary": "可變電阻接 ADC，螢幕畫電壓波形捲動，像一台小示波器。",
+  "breadboard": null,
+  "parts": {
+   "pot1": {
+    "type": "potentiometer",
+    "x": 320,
+    "y": 100,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "board:G18",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "可變電阻 VCC→3V3、GND→GND、SIG→G18",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "執行後拖可變電阻",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\n\nfrom machine import Pin, ADC\npot = ADC(Pin(18), atten=ADC.ATTN_11DB); buf = [64] * 128\nwhile lab.running():\n    v = pot.read(); buf.pop(0); buf.append(120 - int(v / 4095 * 100))\n    d.fill(d.BLACK)\n    for y in range(20, 121, 25): d.hline(0, y, 128, color(50, 50, 50))\n    for i in range(1, 128): d.line(i - 1, buf[i - 1], i, buf[i], d.GREEN)\n    d.text('%.2fV %d' % (v / 4095 * 3.3, v), 4, 4, d.WHITE); d.show(); lab.send(adc=v); lab.sleep(0.05)\n",
+  "expect": "綠色波形從右往左捲，轉旋鈕波形上下移。",
+  "try": [
+   "加第二通道",
+   "時間軸改快"
+  ],
+  "verify": {
+   "adc": {
+    "18": 3000
+   },
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_snake",
+  "title": "貪吃蛇",
+  "level": "專題",
+  "summary": "BOOT 左轉、KEY 右轉，吃到點加長；撞牆或撞自己結束。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。BOOT 逆時針轉、KEY 順時針轉",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nimport random\nG = 8; N = 16\nsnake = [(8, 8), (7, 8), (6, 8)]; dx, dy = 1, 0; food = (12, 8); score = 0\ndef draw(msg=None):\n    d.fill(d.BLACK)\n    for x, y in snake: d.fill_rect(x * G, y * G, G - 1, G - 1, d.GREEN)\n    d.fill_rect(food[0] * G, food[1] * G, G - 1, G - 1, d.RED)\n    if msg: d.text(msg, 20, 100, d.YELLOW)\n    d.show()\ndraw('press a key')\nwhile lab.running() and boot.value() == 1 and key.value() == 1: lab.sleep(0.02)   # 按任一鍵才開始\nprint('開始')\nwhile lab.running():\n    if boot.value() == 0:\n        dx, dy = dy, -dx\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    if key.value() == 0:\n        dx, dy = -dy, dx\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    nx, ny = snake[0][0] + dx, snake[0][1] + dy\n    if not (0 <= nx < N and 0 <= ny < N) or (nx, ny) in snake:\n        d.fill(d.RED); d.text('GAME OVER', 28, 52, d.WHITE); d.text('score %d' % score, 32, 70, d.WHITE); d.show(); print('結束，分數', score); break\n    snake.insert(0, (nx, ny))\n    if (nx, ny) == food:\n        score += 1; print('吃到！', score)\n        while food in snake: food = (random.randint(0, N - 1), random.randint(0, N - 1))\n    else: snake.pop()\n    draw(); lab.sleep(0.25)\n",
+  "expect": "按任一鍵開始，綠蛇往前爬，兩鍵轉向，吃紅點變長；撞到就 GAME OVER。",
+  "try": [
+   "越吃越快",
+   "加牆壁障礙"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "開始",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "tq_menu",
+  "title": "兩鍵選單",
+  "level": "專題",
+  "summary": "BOOT 移動游標、KEY 確認：螢幕選單控制外接 LED 亮暗與蜂鳴器，做自己的小儀表。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 90,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 400,
+    "y": 70,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 300,
+    "y": 190,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 150,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "board:G17",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "G16 → 220Ω → LED → GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "G17 → 220Ω → 蜂鳴器 → GND",
+    "wires": [
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "執行後 BOOT 選、KEY 確認",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom lab.board_tqt import color     # color(r, g, b) → 螢幕用的 RGB565\nd = lab.display            # 板上 128×128 彩色螢幕\nfrom machine import Pin\nboot = Pin(0, Pin.IN, Pin.PULL_UP)     # 左鍵 BOOT：沒按=1，按下=0\nkey = Pin(47, Pin.IN, Pin.PULL_UP)    # 右鍵 KEY\n\nfrom machine import PWM\nled = PWM(Pin(16), freq=1000); led.duty_u16(0); bz = PWM(Pin(17), freq=880); bz.duty_u16(0)\nitems = ['LED off', 'LED 50%', 'LED 100%', 'Beep', 'Blink x3']; cur = 0\ndef draw():\n    d.fill(d.BLACK); d.text('MENU', 44, 4, d.YELLOW)\n    for i, it in enumerate(items):\n        y = 24 + i * 16\n        if i == cur: d.fill_rect(0, y - 2, 128, 12, color(0, 60, 120))\n        d.text(('> ' if i == cur else '  ') + it, 4, y, d.WHITE)\n    d.show()\ndraw()\nwhile lab.running():\n    if boot.value() == 0:\n        cur = (cur + 1) % len(items); draw()\n        while lab.running() and boot.value() == 0: lab.sleep(0.02)\n    if key.value() == 0:\n        it = items[cur]; print('執行', it)\n        if it == 'LED off': led.duty_u16(0)\n        elif it == 'LED 50%': led.duty_u16(32768)\n        elif it == 'LED 100%': led.duty_u16(65535)\n        elif it == 'Beep': bz.duty_u16(30000); lab.sleep(0.2); bz.duty_u16(0)\n        else:\n            for i in range(3): led.duty_u16(65535); lab.sleep(0.15); led.duty_u16(0); lab.sleep(0.15)\n        while lab.running() and key.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "螢幕有五個選項，BOOT 移動藍色游標，KEY 執行：LED 亮度、嗶一聲、閃三下。",
+  "try": [
+   "加「Servo 90°」選項",
+   "用 KEY 長按回到第一項"
+  ],
+  "verify": {
+   "press": [
+    "key"
+   ],
+   "console": "執行",
+   "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "xi_onboard@xiao_esp32s3",
+  "title": "板上黃燈閃爍",
+  "level": "入門",
+  "summary": "不用接線：XIAO 板上的黃色 LED 用 lab.led() 就能閃；按 B 鍵加快。",
+  "breadboard": null,
+  "parts": {},
+  "wires": [],
+  "steps": [
+   {
+    "text": "不用接線。執行後看板子角落的黃燈，按 B 鍵變快",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\nb = Pin(0, Pin.IN, Pin.PULL_UP)       # 板上 B 鍵：沒按=1，按下=0\n\ndelay = 0.4; n = 0\nwhile lab.running():\n    lab.led(1); lab.sleep(delay); lab.led(0); lab.sleep(delay); n += 1; print('閃了', n, '次，間隔', delay)\n    if b.value() == 0: delay = 0.1 if delay > 0.2 else 0.4; print('間隔改成', delay)\n",
+  "expect": "黃燈閃爍，按 B 鍵在快慢之間切換。",
+  "try": [
+   "改成 SOS",
+   "用 Pin(21) 自己控制（注意低電位才亮）"
+  ],
+  "verify": {
+   "press": [
+    "boot"
+   ],
+   "console": "閃了"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_button@xiao_esp32s3",
+  "title": "按鍵控燈",
+  "level": "入門",
+  "summary": "板上 B 鍵控制外接 LED。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 400,
+    "y": 130,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D0",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D0 → 220Ω → LED 長腳，短腳接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "執行後按板子上的 B 鍵",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\nb = Pin(0, Pin.IN, Pin.PULL_UP)       # 板上 B 鍵：沒按=1，按下=0\n\nled = Pin(1, Pin.OUT); n = 0      # D0 = GPIO1\nwhile lab.running():\n    if b.value() == 0:\n        led.value(1); n += 1; print('按下第', n, '次')\n        while lab.running() and b.value() == 0: lab.sleep(0.02)\n    else: led.value(0)\n    lab.sleep(0.02)\n",
+  "expect": "按住 B 鍵 LED 亮。",
+  "try": [
+   "改成按一下切換",
+   "按五下後黃燈也亮"
+  ],
+  "verify": {
+   "press": [
+    "boot"
+   ],
+   "console": "按下"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_breathing@xiao_esp32s3",
+  "title": "呼吸燈",
+  "level": "入門",
+  "summary": "PWM 讓 LED 慢慢亮暗。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 400,
+    "y": 130,
+    "rot": 0,
+    "attrs": {
+     "color": "blue"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D1",
+    "b": "r1:1",
+    "color": "#36c"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#36c"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D1 → 220Ω → LED → GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, PWM\npwm = PWM(Pin(2), freq=1000); n = 0          # D1 = GPIO2\nwhile lab.running():\n    for duty in range(0, 65535, 3000): pwm.duty_u16(duty); lab.sleep(0.02)\n    for duty in range(65535, 0, -3000): pwm.duty_u16(duty); lab.sleep(0.02)\n    n += 1; print('呼吸第', n, '次')\n",
+  "expect": "LED 漸亮漸暗。",
+  "try": [
+   "改速度",
+   "兩顆交錯"
+  ],
+  "verify": {
+   "console": "呼吸"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_flashlight@xiao_esp32s3",
+  "title": "手電筒",
+  "level": "入門",
+  "summary": "滑動開關撥上亮、撥下滅；B 鍵切三段亮度。",
+  "breadboard": null,
+  "parts": {
+   "sw1": {
+    "type": "slide-switch",
+    "x": 300,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 190,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 400,
+    "y": 170,
+    "rot": 0,
+    "attrs": {
+     "color": "white"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "sw1:1",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "sw1:2",
+    "b": "board:D2",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:D3",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#e90"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "滑動開關腳 1 接 3V3、腳 2（中間）接 D2",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "D3 → 220Ω → LED → GND",
+    "wires": [
+     2,
+     3,
+     4
+    ]
+   },
+   {
+    "text": "執行後點開關撥動；B 鍵換亮度",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\nb = Pin(0, Pin.IN, Pin.PULL_UP)       # 板上 B 鍵：沒按=1，按下=0\n\nfrom machine import PWM\nsw = Pin(3, Pin.IN, Pin.PULL_DOWN); lamp = PWM(Pin(4), freq=1000)     # D2=GPIO3、D3=GPIO4\nlevels = [20000, 40000, 65535]; li = 2\nwhile lab.running():\n    if b.value() == 0:\n        li = (li + 1) % 3; print('亮度段', li + 1)\n        while lab.running() and b.value() == 0: lab.sleep(0.02)\n    on = sw.value() == 1\n    lamp.duty_u16(levels[li] if on else 0)\n    print('開關', '開' if on else '關', '段', li + 1); lab.sleep(0.2)\n",
+  "expect": "開關撥到 3V3 那側 LED 亮，B 鍵在三段亮度間切換。",
+  "try": [
+   "加「閃爍求救」模式",
+   "用板上黃燈當電量提示"
+  ],
+  "verify": {
+   "press": [
+    "boot"
+   ],
+   "console": "亮度段"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_face@xiao_esp32s3",
+  "title": "互動笑臉",
+  "level": "入門",
+  "summary": "OLED 畫一張臉，B 鍵換表情。",
+  "breadboard": null,
+  "parts": {
+   "oled1": {
+    "type": "ssd1306",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "oled1:3V3",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "oled1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "oled1:DATA",
+    "b": "board:D4",
+    "color": "#36c"
+   },
+   {
+    "a": "oled1:CLK",
+    "b": "board:D5",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "執行後按 B 鍵換表情",
+    "wires": []
+   }
+  ],
+  "code": "import lab, ssd1306\nfrom machine import Pin, I2C\noled = ssd1306.SSD1306_I2C(128, 64, I2C(0, scl=Pin(6), sda=Pin(5)))\nfrom machine import Pin\nb = Pin(0, Pin.IN, Pin.PULL_UP)       # 板上 B 鍵：沒按=1，按下=0\n\nmoods = ['smile', 'wow', 'wink', 'sleep']; mi = 0\ndef face(m):\n    oled.fill(0); oled.ellipse(64, 32, 30, 30, 1); oled.text(m, 0, 0)\n    if m == 'sleep': oled.line(48, 26, 58, 26, 1); oled.line(70, 26, 80, 26, 1); oled.text('zzz', 96, 8)\n    elif m == 'wink': oled.fill_rect(50, 22, 6, 6, 1); oled.line(70, 26, 80, 26, 1)\n    else: oled.fill_rect(50, 22, 6, 6, 1); oled.fill_rect(72, 22, 6, 6, 1)\n    if m == 'wow': oled.ellipse(64, 44, 6, 8, 1)\n    elif m == 'sleep': oled.line(54, 46, 74, 46, 1)\n    else: oled.ellipse(64, 38, 14, 10, 1, False, 12)\n    oled.show()\nface(moods[0])\nwhile lab.running():\n    if b.value() == 0:\n        mi = (mi + 1) % 4; face(moods[mi]); print('表情', moods[mi])\n        while lab.running() and b.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "按 B 鍵輪流四種表情。",
+  "try": [
+   "加吐舌頭",
+   "每 3 秒自動眨眼"
+  ],
+  "verify": {
+   "press": [
+    "boot"
+   ],
+   "console": "表情"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_clock@xiao_esp32s3",
+  "title": "數位時鐘",
+  "level": "入門",
+  "summary": "OLED 時:分:秒與秒針；B 鍵調時。",
+  "breadboard": null,
+  "parts": {
+   "oled1": {
+    "type": "ssd1306",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "oled1:3V3",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "oled1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "oled1:DATA",
+    "b": "board:D4",
+    "color": "#36c"
+   },
+   {
+    "a": "oled1:CLK",
+    "b": "board:D5",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "執行後 B 鍵加 1 小時",
+    "wires": []
+   }
+  ],
+  "code": "import lab, ssd1306\nfrom machine import Pin, I2C\noled = ssd1306.SSD1306_I2C(128, 64, I2C(0, scl=Pin(6), sda=Pin(5)))\nfrom machine import Pin\nb = Pin(0, Pin.IN, Pin.PULL_UP)       # 板上 B 鍵：沒按=1，按下=0\n\nimport time, math\nh, m, s = 9, 41, 0; last = time.ticks_ms()\ndef draw():\n    oled.fill(0); oled.text('%02d:%02d:%02d' % (h, m, s), 0, 4); cx, cy, r = 96, 32, 28\n    for k in range(12): a = k * math.pi / 6; oled.pixel(int(cx + r * math.sin(a)), int(cy - r * math.cos(a)), 1)\n    a = s * math.pi / 30; oled.line(cx, cy, int(cx + (r - 4) * math.sin(a)), int(cy - (r - 4) * math.cos(a)), 1)\n    a = (h % 12 + m / 60) * math.pi / 6; oled.line(cx, cy, int(cx + (r - 14) * math.sin(a)), int(cy - (r - 14) * math.cos(a)), 1)\n    oled.text('B: +1h', 0, 50); oled.show()\ndraw()\nwhile lab.running():\n    if time.ticks_diff(time.ticks_ms(), last) >= 1000:\n        last = time.ticks_add(last, 1000); s += 1\n        if s == 60: s = 0; m += 1\n        if m == 60: m = 0; h = (h + 1) % 24\n        draw(); print('%02d:%02d:%02d' % (h, m, s))\n    if b.value() == 0:\n        h = (h + 1) % 24; draw()\n        while lab.running() and b.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "每秒更新，B 鍵加小時。",
+  "try": [
+   "長按調分",
+   "整點黃燈閃"
+  ],
+  "verify": {
+   "console": "\\d\\d:\\d\\d:\\d\\d"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_dice@xiao_esp32s3",
+  "title": "電子骰子",
+  "level": "入門",
+  "summary": "B 鍵擲骰，OLED 顯示點數，蜂鳴器叮一聲。",
+  "breadboard": null,
+  "parts": {
+   "oled1": {
+    "type": "ssd1306",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 230,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 200,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "oled1:3V3",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "oled1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "oled1:DATA",
+    "b": "board:D4",
+    "color": "#36c"
+   },
+   {
+    "a": "oled1:CLK",
+    "b": "board:D5",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:D1",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "D1 → 220Ω → 蜂鳴器 → GND",
+    "wires": [
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "執行後按 B 鍵",
+    "wires": []
+   }
+  ],
+  "code": "import lab, ssd1306\nfrom machine import Pin, I2C\noled = ssd1306.SSD1306_I2C(128, 64, I2C(0, scl=Pin(6), sda=Pin(5)))\nfrom machine import Pin\nb = Pin(0, Pin.IN, Pin.PULL_UP)       # 板上 B 鍵：沒按=1，按下=0\n\nimport random\nfrom machine import PWM\nbz = PWM(Pin(2), freq=880); bz.duty_u16(0)\nD = {1: [(1, 1)], 2: [(0, 0), (2, 2)], 3: [(0, 0), (1, 1), (2, 2)], 4: [(0, 0), (2, 0), (0, 2), (2, 2)], 5: [(0, 0), (2, 0), (1, 1), (0, 2), (2, 2)], 6: [(0, 0), (2, 0), (0, 1), (2, 1), (0, 2), (2, 2)]}\ndef show(n):\n    oled.fill(0); oled.rect(36, 4, 56, 56, 1)\n    for x, y in D[n]: oled.fill_rect(44 + x * 18, 12 + y * 18, 8, 8, 1)\n    oled.show()\nn = 6; show(n)\nwhile lab.running():\n    if b.value() == 0:\n        for i in range(10): n = random.randint(1, 6); show(n); lab.sleep(0.05 + i * 0.02)\n        bz.duty_u16(30000); lab.sleep(0.1); bz.duty_u16(0); print('擲出', n)\n        while lab.running() and b.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "B 鍵後骰子滾動停住、響一聲。",
+  "try": [
+   "兩顆骰子",
+   "連擲到 6 黃燈閃"
+  ],
+  "verify": {
+   "press": [
+    "boot"
+   ],
+   "console": "擲出"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_bar@xiao_esp32s3",
+  "title": "五燈電量條",
+  "level": "進階",
+  "summary": "轉可變電阻，LED 長條一格一格亮。",
+  "breadboard": null,
+  "parts": {
+   "pot1": {
+    "type": "potentiometer",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "bar1": {
+    "type": "led-bar-graph",
+    "x": 470,
+    "y": 150,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 380,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 380,
+    "y": 175,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 380,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r4": {
+    "type": "resistor",
+    "x": 380,
+    "y": 225,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r5": {
+    "type": "resistor",
+    "x": 380,
+    "y": 250,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "board:D0",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:D1",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bar1:A1",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D2",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "bar1:A2",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D3",
+    "b": "r3:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r3:2",
+    "b": "bar1:A3",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D4",
+    "b": "r4:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r4:2",
+    "b": "bar1:A4",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D5",
+    "b": "r5:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r5:2",
+    "b": "bar1:A5",
+    "color": "#e90"
+   },
+   {
+    "a": "bar1:C1",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C2",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C3",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C4",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C5",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "可變電阻 VCC→3V3、GND→GND、SIG→D0",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "D1～D5 各經 220Ω 接長條 A1～A5",
+    "wires": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "C1～C5 接 GND",
+    "wires": [
+     13,
+     14,
+     15,
+     16,
+     17
+    ]
+   },
+   {
+    "text": "執行後拖可變電阻",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\npot = ADC(Pin(1), atten=ADC.ATTN_11DB); bars = [Pin(p, Pin.OUT) for p in (2, 3, 4, 5, 6)]\nwhile lab.running():\n    v = pot.read(); n = v * 6 // 4096\n    for i, p in enumerate(bars): p.value(1 if i < n else 0)\n    print('電量', v * 100 // 4095, '%，亮', min(n, 5), '格'); lab.send(level=v); lab.sleep(0.2)\n",
+  "expect": "旋鈕越高亮越多格。",
+  "try": [
+   "改讀 lab.battery()",
+   "最後一格閃爍"
+  ],
+  "verify": {
+   "adc": {
+    "1": 4000
+   },
+   "console": "電量"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_nightlight@xiao_esp32s3",
+  "title": "光敏夜燈",
+  "level": "進階",
+  "summary": "光敏模組變暗自動亮燈，板上黃燈同步。",
+  "breadboard": null,
+  "parts": {
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 400,
+    "y": 180,
+    "rot": 0,
+    "attrs": {
+     "color": "white"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ldr1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "board:D0",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:D1",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#e90"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "光敏模組 VCC→3V3、GND→GND、AO→D0",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "D1 → 220Ω → LED → GND",
+    "wires": [
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "執行後在模組上往下拖變暗",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nldr = ADC(Pin(1), atten=ADC.ATTN_11DB); led = Pin(2, Pin.OUT)\nwhile lab.running():\n    v = ldr.read(); dark = v < 1500; led.value(1 if dark else 0); lab.led(dark)\n    print('光線', v, '→', '開燈' if dark else '關燈'); lab.send(light=v); lab.sleep(0.2)\n",
+  "expect": "拖暗就開燈，黃燈同步。",
+  "try": [
+   "改門檻",
+   "加遲滯"
+  ],
+  "verify": {
+   "ui": {
+    "ldr1": {
+     "light": 0.05
+    }
+   },
+   "console": "開燈"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_wearable@xiao_esp32s3",
+  "title": "溫濕度手環",
+  "level": "進階",
+  "summary": "DHT22 溫濕度顯示在 OLED，依舒適度畫笑臉或皺眉。",
+  "breadboard": null,
+  "parts": {
+   "oled1": {
+    "type": "ssd1306",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "dht1": {
+    "type": "dht22",
+    "x": 480,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "oled1:3V3",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "oled1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "oled1:DATA",
+    "b": "board:D4",
+    "color": "#36c"
+   },
+   {
+    "a": "oled1:CLK",
+    "b": "board:D5",
+    "color": "#dc2"
+   },
+   {
+    "a": "dht1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "dht1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "dht1:SDA",
+    "b": "board:D0",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "DHT22 VCC→3V3、GND→GND、SDA→D0",
+    "wires": [
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "執行後點 DHT22 用滑桿改溫濕度",
+    "wires": []
+   }
+  ],
+  "code": "import lab, ssd1306\nfrom machine import Pin, I2C\noled = ssd1306.SSD1306_I2C(128, 64, I2C(0, scl=Pin(6), sda=Pin(5)))\n\nimport dht\nsensor = dht.DHT22(Pin(1))\nwhile lab.running():\n    try:\n        sensor.measure(); t, h = sensor.temperature(), sensor.humidity(); ok = 18 <= t <= 28 and 40 <= h <= 70\n        oled.fill(0); oled.text('%.1f C' % t, 0, 0); oled.text('%.0f %%' % h, 0, 12); oled.text('comfy' if ok else 'hmm..', 0, 50)\n        oled.ellipse(96, 32, 24, 24, 1); oled.fill_rect(86, 24, 4, 4, 1); oled.fill_rect(102, 24, 4, 4, 1)\n        if ok: oled.ellipse(96, 36, 12, 8, 1, False, 12)\n        else: oled.ellipse(96, 46, 12, 8, 1, False, 3)\n        oled.show(); print('溫度', t, '濕度', h, '舒適' if ok else '不舒適'); lab.send(temp=t, humi=h)\n    except OSError: print('讀不到 DHT22')\n    lab.sleep(2)\n",
+  "expect": "OLED 顯示數值，舒適範圍內笑臉、否則皺眉。",
+  "try": [
+   "加露點",
+   "改舒適範圍"
+  ],
+  "verify": {
+   "console": "濕度"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_metronome@xiao_esp32s3",
+  "title": "節拍器",
+  "level": "進階",
+  "summary": "旋鈕調 BPM，蜂鳴器打拍、OLED 擺針。",
+  "breadboard": null,
+  "parts": {
+   "oled1": {
+    "type": "ssd1306",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 480,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 230,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 200,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "oled1:3V3",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "oled1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "oled1:DATA",
+    "b": "board:D4",
+    "color": "#36c"
+   },
+   {
+    "a": "oled1:CLK",
+    "b": "board:D5",
+    "color": "#dc2"
+   },
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "board:D0",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:D1",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "可變電阻 SIG→D0",
+    "wires": [
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "D1 → 220Ω → 蜂鳴器 → GND",
+    "wires": [
+     7,
+     8,
+     9
+    ]
+   }
+  ],
+  "code": "import lab, ssd1306\nfrom machine import Pin, I2C\noled = ssd1306.SSD1306_I2C(128, 64, I2C(0, scl=Pin(6), sda=Pin(5)))\n\nimport time, math\nfrom machine import PWM, ADC\npot = ADC(Pin(1), atten=ADC.ATTN_11DB); bz = PWM(Pin(2), freq=1200); bz.duty_u16(0); last = time.ticks_ms(); beat = 0\nwhile lab.running():\n    bpm = 40 + pot.read() * 200 // 4095; period = 60000 // bpm; el = time.ticks_diff(time.ticks_ms(), last)\n    if el >= period:\n        last = time.ticks_add(last, period); beat += 1; bz.freq(1600 if beat % 4 == 0 else 1200); bz.duty_u16(25000); lab.sleep(0.03); bz.duty_u16(0); el = 0; print('拍', beat, 'BPM', bpm)\n    a = math.sin((el / period + beat % 2) * math.pi) * 0.8\n    oled.fill(0); oled.text('%d BPM' % bpm, 36, 0); oled.line(64, 60, int(64 + 40 * math.sin(a)), int(60 - 40 * math.cos(a)), 1); oled.show(); lab.sleep(0.03)\n",
+  "expect": "擺針左右擺、每拍響一聲、四拍重音；轉旋鈕改快慢。",
+  "try": [
+   "3/4 拍",
+   "顯示小節數"
+  ],
+  "verify": {
+   "adc": {
+    "1": 2000
+   },
+   "console": "BPM"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_servo_finger@xiao_esp32s3",
+  "title": "伺服手指",
+  "level": "進階",
+  "summary": "旋鈕轉到哪，伺服就轉到哪，像一根會指的手指。",
+  "breadboard": null,
+  "parts": {
+   "pot1": {
+    "type": "potentiometer",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "servo1": {
+    "type": "servo",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "board:D0",
+    "color": "#dc2"
+   },
+   {
+    "a": "servo1:V+",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "servo1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "servo1:PWM",
+    "b": "board:D1",
+    "color": "#e90"
+   }
+  ],
+  "steps": [
+   {
+    "text": "可變電阻 SIG→D0",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "伺服 V+→5V、GND→GND、PWM→D1",
+    "wires": [
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "執行後拖可變電阻",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, PWM, ADC\npot = ADC(Pin(1), atten=ADC.ATTN_11DB); servo = PWM(Pin(2), freq=50)\nwhile lab.running():\n    a = pot.read() * 180 // 4095; servo.duty_u16(int((0.5 + a / 180 * 2.0) / 20 * 65535)); print('角度', a); lab.sleep(0.1)\n",
+  "expect": "旋鈕與伺服角度同步。",
+  "try": [
+   "限制 30～150 度",
+   "B 鍵回正"
+  ],
+  "verify": {
+   "adc": {
+    "1": 3500
+   },
+   "console": "角度"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_mood@xiao_esp32s3",
+  "title": "RGB 心情燈",
+  "level": "進階",
+  "summary": "按 B 鍵換一種心情色，長按變成呼吸。",
+  "breadboard": null,
+  "parts": {
+   "rgb1": {
+    "type": "rgb-led",
+    "x": 420,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 320,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 320,
+    "y": 160,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D1",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "rgb1:R",
+    "color": "#d33"
+   },
+   {
+    "a": "board:D2",
+    "b": "r2:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r2:2",
+    "b": "rgb1:G",
+    "color": "#2a7"
+   },
+   {
+    "a": "board:D3",
+    "b": "r3:1",
+    "color": "#36c"
+   },
+   {
+    "a": "r3:2",
+    "b": "rgb1:B",
+    "color": "#36c"
+   },
+   {
+    "a": "rgb1:COM",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D1→220Ω→R、D2→220Ω→G、D3→220Ω→B，COM→GND",
+    "wires": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "執行後短按 B 換色、長按呼吸",
+    "wires": []
+   }
+  ],
+  "code": "import lab, time\nfrom machine import Pin\nb = Pin(0, Pin.IN, Pin.PULL_UP)       # 板上 B 鍵：沒按=1，按下=0\n\nfrom machine import PWM\nr, g, bl = (PWM(Pin(p), freq=1000) for p in (2, 3, 4))\nmoods = [('calm', 0, 0, 1), ('happy', 1, 1, 0), ('love', 1, 0, 0.3), ('fresh', 0, 1, 0.5), ('dream', 0.6, 0, 1)]\nmi = 0; breathe = False; t = 0\nwhile lab.running():\n    if b.value() == 0:\n        t0 = time.ticks_ms()\n        while lab.running() and b.value() == 0: lab.sleep(0.02)\n        if time.ticks_diff(time.ticks_ms(), t0) > 600: breathe = not breathe; print('呼吸', breathe)\n        else: mi = (mi + 1) % len(moods); print('心情', moods[mi][0])\n    name, cr, cg, cb = moods[mi]; k = (0.5 + 0.5 * __import__('math').sin(t / 10)) if breathe else 1\n    r.duty_u16(int(cr * 50000 * k)); g.duty_u16(int(cg * 50000 * k)); bl.duty_u16(int(cb * 50000 * k)); t += 1; lab.sleep(0.05)\n",
+  "expect": "短按換五種心情色，長按 0.6 秒以上切換呼吸模式。",
+  "try": [
+   "加隨機色",
+   "依溫度自動換色"
+  ],
+  "verify": {
+   "press": [
+    "boot"
+   ],
+   "console": "心情"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_morse@xiao_esp32s3",
+  "title": "摩斯密碼練習器",
+  "level": "進階",
+  "summary": "按 B 鍵長短按輸入摩斯碼，放開 1 秒後翻譯成字母，黃燈與蜂鳴器回放。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D1",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D1 → 220Ω → 蜂鳴器 → GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "執行後用 B 鍵短按（點）長按（劃），停 1 秒解碼",
+    "wires": []
+   }
+  ],
+  "code": "import lab, time\nfrom machine import Pin\nb = Pin(0, Pin.IN, Pin.PULL_UP)       # 板上 B 鍵：沒按=1，按下=0\n\nfrom machine import PWM\nbz = PWM(Pin(2), freq=800); bz.duty_u16(0)\nCODE = {'.-': 'A', '-...': 'B', '-.-.': 'C', '-..': 'D', '.': 'E', '..-.': 'F', '--.': 'G', '....': 'H', '..': 'I', '.---': 'J', '-.-': 'K', '.-..': 'L', '--': 'M', '-.': 'N', '---': 'O', '.--.': 'P', '--.-': 'Q', '.-.': 'R', '...': 'S', '-': 'T', '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y', '--..': 'Z'}\nbuf = ''; last = time.ticks_ms(); text = ''\nwhile lab.running():\n    if b.value() == 0:\n        t0 = time.ticks_ms(); bz.duty_u16(20000); lab.led(1)\n        while lab.running() and b.value() == 0: lab.sleep(0.01)\n        bz.duty_u16(0); lab.led(0); d = time.ticks_diff(time.ticks_ms(), t0)\n        buf += '-' if d > 250 else '.'; last = time.ticks_ms(); print('輸入', buf)\n    elif buf and time.ticks_diff(time.ticks_ms(), last) > 1000:\n        ch = CODE.get(buf, '?'); text += ch; print('解碼', buf, '=', ch, '→', text); buf = ''\n    lab.sleep(0.01)\n",
+  "expect": "短按是點、長按是劃，停 1 秒印出字母與累積文字。",
+  "try": [
+   "加空白（停 3 秒）",
+   "讓它反過來播放一段訊息"
+  ],
+  "verify": {
+   "press": [
+    "boot"
+   ],
+   "console": "輸入"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_heartbeat@xiao_esp32s3",
+  "title": "心跳波形",
+  "level": "進階",
+  "summary": "可變電阻當脈搏感測，OLED 畫心電圖波形捲動，蜂鳴器跟著跳。",
+  "breadboard": null,
+  "parts": {
+   "oled1": {
+    "type": "ssd1306",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 480,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 230,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 400,
+    "y": 200,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "oled1:3V3",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "oled1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "oled1:DATA",
+    "b": "board:D4",
+    "color": "#36c"
+   },
+   {
+    "a": "oled1:CLK",
+    "b": "board:D5",
+    "color": "#dc2"
+   },
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "board:D0",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:D1",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "可變電阻 SIG→D0（當心率旋鈕）",
+    "wires": [
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "D1 → 220Ω → 蜂鳴器 → GND",
+    "wires": [
+     7,
+     8,
+     9
+    ]
+   }
+  ],
+  "code": "import lab, ssd1306\nfrom machine import Pin, I2C\noled = ssd1306.SSD1306_I2C(128, 64, I2C(0, scl=Pin(6), sda=Pin(5)))\n\nimport time\nfrom machine import PWM, ADC\npot = ADC(Pin(1), atten=ADC.ATTN_11DB); bz = PWM(Pin(2), freq=600); bz.duty_u16(0)\nbuf = [40] * 128; last = time.ticks_ms(); i = 0\nwhile lab.running():\n    bpm = 50 + pot.read() * 100 // 4095; period = 60000 // bpm\n    if time.ticks_diff(time.ticks_ms(), last) >= period:\n        last = time.ticks_add(last, period); i = 0; bz.duty_u16(20000); lab.sleep(0.03); bz.duty_u16(0); print('心跳 BPM', bpm); lab.led(1)\n    y = 40 - [0, 0, 3, -2, 25, -10, 0, 2, 0][i] if i < 9 else 40\n    buf.pop(0); buf.append(y); i += 1; lab.led(0)\n    oled.fill(0); oled.text('%d bpm' % bpm, 0, 0)\n    for k in range(1, 128): oled.line(k - 1, buf[k - 1], k, buf[k], 1)\n    oled.show(); lab.sleep(0.03)\n",
+  "expect": "波形像心電圖一樣尖峰捲動，旋鈕改心率、蜂鳴器與黃燈跟著跳。",
+  "try": [
+   "超過 120 顯示警告",
+   "加平均心率"
+  ],
+  "verify": {
+   "adc": {
+    "1": 2000
+   },
+   "console": "心跳"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "xi_weather_station@xiao_esp32s3",
+  "title": "小型氣象站",
+  "level": "專題",
+  "summary": "DHT22＋光敏→OLED 顯示數據，NeoPixel 燈條顏色代表舒適度。",
+  "breadboard": null,
+  "parts": {
+   "oled1": {
+    "type": "ssd1306",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "dht1": {
+    "type": "dht22",
+    "x": 480,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {}
+   },
+   "np1": {
+    "type": "neopixel-strip",
+    "x": 300,
+    "y": 300,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "oled1:3V3",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "oled1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "oled1:DATA",
+    "b": "board:D4",
+    "color": "#36c"
+   },
+   {
+    "a": "oled1:CLK",
+    "b": "board:D5",
+    "color": "#dc2"
+   },
+   {
+    "a": "dht1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "dht1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "dht1:SDA",
+    "b": "board:D0",
+    "color": "#dc2"
+   },
+   {
+    "a": "ldr1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "board:D1",
+    "color": "#93c"
+   },
+   {
+    "a": "np1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "np1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "np1:DIN",
+    "b": "board:D2",
+    "color": "#2a7"
+   }
+  ],
+  "steps": [
+   {
+    "text": "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "DHT22 SDA→D0",
+    "wires": [
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "光敏 AO→D1",
+    "wires": [
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "NeoPixel VCC→5V、GND→GND、DIN→D2",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   }
+  ],
+  "code": "import lab, ssd1306\nfrom machine import Pin, I2C\noled = ssd1306.SSD1306_I2C(128, 64, I2C(0, scl=Pin(6), sda=Pin(5)))\n\nimport dht, neopixel\nfrom machine import ADC\nsensor = dht.DHT22(Pin(1)); ldr = ADC(Pin(2), atten=ADC.ATTN_11DB); np = neopixel.NeoPixel(Pin(3), 8)\nwhile lab.running():\n    try: sensor.measure(); t, h = sensor.temperature(), sensor.humidity()\n    except OSError: t, h = 25, 50\n    light = ldr.read(); score = 0\n    if 18 <= t <= 28: score += 1\n    if 40 <= h <= 70: score += 1\n    if light > 1000: score += 1\n    col = [(255, 0, 0), (255, 120, 0), (255, 255, 0), (0, 255, 0)][score]\n    for i in range(8): np[i] = col if i < 2 + score * 2 else (0, 0, 0)\n    np.write()\n    oled.fill(0); oled.text('T %.1fC' % t, 0, 0); oled.text('H %.0f%%' % h, 0, 12); oled.text('L %d' % light, 0, 24); oled.text('score %d/3' % score, 0, 44); oled.show()\n    print('溫', t, '濕', h, '光', light, '舒適', score); lab.send(temp=t, humi=h, light=light); lab.sleep(2)\n",
+  "expect": "OLED 顯示三個數值與分數，燈條依舒適分數變色變長。",
+  "try": [
+   "加歷史曲線",
+   "分數 0 時黃燈閃"
+  ],
+  "verify": {
+   "console": "舒適"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
   "id": "td_hello@tdisplay_s3",
   "title": "螢幕 Hello",
   "level": "入門",
@@ -921,2103 +3537,42 @@
   "boardName": "T-Display S3"
  },
  {
-  "id": "blink",
-  "title": "LED 閃爍",
+  "id": "dk_onboard_led@devkit",
+  "title": "板上藍燈閃爍",
   "level": "入門",
-  "summary": "最基本的數位輸出：GPIO 高低電位切換，LED 一定要串限流電阻。",
-  "board": "tqt_pro",
+  "summary": "不用接線：DevKit 板上的藍色 LED（GPIO2）用 lab.led() 一行就能閃。",
   "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 150,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 130,
-    "rot": 0,
-    "attrs": {
-     "color": "red"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
+  "parts": {},
+  "wires": [],
   "steps": [
    {
-    "text": "220Ω 電阻的一端接到板子的 G16（這支腳當輸出）",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻另一端接 LED 的長腳（A，正極）",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "LED 的短腳（C，負極）接板子的 GND，形成回路",
-    "wires": [
-     2
-    ]
+    "text": "不用接線，直接按 ▶ 執行，看板子上的藍燈",
+    "wires": []
    }
   ],
-  "code": "import lab\nfrom machine import Pin\n\nled = Pin(16, Pin.OUT)   # G16 經 220Ω 接 LED\nn = 0\nwhile lab.running():\n    led.value(1)         # 亮\n    lab.sleep(0.5)\n    led.value(0)         # 滅\n    lab.sleep(0.5)\n    n += 1\n    print('閃了', n, '次')\n",
-  "expect": "LED 每 0.5 秒亮滅一次，主控台印出閃了幾次。",
+  "code": "import lab\nn = 0\nwhile lab.running():\n    lab.led(1); lab.sleep(0.3)\n    lab.led(0); lab.sleep(0.3)\n    n += 1; print('閃了', n, '次')\n",
+  "expect": "板上藍燈每 0.6 秒閃一次，主控台印次數。",
   "try": [
-   "把 0.5 改成 0.1，看閃得多快",
-   "把電阻刪掉直接接，看 LED 怎麼燒毀（模擬器會告訴你為什麼）"
+   "改成 SOS（三短三長三短）",
+   "用 Pin(2, Pin.OUT) 做一樣的事"
   ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "button_led",
-  "title": "按鍵控燈",
-  "level": "入門",
-  "summary": "數位輸入：按鍵一側接 GPIO、另一側接 GND，程式開內部上拉，按下讀到 0。",
-  "board": "tqt_pro",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 120,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {
-     "color": "green"
-    }
-   },
-   "btn1": {
-    "type": "pushbutton",
-    "x": 320,
-    "y": 260,
-    "rot": 0,
-    "attrs": {
-     "color": "green"
-    }
-   }
+  "verify": {
+   "console": "閃了"
   },
-  "wires": [
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "board:G17",
-    "b": "btn1:1.l",
-    "color": "#27d"
-   },
-   {
-    "a": "btn1:2.l",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "先接 LED：G16 → 220Ω → LED 長腳，短腳回 GND",
-    "wires": [
-     0,
-     1,
-     2
-    ]
-   },
-   {
-    "text": "按鍵一側接 G17（輸入腳）",
-    "wires": [
-     3
-    ]
-   },
-   {
-    "text": "按鍵另一側接 GND；程式用 Pin.PULL_UP，沒按＝1、按下＝0",
-    "wires": [
-     4
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin\n\nled = Pin(16, Pin.OUT)\nbtn = Pin(17, Pin.IN, Pin.PULL_UP)   # 內部上拉：沒按＝1，按下＝0\nn = 0\nwhile lab.running():\n    if btn.value() == 0:\n        led.value(1)\n        n += 1\n        print('按下第', n, '次')\n        while lab.running() and btn.value() == 0:\n            lab.sleep(0.02)      # 等放開，避免一次算很多下\n    else:\n        led.value(0)\n    lab.sleep(0.02)\n",
-  "expect": "執行中按住畫布上的按鍵，LED 亮；放開就滅，主控台印出按了幾次。",
-  "try": [
-   "改成按一下切換亮滅（記住上一次的狀態）",
-   "把按鍵另一側改接 3V3，看模擬器提示為什麼會浮接"
-  ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "breathing",
-  "title": "呼吸燈",
-  "level": "入門",
-  "summary": "PWM：用工作比控制平均亮度，數值慢慢加減就像呼吸。",
-  "board": "tqt_pro",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 150,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 130,
-    "rot": 0,
-    "attrs": {
-     "color": "blue"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "G16 → 220Ω 電阻",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻 → LED 長腳",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "LED 短腳 → GND",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\npwm = PWM(Pin(16), freq=1000)   # 1 kHz 的 PWM\nwhile lab.running():\n    for d in range(0, 65535, 3000):      # 漸亮\n        pwm.duty_u16(d)\n        lab.sleep(0.02)\n    for d in range(65535, 0, -3000):     # 漸暗\n        pwm.duty_u16(d)\n        lab.sleep(0.02)\n    print('一次呼吸')\n",
-  "expect": "LED 慢慢變亮再慢慢變暗，主控台每一輪印一次。",
-  "try": [
-   "把 3000 改成 500，呼吸變慢",
-   "改 freq=50 看看 LED 會不會閃（頻率太低眼睛看得出來）"
-  ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "pot_brightness",
-  "title": "可變電阻調亮度",
-  "level": "進階",
-  "summary": "ADC 讀可變電阻的分壓（0～4095），再用 PWM 把它變成亮度。",
-  "board": "tqt_pro",
-  "breadboard": null,
-  "parts": {
-   "pot1": {
-    "type": "potentiometer",
-    "x": 300,
-    "y": 260,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 120,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {
-     "color": "yellow"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "pot1:VCC",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "pot1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "pot1:SIG",
-    "b": "board:G18",
-    "color": "#27d"
-   },
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "可變電阻兩端接 3V3 與 GND（它是一個分壓器）",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "中間腳 SIG 接 G18，程式用 ADC 讀電壓",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "LED：G16 → 220Ω → LED → GND",
-    "wires": [
-     3,
-     4,
-     5
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM, ADC\n\npot = ADC(Pin(18), atten=ADC.ATTN_11DB)   # 模擬器允許 G18 當 ADC；實機請改用 ADC 腳位\npwm = PWM(Pin(16), freq=1000)\nwhile lab.running():\n    v = pot.read()               # 0～4095\n    pwm.duty_u16(v * 16)         # 0～65520\n    print('ADC', v, '亮度', v * 100 // 4095, '%')\n    lab.send(adc=v)\n    lab.sleep(0.1)\n",
-  "expect": "執行中在可變電阻上按住上下拖（或右側滑桿），LED 亮度跟著變，主控台印 ADC 值。",
-  "try": [
-   "把亮度對應改成反的：轉到底反而最暗",
-   "加上門檻：ADC 小於 500 就把 LED 關掉"
-  ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "ldr_nightlight",
-  "title": "光敏夜燈",
-  "level": "進階",
-  "summary": "光敏模組的 AO 隨光線改變電壓，暗到門檻以下就自動開燈。",
-  "board": "tqt_pro",
-  "breadboard": null,
-  "parts": {
-   "ldr1": {
-    "type": "photoresistor-sensor",
-    "x": 290,
-    "y": 260,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 120,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {
-     "color": "white"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "ldr1:VCC",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "ldr1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "ldr1:AO",
-    "b": "board:G18",
-    "color": "#27d"
-   },
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "光敏模組 VCC 接 3V3、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "AO（類比輸出）接 G18",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "LED：G16 → 220Ω → LED → GND",
-    "wires": [
-     3,
-     4,
-     5
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, ADC\n\nldr = ADC(Pin(18), atten=ADC.ATTN_11DB)   # 模擬器允許 G18 當 ADC；實機請改用 ADC 腳位\nled = Pin(16, Pin.OUT)\nwhile lab.running():\n    v = ldr.read()\n    dark = v < 1500          # 門檻：越暗 AO 越低\n    led.value(1 if dark else 0)\n    print('光線', v, '→', '開燈' if dark else '關燈')\n    lab.send(light=v)\n    lab.sleep(0.2)\n",
-  "expect": "執行中在光敏模組上按住往下拖（變暗），LED 亮起；往上拖（變亮）就熄滅。",
-  "try": [
-   "把門檻 1500 改成 3000，看什麼亮度才會開燈",
-   "改成用 PWM 讓越暗越亮"
-  ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "buzzer_scale",
-  "title": "蜂鳴器音階",
-  "level": "進階",
-  "summary": "PWM 改頻率就是改音高：Do Re Mi 的頻率是 262、294、330…。",
-  "board": "tqt_pro",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 150,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "bz1": {
-    "type": "buzzer",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "bz1:1",
-    "color": "#e90"
-   },
-   {
-    "a": "bz1:2",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "G16 → 220Ω 電阻（限流，蜂鳴器直接接腳位會超過 40 mA）",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻 → 蜂鳴器 1 腳",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "蜂鳴器 2 腳 → GND",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nbz = PWM(Pin(16), freq=262)\nnotes = [262, 294, 330, 349, 392, 440, 494, 523]   # Do Re Mi Fa So La Si Do\nnames = ['Do', 'Re', 'Mi', 'Fa', 'So', 'La', 'Si', 'Do']\nwhile lab.running():\n    for f, n in zip(notes, names):\n        bz.freq(f)\n        bz.duty_u16(32768)   # 50% 工作比\n        print(n, f, 'Hz')\n        lab.sleep(0.3)\n        bz.duty_u16(0)       # 停一下\n        lab.sleep(0.05)\n",
-  "expect": "主控台依序印出 Do～Do 與頻率；蜂鳴器上出現音符記號代表有訊號（模擬器不發聲）。",
-  "try": [
-   "把 notes 改成你喜歡的旋律",
-   "每個音的長度改成不一樣（節奏）"
-  ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "servo_sweep",
-  "title": "伺服掃描",
-  "level": "進階",
-  "summary": "伺服馬達吃 50 Hz 的 PWM，脈寬 0.5～2.5 ms 對應 0～180 度。",
-  "board": "tqt_pro",
-  "breadboard": null,
-  "parts": {
-   "servo1": {
-    "type": "servo",
-    "x": 320,
-    "y": 230,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "servo1:V+",
-    "b": "board:5V",
-    "color": "#d33"
-   },
-   {
-    "a": "servo1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "servo1:PWM",
-    "b": "board:G17",
-    "color": "#e90"
-   }
-  ],
-  "steps": [
-   {
-    "text": "伺服的 V+（紅）接 5V，馬達要另外吃電",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "GND（棕）接 GND",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "PWM（橘）接 G17，程式用 50 Hz 的 PWM 控制角度",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nservo = PWM(Pin(17), freq=50)\n\ndef angle(a):\n    ms = 0.5 + a / 180 * 2.0          # 0.5～2.5 ms\n    servo.duty_u16(int(ms / 20 * 65535))\n\nwhile lab.running():\n    for a in (0, 45, 90, 135, 180, 135, 90, 45):\n        angle(a)\n        print('角度', a)\n        lab.sleep(0.5)\n",
-  "expect": "伺服的擺臂依 0→180→0 度來回掃，主控台印出角度。",
-  "try": [
-   "把 V+ 改接 3V3，看模擬器怎麼說",
-   "加一個可變電阻，用 ADC 值決定角度"
-  ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "rgb_mix",
-  "title": "RGB 混色",
-  "level": "進階",
-  "summary": "共陰極 RGB LED：三色各一支 PWM，調工作比就能混出任何顏色。",
-  "board": "tqt_pro",
-  "breadboard": null,
-  "parts": {
-   "rgb1": {
-    "type": "rgb-led",
-    "x": 480,
-    "y": 60,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 110,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "r2": {
-    "type": "resistor",
-    "x": 300,
-    "y": 160,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "r3": {
-    "type": "resistor",
-    "x": 300,
-    "y": 210,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:G16",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "rgb1:R",
-    "color": "#d33"
-   },
-   {
-    "a": "board:G17",
-    "b": "r2:1",
-    "color": "#2a7"
-   },
-   {
-    "a": "r2:2",
-    "b": "rgb1:G",
-    "color": "#2a7"
-   },
-   {
-    "a": "board:G18",
-    "b": "r3:1",
-    "color": "#27d"
-   },
-   {
-    "a": "r3:2",
-    "b": "rgb1:B",
-    "color": "#27d"
-   },
-   {
-    "a": "rgb1:COM",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "紅：G16 → 220Ω → R 腳",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "綠：G17 → 220Ω → G 腳",
-    "wires": [
-     2,
-     3
-    ]
-   },
-   {
-    "text": "藍：G18 → 220Ω → B 腳",
-    "wires": [
-     4,
-     5
-    ]
-   },
-   {
-    "text": "共陰極 COM（最長腳）接 GND",
-    "wires": [
-     6
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nr = PWM(Pin(16), freq=1000)\ng = PWM(Pin(17), freq=1000)\nb = PWM(Pin(18), freq=1000)\ncolors = [('紅', 65535, 0, 0), ('綠', 0, 65535, 0), ('藍', 0, 0, 65535), ('黃', 65535, 65535, 0), ('青', 0, 65535, 65535), ('紫', 65535, 0, 65535), ('白', 65535, 65535, 65535)]\nwhile lab.running():\n    for name, rv, gv, bv in colors:\n        r.duty_u16(rv); g.duty_u16(gv); b.duty_u16(bv)\n        print(name)\n        lab.sleep(0.6)\n",
-  "expect": "RGB LED 依序變紅、綠、藍、黃、青、紫、白，主控台印顏色名。",
-  "try": [
-   "做漸層：讓紅慢慢變成藍",
-   "只用兩色混出橘色（紅滿、綠一半）"
-  ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "oled_text",
-  "title": "OLED 顯示文字",
-  "level": "進階",
-  "summary": "I2C 介面的 SSD1306：兩條線（SDA、SCL）就能顯示文字與圖形。",
-  "board": "tqt_pro",
-  "breadboard": null,
-  "parts": {
-   "oled1": {
-    "type": "ssd1306",
-    "x": 320,
-    "y": 230,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "oled1:3V3",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "oled1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "oled1:DATA",
-    "b": "board:G16",
-    "color": "#27d"
-   },
-   {
-    "a": "oled1:CLK",
-    "b": "board:G17",
-    "color": "#2a7"
-   }
-  ],
-  "steps": [
-   {
-    "text": "OLED 的 3V3 接 3V3、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "DATA（SDA）接 G16",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "CLK（SCL）接 G17；程式用 I2C(0, scl=Pin(17), sda=Pin(16))",
-    "wires": [
-     3
-    ]
-   }
-  ],
-  "code": "import lab\nimport ssd1306\nfrom machine import Pin, I2C\n\ni2c = I2C(0, scl=Pin(17), sda=Pin(16))\nprint('I2C 掃到', i2c.scan())      # 應該看到 [60]（0x3C）\noled = ssd1306.SSD1306_I2C(128, 64, i2c)\nn = 0\nwhile lab.running():\n    oled.fill(0)\n    oled.text('ESP32 AI Lab', 0, 0)\n    oled.text('count: %d' % n, 0, 16)\n    oled.rect(0, 32, 128, 12, 1)\n    oled.fill_rect(2, 34, (n % 32) * 4, 8, 1)   # 進度條\n    oled.show()\n    print('畫面更新', n)\n    n += 1\n    lab.sleep(0.5)\n",
-  "expect": "OLED 顯示 ESP32 AI Lab、計數與一條會長的進度條；主控台印 I2C 掃到 [60]。",
-  "try": [
-   "用 oled.pixel(x, y, 1) 畫一個笑臉",
-   "把 GND 線拔掉，看模擬器怎麼提示「沒有供電」"
-  ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "ultrasonic",
-  "title": "超音波測距",
-  "level": "進階",
-  "summary": "HC-SR04：TRIG 送 10 µs 脈衝，ECHO 的高電位時間 ÷ 58 就是公分。",
-  "board": "tqt_pro",
-  "breadboard": null,
-  "parts": {
-   "us1": {
-    "type": "hc-sr04",
-    "x": 300,
-    "y": 240,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 110,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 90,
-    "rot": 0,
-    "attrs": {
-     "color": "red"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "us1:VCC",
-    "b": "board:5V",
-    "color": "#d33"
-   },
-   {
-    "a": "us1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "us1:TRIG",
-    "b": "board:G17",
-    "color": "#2a7"
-   },
-   {
-    "a": "us1:ECHO",
-    "b": "board:G16",
-    "color": "#e90"
-   },
-   {
-    "a": "board:G18",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "HC-SR04 的 VCC 接 5V、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "TRIG 接 G17（輸出）",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "ECHO 接 G16（輸入；實機建議加分壓，5 V 回到 3.3 V 腳位）",
-    "wires": [
-     3
-    ]
-   },
-   {
-    "text": "警示 LED：G18 → 220Ω → LED → GND",
-    "wires": [
-     4,
-     5,
-     6
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, time_pulse_us\n\ntrig = Pin(17, Pin.OUT)\necho = Pin(16, Pin.IN)\nled = Pin(18, Pin.OUT)\nwhile lab.running():\n    trig.value(1)\n    trig.value(0)                          # 10 µs 的脈衝（模擬器近似）\n    us = time_pulse_us(echo, 1, 30000)     # ECHO 高電位多久（微秒）\n    if us < 0:\n        print('沒有回波')\n    else:\n        cm = us / 58\n        led.value(1 if cm < 20 else 0)      # 20 公分內亮燈\n        print('距離 %.1f cm' % cm)\n        lab.send(cm=round(cm, 1))\n    lab.sleep(0.3)\n",
-  "expect": "主控台印出距離（預設 100 cm）；執行中在感測器上按住往下拖把距離拉到 20 cm 以內，LED 亮。",
-  "try": [
-   "把門檻改成 50 cm",
-   "距離越近讓 LED 閃越快"
-  ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "dht_display",
-  "title": "溫濕度顯示",
-  "level": "進階",
-  "summary": "DHT22 一條資料線回傳溫濕度，讀到的值顯示在 OLED 上。",
-  "board": "tqt_pro",
-  "breadboard": null,
-  "parts": {
-   "dht1": {
-    "type": "dht22",
-    "x": 520,
-    "y": 60,
-    "rot": 0,
-    "attrs": {}
-   },
-   "oled1": {
-    "type": "ssd1306",
-    "x": 320,
-    "y": 230,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "dht1:VCC",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "dht1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "dht1:SDA",
-    "b": "board:G18",
-    "color": "#27d"
-   },
-   {
-    "a": "oled1:3V3",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "oled1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "oled1:DATA",
-    "b": "board:G16",
-    "color": "#27d"
-   },
-   {
-    "a": "oled1:CLK",
-    "b": "board:G17",
-    "color": "#2a7"
-   }
-  ],
-  "steps": [
-   {
-    "text": "DHT22：VCC 接 3V3、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "DHT22 的 SDA 接 G18",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "OLED：3V3、GND",
-    "wires": [
-     3,
-     4
-    ]
-   },
-   {
-    "text": "OLED 的 DATA 接 G16、CLK 接 G17",
-    "wires": [
-     5,
-     6
-    ]
-   }
-  ],
-  "code": "import lab\nimport dht, ssd1306\nfrom machine import Pin, I2C\n\nsensor = dht.DHT22(Pin(18))\ni2c = I2C(0, scl=Pin(17), sda=Pin(16))\noled = ssd1306.SSD1306_I2C(128, 64, i2c)\nwhile lab.running():\n    try:\n        sensor.measure()\n        t, h = sensor.temperature(), sensor.humidity()\n        oled.fill(0)\n        oled.text('Temp: %.1f C' % t, 0, 0)\n        oled.text('Humi: %.0f %%' % h, 0, 16)\n        oled.show()\n        print('溫度', t, '濕度', h)\n        lab.send(temp=t, humi=h)\n    except OSError as e:\n        print('讀不到 DHT22：', e)\n    lab.sleep(2)       # DHT22 兩秒才能讀一次\n",
-  "expect": "OLED 與主控台每 2 秒更新溫濕度；右側屬性面板的滑桿可以改溫濕度。",
-  "try": [
-   "溫度超過 30 度在 OLED 顯示「太熱」",
-   "把 SDA 線拔掉，看 except 會印什麼"
-  ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "neopixel_chase",
-  "title": "NeoPixel 跑馬燈",
-  "level": "進階",
-  "summary": "WS2812 只用一條資料線控制很多顆全彩 LED，程式用 neopixel 模組。",
-  "board": "tqt_pro",
-  "breadboard": null,
-  "parts": {
-   "np1": {
-    "type": "neopixel-strip",
-    "x": 300,
-    "y": 260,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "np1:VCC",
-    "b": "board:5V",
-    "color": "#d33"
-   },
-   {
-    "a": "np1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "np1:DIN",
-    "b": "board:G16",
-    "color": "#27d"
-   }
-  ],
-  "steps": [
-   {
-    "text": "燈條 VCC 接 5V、GND 接 GND（8 顆全亮約 480 mA，不要再多）",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "DIN（資料入）接 G16",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nimport neopixel\nfrom machine import Pin\n\nnp = neopixel.NeoPixel(Pin(16), 8)   # 8 顆\ncolors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]\ni = 0\nwhile lab.running():\n    np.fill((0, 0, 0))\n    np[i % 8] = colors[(i // 8) % 4]\n    np[(i + 1) % 8] = (20, 20, 20)     # 尾巴淡淡的\n    np.write()\n    print('亮第', i % 8, '顆')\n    i += 1\n    lab.sleep(0.12)\n",
-  "expect": "一顆亮點在 8 顆燈上跑，每跑一圈換一種顏色。",
-  "try": [
-   "改成彩虹：每顆不同顏色一起往前移",
-   "把顏色亮度降到 (30, 0, 0) 省電"
-  ],
-  "boardName": "T-QT Pro"
- },
- {
-  "id": "blink@xiao_esp32s3",
-  "title": "LED 閃爍",
-  "level": "入門",
-  "summary": "最基本的數位輸出：GPIO 高低電位切換，LED 一定要串限流電阻。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 150,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 130,
-    "rot": 0,
-    "attrs": {
-     "color": "red"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:D0",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "220Ω 電阻的一端接到板子的 D0（這支腳當輸出）",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻另一端接 LED 的長腳（A，正極）",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "LED 的短腳（C，負極）接板子的 GND，形成回路",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin\n\nled = Pin(1, Pin.OUT)   # D0 經 220Ω 接 LED\nn = 0\nwhile lab.running():\n    led.value(1)         # 亮\n    lab.sleep(0.5)\n    led.value(0)         # 滅\n    lab.sleep(0.5)\n    n += 1\n    print('閃了', n, '次')\n",
-  "expect": "LED 每 0.5 秒亮滅一次，主控台印出閃了幾次。",
-  "try": [
-   "把 0.5 改成 0.1，看閃得多快",
-   "把電阻刪掉直接接，看 LED 怎麼燒毀（模擬器會告訴你為什麼）"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "button_led@xiao_esp32s3",
-  "title": "按鍵控燈",
-  "level": "入門",
-  "summary": "數位輸入：按鍵一側接 GPIO、另一側接 GND，程式開內部上拉，按下讀到 0。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 120,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {
-     "color": "green"
-    }
-   },
-   "btn1": {
-    "type": "pushbutton",
-    "x": 320,
-    "y": 260,
-    "rot": 0,
-    "attrs": {
-     "color": "green"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:D0",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "board:D1",
-    "b": "btn1:1.l",
-    "color": "#27d"
-   },
-   {
-    "a": "btn1:2.l",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "先接 LED：D0 → 220Ω → LED 長腳，短腳回 GND",
-    "wires": [
-     0,
-     1,
-     2
-    ]
-   },
-   {
-    "text": "按鍵一側接 D1（輸入腳）",
-    "wires": [
-     3
-    ]
-   },
-   {
-    "text": "按鍵另一側接 GND；程式用 Pin.PULL_UP，沒按＝1、按下＝0",
-    "wires": [
-     4
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin\n\nled = Pin(1, Pin.OUT)\nbtn = Pin(2, Pin.IN, Pin.PULL_UP)   # 內部上拉：沒按＝1，按下＝0\nn = 0\nwhile lab.running():\n    if btn.value() == 0:\n        led.value(1)\n        n += 1\n        print('按下第', n, '次')\n        while lab.running() and btn.value() == 0:\n            lab.sleep(0.02)      # 等放開，避免一次算很多下\n    else:\n        led.value(0)\n    lab.sleep(0.02)\n",
-  "expect": "執行中按住畫布上的按鍵，LED 亮；放開就滅，主控台印出按了幾次。",
-  "try": [
-   "改成按一下切換亮滅（記住上一次的狀態）",
-   "把按鍵另一側改接 3V3，看模擬器提示為什麼會浮接"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "breathing@xiao_esp32s3",
-  "title": "呼吸燈",
-  "level": "入門",
-  "summary": "PWM：用工作比控制平均亮度，數值慢慢加減就像呼吸。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 150,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 130,
-    "rot": 0,
-    "attrs": {
-     "color": "blue"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:D0",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "D0 → 220Ω 電阻",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻 → LED 長腳",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "LED 短腳 → GND",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\npwm = PWM(Pin(1), freq=1000)   # 1 kHz 的 PWM\nwhile lab.running():\n    for d in range(0, 65535, 3000):      # 漸亮\n        pwm.duty_u16(d)\n        lab.sleep(0.02)\n    for d in range(65535, 0, -3000):     # 漸暗\n        pwm.duty_u16(d)\n        lab.sleep(0.02)\n    print('一次呼吸')\n",
-  "expect": "LED 慢慢變亮再慢慢變暗，主控台每一輪印一次。",
-  "try": [
-   "把 3000 改成 500，呼吸變慢",
-   "改 freq=50 看看 LED 會不會閃（頻率太低眼睛看得出來）"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "pot_brightness@xiao_esp32s3",
-  "title": "可變電阻調亮度",
-  "level": "進階",
-  "summary": "ADC 讀可變電阻的分壓（0～4095），再用 PWM 把它變成亮度。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "pot1": {
-    "type": "potentiometer",
-    "x": 300,
-    "y": 260,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 120,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {
-     "color": "yellow"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "pot1:VCC",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "pot1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "pot1:SIG",
-    "b": "board:D2",
-    "color": "#27d"
-   },
-   {
-    "a": "board:D0",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "可變電阻兩端接 3V3 與 GND（它是一個分壓器）",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "中間腳 SIG 接 D2，程式用 ADC 讀電壓",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "LED：D0 → 220Ω → LED → GND",
-    "wires": [
-     3,
-     4,
-     5
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM, ADC\n\npot = ADC(Pin(3), atten=ADC.ATTN_11DB)   # 模擬器允許 D2 當 ADC；實機請改用 ADC 腳位\npwm = PWM(Pin(1), freq=1000)\nwhile lab.running():\n    v = pot.read()               # 0～4095\n    pwm.duty_u16(v * 16)         # 0～65520\n    print('ADC', v, '亮度', v * 100 // 4095, '%')\n    lab.send(adc=v)\n    lab.sleep(0.1)\n",
-  "expect": "執行中在可變電阻上按住上下拖（或右側滑桿），LED 亮度跟著變，主控台印 ADC 值。",
-  "try": [
-   "把亮度對應改成反的：轉到底反而最暗",
-   "加上門檻：ADC 小於 500 就把 LED 關掉"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "ldr_nightlight@xiao_esp32s3",
-  "title": "光敏夜燈",
-  "level": "進階",
-  "summary": "光敏模組的 AO 隨光線改變電壓，暗到門檻以下就自動開燈。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "ldr1": {
-    "type": "photoresistor-sensor",
-    "x": 290,
-    "y": 260,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 120,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {
-     "color": "white"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "ldr1:VCC",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "ldr1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "ldr1:AO",
-    "b": "board:D2",
-    "color": "#27d"
-   },
-   {
-    "a": "board:D0",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "光敏模組 VCC 接 3V3、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "AO（類比輸出）接 D2",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "LED：D0 → 220Ω → LED → GND",
-    "wires": [
-     3,
-     4,
-     5
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, ADC\n\nldr = ADC(Pin(3), atten=ADC.ATTN_11DB)   # 模擬器允許 D2 當 ADC；實機請改用 ADC 腳位\nled = Pin(1, Pin.OUT)\nwhile lab.running():\n    v = ldr.read()\n    dark = v < 1500          # 門檻：越暗 AO 越低\n    led.value(1 if dark else 0)\n    print('光線', v, '→', '開燈' if dark else '關燈')\n    lab.send(light=v)\n    lab.sleep(0.2)\n",
-  "expect": "執行中在光敏模組上按住往下拖（變暗），LED 亮起；往上拖（變亮）就熄滅。",
-  "try": [
-   "把門檻 1500 改成 3000，看什麼亮度才會開燈",
-   "改成用 PWM 讓越暗越亮"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "buzzer_scale@xiao_esp32s3",
-  "title": "蜂鳴器音階",
-  "level": "進階",
-  "summary": "PWM 改頻率就是改音高：Do Re Mi 的頻率是 262、294、330…。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 150,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "bz1": {
-    "type": "buzzer",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "board:D0",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "bz1:1",
-    "color": "#e90"
-   },
-   {
-    "a": "bz1:2",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "D0 → 220Ω 電阻（限流，蜂鳴器直接接腳位會超過 40 mA）",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻 → 蜂鳴器 1 腳",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "蜂鳴器 2 腳 → GND",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nbz = PWM(Pin(1), freq=262)\nnotes = [262, 294, 330, 349, 392, 440, 494, 523]   # Do Re Mi Fa So La Si Do\nnames = ['Do', 'Re', 'Mi', 'Fa', 'So', 'La', 'Si', 'Do']\nwhile lab.running():\n    for f, n in zip(notes, names):\n        bz.freq(f)\n        bz.duty_u16(32768)   # 50% 工作比\n        print(n, f, 'Hz')\n        lab.sleep(0.3)\n        bz.duty_u16(0)       # 停一下\n        lab.sleep(0.05)\n",
-  "expect": "主控台依序印出 Do～Do 與頻率；蜂鳴器上出現音符記號代表有訊號（模擬器不發聲）。",
-  "try": [
-   "把 notes 改成你喜歡的旋律",
-   "每個音的長度改成不一樣（節奏）"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "servo_sweep@xiao_esp32s3",
-  "title": "伺服掃描",
-  "level": "進階",
-  "summary": "伺服馬達吃 50 Hz 的 PWM，脈寬 0.5～2.5 ms 對應 0～180 度。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "servo1": {
-    "type": "servo",
-    "x": 320,
-    "y": 230,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "servo1:V+",
-    "b": "board:5V",
-    "color": "#d33"
-   },
-   {
-    "a": "servo1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "servo1:PWM",
-    "b": "board:D1",
-    "color": "#e90"
-   }
-  ],
-  "steps": [
-   {
-    "text": "伺服的 V+（紅）接 5V，馬達要另外吃電",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "GND（棕）接 GND",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "PWM（橘）接 D1，程式用 50 Hz 的 PWM 控制角度",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nservo = PWM(Pin(2), freq=50)\n\ndef angle(a):\n    ms = 0.5 + a / 180 * 2.0          # 0.5～2.5 ms\n    servo.duty_u16(int(ms / 20 * 65535))\n\nwhile lab.running():\n    for a in (0, 45, 90, 135, 180, 135, 90, 45):\n        angle(a)\n        print('角度', a)\n        lab.sleep(0.5)\n",
-  "expect": "伺服的擺臂依 0→180→0 度來回掃，主控台印出角度。",
-  "try": [
-   "把 V+ 改接 3V3，看模擬器怎麼說",
-   "加一個可變電阻，用 ADC 值決定角度"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "rgb_mix@xiao_esp32s3",
-  "title": "RGB 混色",
-  "level": "進階",
-  "summary": "共陰極 RGB LED：三色各一支 PWM，調工作比就能混出任何顏色。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "rgb1": {
-    "type": "rgb-led",
-    "x": 480,
-    "y": 60,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 110,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "r2": {
-    "type": "resistor",
-    "x": 300,
-    "y": 160,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "r3": {
-    "type": "resistor",
-    "x": 300,
-    "y": 210,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:D0",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "rgb1:R",
-    "color": "#d33"
-   },
-   {
-    "a": "board:D1",
-    "b": "r2:1",
-    "color": "#2a7"
-   },
-   {
-    "a": "r2:2",
-    "b": "rgb1:G",
-    "color": "#2a7"
-   },
-   {
-    "a": "board:D2",
-    "b": "r3:1",
-    "color": "#27d"
-   },
-   {
-    "a": "r3:2",
-    "b": "rgb1:B",
-    "color": "#27d"
-   },
-   {
-    "a": "rgb1:COM",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "紅：D0 → 220Ω → R 腳",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "綠：D1 → 220Ω → G 腳",
-    "wires": [
-     2,
-     3
-    ]
-   },
-   {
-    "text": "藍：D2 → 220Ω → B 腳",
-    "wires": [
-     4,
-     5
-    ]
-   },
-   {
-    "text": "共陰極 COM（最長腳）接 GND",
-    "wires": [
-     6
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nr = PWM(Pin(1), freq=1000)\ng = PWM(Pin(2), freq=1000)\nb = PWM(Pin(3), freq=1000)\ncolors = [('紅', 65535, 0, 0), ('綠', 0, 65535, 0), ('藍', 0, 0, 65535), ('黃', 65535, 65535, 0), ('青', 0, 65535, 65535), ('紫', 65535, 0, 65535), ('白', 65535, 65535, 65535)]\nwhile lab.running():\n    for name, rv, gv, bv in colors:\n        r.duty_u16(rv); g.duty_u16(gv); b.duty_u16(bv)\n        print(name)\n        lab.sleep(0.6)\n",
-  "expect": "RGB LED 依序變紅、綠、藍、黃、青、紫、白，主控台印顏色名。",
-  "try": [
-   "做漸層：讓紅慢慢變成藍",
-   "只用兩色混出橘色（紅滿、綠一半）"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "oled_text@xiao_esp32s3",
-  "title": "OLED 顯示文字",
-  "level": "進階",
-  "summary": "I2C 介面的 SSD1306：兩條線（SDA、SCL）就能顯示文字與圖形。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "oled1": {
-    "type": "ssd1306",
-    "x": 320,
-    "y": 230,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "oled1:3V3",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "oled1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "oled1:DATA",
-    "b": "board:D0",
-    "color": "#27d"
-   },
-   {
-    "a": "oled1:CLK",
-    "b": "board:D1",
-    "color": "#2a7"
-   }
-  ],
-  "steps": [
-   {
-    "text": "OLED 的 3V3 接 3V3、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "DATA（SDA）接 D0",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "CLK（SCL）接 D1；程式用 I2C(0, scl=Pin(2), sda=Pin(1))",
-    "wires": [
-     3
-    ]
-   }
-  ],
-  "code": "import lab\nimport ssd1306\nfrom machine import Pin, I2C\n\ni2c = I2C(0, scl=Pin(2), sda=Pin(1))\nprint('I2C 掃到', i2c.scan())      # 應該看到 [60]（0x3C）\noled = ssd1306.SSD1306_I2C(128, 64, i2c)\nn = 0\nwhile lab.running():\n    oled.fill(0)\n    oled.text('ESP32 AI Lab', 0, 0)\n    oled.text('count: %d' % n, 0, 16)\n    oled.rect(0, 32, 128, 12, 1)\n    oled.fill_rect(2, 34, (n % 32) * 4, 8, 1)   # 進度條\n    oled.show()\n    print('畫面更新', n)\n    n += 1\n    lab.sleep(0.5)\n",
-  "expect": "OLED 顯示 ESP32 AI Lab、計數與一條會長的進度條；主控台印 I2C 掃到 [60]。",
-  "try": [
-   "用 oled.pixel(x, y, 1) 畫一個笑臉",
-   "把 GND 線拔掉，看模擬器怎麼提示「沒有供電」"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "ultrasonic@xiao_esp32s3",
-  "title": "超音波測距",
-  "level": "進階",
-  "summary": "HC-SR04：TRIG 送 10 µs 脈衝，ECHO 的高電位時間 ÷ 58 就是公分。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "us1": {
-    "type": "hc-sr04",
-    "x": 300,
-    "y": 240,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 110,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 90,
-    "rot": 0,
-    "attrs": {
-     "color": "red"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "us1:VCC",
-    "b": "board:5V",
-    "color": "#d33"
-   },
-   {
-    "a": "us1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "us1:TRIG",
-    "b": "board:D1",
-    "color": "#2a7"
-   },
-   {
-    "a": "us1:ECHO",
-    "b": "board:D0",
-    "color": "#e90"
-   },
-   {
-    "a": "board:D2",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "HC-SR04 的 VCC 接 5V、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "TRIG 接 D1（輸出）",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "ECHO 接 D0（輸入；實機建議加分壓，5 V 回到 3.3 V 腳位）",
-    "wires": [
-     3
-    ]
-   },
-   {
-    "text": "警示 LED：D2 → 220Ω → LED → GND",
-    "wires": [
-     4,
-     5,
-     6
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, time_pulse_us\n\ntrig = Pin(2, Pin.OUT)\necho = Pin(1, Pin.IN)\nled = Pin(3, Pin.OUT)\nwhile lab.running():\n    trig.value(1)\n    trig.value(0)                          # 10 µs 的脈衝（模擬器近似）\n    us = time_pulse_us(echo, 1, 30000)     # ECHO 高電位多久（微秒）\n    if us < 0:\n        print('沒有回波')\n    else:\n        cm = us / 58\n        led.value(1 if cm < 20 else 0)      # 20 公分內亮燈\n        print('距離 %.1f cm' % cm)\n        lab.send(cm=round(cm, 1))\n    lab.sleep(0.3)\n",
-  "expect": "主控台印出距離（預設 100 cm）；執行中在感測器上按住往下拖把距離拉到 20 cm 以內，LED 亮。",
-  "try": [
-   "把門檻改成 50 cm",
-   "距離越近讓 LED 閃越快"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "dht_display@xiao_esp32s3",
-  "title": "溫濕度顯示",
-  "level": "進階",
-  "summary": "DHT22 一條資料線回傳溫濕度，讀到的值顯示在 OLED 上。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "dht1": {
-    "type": "dht22",
-    "x": 520,
-    "y": 60,
-    "rot": 0,
-    "attrs": {}
-   },
-   "oled1": {
-    "type": "ssd1306",
-    "x": 320,
-    "y": 230,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "dht1:VCC",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "dht1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "dht1:SDA",
-    "b": "board:D2",
-    "color": "#27d"
-   },
-   {
-    "a": "oled1:3V3",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "oled1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "oled1:DATA",
-    "b": "board:D0",
-    "color": "#27d"
-   },
-   {
-    "a": "oled1:CLK",
-    "b": "board:D1",
-    "color": "#2a7"
-   }
-  ],
-  "steps": [
-   {
-    "text": "DHT22：VCC 接 3V3、GND 接 GND",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "DHT22 的 SDA 接 D2",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "OLED：3V3、GND",
-    "wires": [
-     3,
-     4
-    ]
-   },
-   {
-    "text": "OLED 的 DATA 接 D0、CLK 接 D1",
-    "wires": [
-     5,
-     6
-    ]
-   }
-  ],
-  "code": "import lab\nimport dht, ssd1306\nfrom machine import Pin, I2C\n\nsensor = dht.DHT22(Pin(3))\ni2c = I2C(0, scl=Pin(2), sda=Pin(1))\noled = ssd1306.SSD1306_I2C(128, 64, i2c)\nwhile lab.running():\n    try:\n        sensor.measure()\n        t, h = sensor.temperature(), sensor.humidity()\n        oled.fill(0)\n        oled.text('Temp: %.1f C' % t, 0, 0)\n        oled.text('Humi: %.0f %%' % h, 0, 16)\n        oled.show()\n        print('溫度', t, '濕度', h)\n        lab.send(temp=t, humi=h)\n    except OSError as e:\n        print('讀不到 DHT22：', e)\n    lab.sleep(2)       # DHT22 兩秒才能讀一次\n",
-  "expect": "OLED 與主控台每 2 秒更新溫濕度；右側屬性面板的滑桿可以改溫濕度。",
-  "try": [
-   "溫度超過 30 度在 OLED 顯示「太熱」",
-   "把 SDA 線拔掉，看 except 會印什麼"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "neopixel_chase@xiao_esp32s3",
-  "title": "NeoPixel 跑馬燈",
-  "level": "進階",
-  "summary": "WS2812 只用一條資料線控制很多顆全彩 LED，程式用 neopixel 模組。",
-  "board": "xiao_esp32s3",
-  "breadboard": null,
-  "parts": {
-   "np1": {
-    "type": "neopixel-strip",
-    "x": 300,
-    "y": 260,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "np1:VCC",
-    "b": "board:5V",
-    "color": "#d33"
-   },
-   {
-    "a": "np1:GND",
-    "b": "board:GND",
-    "color": "#111"
-   },
-   {
-    "a": "np1:DIN",
-    "b": "board:D0",
-    "color": "#27d"
-   }
-  ],
-  "steps": [
-   {
-    "text": "燈條 VCC 接 5V、GND 接 GND（8 顆全亮約 480 mA，不要再多）",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "DIN（資料入）接 D0",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nimport neopixel\nfrom machine import Pin\n\nnp = neopixel.NeoPixel(Pin(1), 8)   # 8 顆\ncolors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]\ni = 0\nwhile lab.running():\n    np.fill((0, 0, 0))\n    np[i % 8] = colors[(i // 8) % 4]\n    np[(i + 1) % 8] = (20, 20, 20)     # 尾巴淡淡的\n    np.write()\n    print('亮第', i % 8, '顆')\n    i += 1\n    lab.sleep(0.12)\n",
-  "expect": "一顆亮點在 8 顆燈上跑，每跑一圈換一種顏色。",
-  "try": [
-   "改成彩虹：每顆不同顏色一起往前移",
-   "把顏色亮度降到 (30, 0, 0) 省電"
-  ],
-  "boardName": "XIAO ESP32S3"
- },
- {
-  "id": "blink@devkit",
-  "title": "LED 閃爍",
-  "level": "入門",
-  "summary": "最基本的數位輸出：GPIO 高低電位切換，LED 一定要串限流電阻。",
   "board": "devkit",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 150,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 130,
-    "rot": 0,
-    "attrs": {
-     "color": "red"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "board:D4",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND.1",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "220Ω 電阻的一端接到板子的 D4（這支腳當輸出）",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻另一端接 LED 的長腳（A，正極）",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "LED 的短腳（C，負極）接板子的 GND.1，形成回路",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin\n\nled = Pin(4, Pin.OUT)   # D4 經 220Ω 接 LED\nn = 0\nwhile lab.running():\n    led.value(1)         # 亮\n    lab.sleep(0.5)\n    led.value(0)         # 滅\n    lab.sleep(0.5)\n    n += 1\n    print('閃了', n, '次')\n",
-  "expect": "LED 每 0.5 秒亮滅一次，主控台印出閃了幾次。",
-  "try": [
-   "把 0.5 改成 0.1，看閃得多快",
-   "把電阻刪掉直接接，看 LED 怎麼燒毀（模擬器會告訴你為什麼）"
-  ],
   "boardName": "ESP32 DevKit"
  },
  {
-  "id": "button_led@devkit",
-  "title": "按鍵控燈",
+  "id": "dk_blink@devkit",
+  "title": "LED 閃爍",
   "level": "入門",
-  "summary": "數位輸入：按鍵一側接 GPIO、另一側接 GND.1，程式開內部上拉，按下讀到 0。",
-  "board": "devkit",
+  "summary": "最基本的數位輸出：GPIO 高低電位切換，LED 一定要串限流電阻。",
   "breadboard": null,
   "parts": {
    "r1": {
     "type": "resistor",
-    "x": 300,
-    "y": 120,
+    "x": 330,
+    "y": 150,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -3025,20 +3580,11 @@
    },
    "led1": {
     "type": "led",
-    "x": 400,
-    "y": 100,
+    "x": 430,
+    "y": 130,
     "rot": 0,
     "attrs": {
-     "color": "green"
-    }
-   },
-   "btn1": {
-    "type": "pushbutton",
-    "x": 320,
-    "y": 260,
-    "rot": 0,
-    "attrs": {
-     "color": "green"
+     "color": "red"
     }
    }
   },
@@ -3056,22 +3602,99 @@
    {
     "a": "led1:C",
     "b": "board:GND.1",
-    "color": "#111"
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D4 → 220Ω → LED 長腳（A）",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "LED 短腳（C）接 GND",
+    "wires": [
+     2
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\n\nled = Pin(4, Pin.OUT); n = 0\nwhile lab.running():\n    led.value(1); lab.sleep(0.5); led.value(0); lab.sleep(0.5)\n    n += 1; print('閃了', n, '次')\n",
+  "expect": "LED 每秒閃一次。",
+  "try": [
+   "把 0.5 改成 0.1",
+   "把電阻刪掉直接接，看 LED 怎麼燒掉（模擬器會告訴你）"
+  ],
+  "verify": {
+   "console": "閃了"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_button@devkit",
+  "title": "按鍵控燈",
+  "level": "入門",
+  "summary": "按住外接按鍵 LED 亮、放開就滅；用內部上拉電阻所以不用外接電阻。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 330,
+    "y": 110,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 430,
+    "y": 90,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 330,
+    "y": 200,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D4",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#e90"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND.1",
+    "color": "#222"
    },
    {
     "a": "board:D5",
     "b": "btn1:1.l",
-    "color": "#27d"
+    "color": "#36c"
    },
    {
     "a": "btn1:2.l",
     "b": "board:GND.1",
-    "color": "#111"
+    "color": "#222"
    }
   ],
   "steps": [
    {
-    "text": "先接 LED：D4 → 220Ω → LED 長腳，短腳回 GND.1",
+    "text": "D4 → 220Ω → LED → GND",
     "wires": [
      0,
      1,
@@ -3079,37 +3702,37 @@
     ]
    },
    {
-    "text": "按鍵一側接 D5（輸入腳）",
+    "text": "按鍵一側接 D5、對角接 GND",
     "wires": [
-     3
+     3,
+     4
     ]
    },
    {
-    "text": "按鍵另一側接 GND.1；程式用 Pin.PULL_UP，沒按＝1、按下＝0",
-    "wires": [
-     4
-    ]
+    "text": "執行後按住畫布上的按鍵",
+    "wires": []
    }
   ],
-  "code": "import lab\nfrom machine import Pin\n\nled = Pin(4, Pin.OUT)\nbtn = Pin(5, Pin.IN, Pin.PULL_UP)   # 內部上拉：沒按＝1，按下＝0\nn = 0\nwhile lab.running():\n    if btn.value() == 0:\n        led.value(1)\n        n += 1\n        print('按下第', n, '次')\n        while lab.running() and btn.value() == 0:\n            lab.sleep(0.02)      # 等放開，避免一次算很多下\n    else:\n        led.value(0)\n    lab.sleep(0.02)\n",
-  "expect": "執行中按住畫布上的按鍵，LED 亮；放開就滅，主控台印出按了幾次。",
+  "code": "import lab\nfrom machine import Pin\n\nled = Pin(4, Pin.OUT); btn = Pin(5, Pin.IN, Pin.PULL_UP); n = 0\nwhile lab.running():\n    if btn.value() == 0:\n        led.value(1); n += 1; print('按下第', n, '次')\n        while lab.running() and btn.value() == 0: lab.sleep(0.02)\n    else: led.value(0)\n    lab.sleep(0.02)\n",
+  "expect": "按住按鍵 LED 亮，主控台計次。",
   "try": [
-   "改成按一下切換亮滅（記住上一次的狀態）",
-   "把按鍵另一側改接 3V3，看模擬器提示為什麼會浮接"
+   "改成按一下切換亮滅",
+   "加第二顆按鍵控第二顆 LED"
   ],
+  "verify": {},
+  "board": "devkit",
   "boardName": "ESP32 DevKit"
  },
  {
-  "id": "breathing@devkit",
+  "id": "dk_breathing@devkit",
   "title": "呼吸燈",
   "level": "入門",
-  "summary": "PWM：用工作比控制平均亮度，數值慢慢加減就像呼吸。",
-  "board": "devkit",
+  "summary": "PWM 讓 LED 慢慢亮、慢慢暗。",
   "breadboard": null,
   "parts": {
    "r1": {
     "type": "resistor",
-    "x": 300,
+    "x": 330,
     "y": 150,
     "rot": 0,
     "attrs": {
@@ -3118,7 +3741,7 @@
    },
    "led1": {
     "type": "led",
-    "x": 400,
+    "x": 430,
     "y": 130,
     "rot": 0,
     "attrs": {
@@ -3130,66 +3753,52 @@
    {
     "a": "board:D4",
     "b": "r1:1",
-    "color": "#d33"
+    "color": "#36c"
    },
    {
     "a": "r1:2",
     "b": "led1:A",
-    "color": "#e90"
+    "color": "#36c"
    },
    {
     "a": "led1:C",
     "b": "board:GND.1",
-    "color": "#111"
+    "color": "#222"
    }
   ],
   "steps": [
    {
-    "text": "D4 → 220Ω 電阻",
+    "text": "D4 → 220Ω → LED → GND",
     "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻 → LED 長腳",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "LED 短腳 → GND.1",
-    "wires": [
+     0,
+     1,
      2
     ]
    }
   ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\npwm = PWM(Pin(4), freq=1000)   # 1 kHz 的 PWM\nwhile lab.running():\n    for d in range(0, 65535, 3000):      # 漸亮\n        pwm.duty_u16(d)\n        lab.sleep(0.02)\n    for d in range(65535, 0, -3000):     # 漸暗\n        pwm.duty_u16(d)\n        lab.sleep(0.02)\n    print('一次呼吸')\n",
-  "expect": "LED 慢慢變亮再慢慢變暗，主控台每一輪印一次。",
+  "code": "import lab\nfrom machine import Pin, PWM\npwm = PWM(Pin(4), freq=1000); n = 0\nwhile lab.running():\n    for duty in range(0, 65535, 3000): pwm.duty_u16(duty); lab.sleep(0.02)\n    for duty in range(65535, 0, -3000): pwm.duty_u16(duty); lab.sleep(0.02)\n    n += 1; print('呼吸第', n, '次')\n",
+  "expect": "LED 漸亮漸暗循環。",
   "try": [
-   "把 3000 改成 500，呼吸變慢",
-   "改 freq=50 看看 LED 會不會閃（頻率太低眼睛看得出來）"
+   "改 3000 看快慢",
+   "兩顆 LED 交錯呼吸"
   ],
+  "verify": {
+   "console": "呼吸"
+  },
+  "board": "devkit",
   "boardName": "ESP32 DevKit"
  },
  {
-  "id": "pot_brightness@devkit",
-  "title": "可變電阻調亮度",
-  "level": "進階",
-  "summary": "ADC 讀可變電阻的分壓（0～4095），再用 PWM 把它變成亮度。",
-  "board": "devkit",
+  "id": "dk_traffic@devkit",
+  "title": "紅綠燈",
+  "level": "入門",
+  "summary": "紅→綠→黃輪替；按行人鈕會提早變紅並讓行人綠燈亮。",
   "breadboard": null,
   "parts": {
-   "pot1": {
-    "type": "potentiometer",
-    "x": 300,
-    "y": 260,
-    "rot": 0,
-    "attrs": {}
-   },
    "r1": {
     "type": "resistor",
-    "x": 300,
-    "y": 120,
+    "x": 330,
+    "y": 70,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -3197,8 +3806,186 @@
    },
    "led1": {
     "type": "led",
-    "x": 400,
-    "y": 100,
+    "x": 430,
+    "y": 50,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 330,
+    "y": 140,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led2": {
+    "type": "led",
+    "x": 430,
+    "y": 120,
+    "rot": 0,
+    "attrs": {
+     "color": "yellow"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 330,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led3": {
+    "type": "led",
+    "x": 430,
+    "y": 190,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 330,
+    "y": 280,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D12",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "board:D13",
+    "b": "r2:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "r2:2",
+    "b": "led2:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "led2:C",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "board:D14",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "led3:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led3:C",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "board:D27",
+    "b": "btn1:1.l",
+    "color": "#36c"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND.1",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D12 → 220Ω → 紅 LED → GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "D13 → 220Ω → 黃 LED → GND",
+    "wires": [
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "D14 → 220Ω → 綠 LED → GND",
+    "wires": [
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "text": "行人鈕接 D27 與 GND",
+    "wires": [
+     9,
+     10
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\n\nred, yellow, green = Pin(12, Pin.OUT), Pin(13, Pin.OUT), Pin(14, Pin.OUT)\nbtn = Pin(27, Pin.IN, Pin.PULL_UP)\ndef lights(r, y, g): red.value(r); yellow.value(y); green.value(g)\ndef wait(sec):\n    for i in range(int(sec / 0.05)):\n        if btn.value() == 0: print('有人按行人鈕'); return True\n        lab.sleep(0.05)\n    return False\nwhile lab.running():\n    lights(0, 0, 1); print('綠燈')\n    if wait(4): lights(0, 1, 0); lab.sleep(1); lights(1, 0, 0); print('行人過馬路'); lab.sleep(5); continue\n    lights(0, 1, 0); print('黃燈'); lab.sleep(1)\n    lights(1, 0, 0); print('紅燈'); lab.sleep(3)\n",
+  "expect": "綠 4 秒、黃 1 秒、紅 3 秒輪替；綠燈時按鈕會提早轉黃轉紅。",
+  "try": [
+   "加行人用的小綠燈",
+   "紅燈最後 1 秒閃爍"
+  ],
+  "verify": {
+   "console": "綠燈"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_pot@devkit",
+  "title": "可變電阻調亮度",
+  "level": "入門",
+  "summary": "ADC 讀可變電阻，PWM 控 LED 亮度。",
+  "breadboard": null,
+  "parts": {
+   "pot1": {
+    "type": "potentiometer",
+    "x": 320,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 330,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 430,
+    "y": 200,
     "rot": 0,
     "attrs": {
      "color": "yellow"
@@ -3214,17 +4001,17 @@
    {
     "a": "pot1:GND",
     "b": "board:GND.1",
-    "color": "#111"
+    "color": "#222"
    },
    {
     "a": "pot1:SIG",
-    "b": "board:D18",
-    "color": "#27d"
+    "b": "board:D34",
+    "color": "#dc2"
    },
    {
     "a": "board:D4",
     "b": "r1:1",
-    "color": "#d33"
+    "color": "#e90"
    },
    {
     "a": "r1:2",
@@ -3234,59 +4021,429 @@
    {
     "a": "led1:C",
     "b": "board:GND.1",
-    "color": "#111"
+    "color": "#222"
    }
   ],
   "steps": [
    {
-    "text": "可變電阻兩端接 3V3 與 GND.1（它是一個分壓器）",
+    "text": "可變電阻 VCC→3V3、GND→GND、SIG→D34（ADC）",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "D4 → 220Ω → LED → GND",
+    "wires": [
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "執行後拖可變電阻",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, PWM, ADC\npot = ADC(Pin(34), atten=ADC.ATTN_11DB); pwm = PWM(Pin(4), freq=1000)\nwhile lab.running():\n    v = pot.read(); pwm.duty_u16(v * 16); print('ADC', v, '亮度', v * 100 // 4095, '%'); lab.send(adc=v); lab.sleep(0.1)\n",
+  "expect": "旋鈕轉到哪 LED 多亮。",
+  "try": [
+   "改成控制蜂鳴器音高",
+   "ADC 低於 500 時 LED 全暗"
+  ],
+  "verify": {
+   "adc": {
+    "34": 3000
+   },
+   "console": "ADC"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_scale@devkit",
+  "title": "蜂鳴器音階",
+  "level": "入門",
+  "summary": "PWM 不同頻率奏出 Do～Do。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 330,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 430,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D4",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND.1",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D4 → 220Ω → 蜂鳴器 → GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, PWM\nbz = PWM(Pin(4), freq=262)\nnotes = [262, 294, 330, 349, 392, 440, 494, 523]; names = ['Do', 'Re', 'Mi', 'Fa', 'So', 'La', 'Si', 'Do']\nwhile lab.running():\n    for f, n in zip(notes, names):\n        bz.freq(f); bz.duty_u16(32768); print(n, f, 'Hz'); lab.sleep(0.3); bz.duty_u16(0); lab.sleep(0.05)\n",
+  "expect": "主控台依序印音名，蜂鳴器出現音符記號。",
+  "try": [
+   "彈小星星",
+   "用按鍵當琴鍵"
+  ],
+  "verify": {
+   "console": "Do"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_clock@devkit",
+  "title": "數位時鐘",
+  "level": "入門",
+  "summary": "OLED 顯示時:分:秒與秒針圓盤，按鍵調時。",
+  "breadboard": null,
+  "parts": {
+   "oled1": {
+    "type": "ssd1306",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 330,
+    "y": 220,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "oled1:3V3",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "oled1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "oled1:DATA",
+    "b": "board:D21",
+    "color": "#36c"
+   },
+   {
+    "a": "oled1:CLK",
+    "b": "board:D22",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:D5",
+    "b": "btn1:1.l",
+    "color": "#2a7"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND.1",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "OLED 3V3→3V3、GND→GND",
     "wires": [
      0,
      1
     ]
    },
    {
-    "text": "中間腳 SIG 接 D18，程式用 ADC 讀電壓",
+    "text": "DATA（SDA）→D21、CLK（SCL）→D22",
     "wires": [
-     2
+     2,
+     3
     ]
    },
    {
-    "text": "LED：D4 → 220Ω → LED → GND.1",
+    "text": "按鍵接 D5 與 GND（按一下加 1 小時）",
     "wires": [
-     3,
      4,
      5
     ]
    }
   ],
-  "code": "import lab\nfrom machine import Pin, PWM, ADC\n\npot = ADC(Pin(18), atten=ADC.ATTN_11DB)   # 模擬器允許 D18 當 ADC；實機請改用 ADC 腳位\npwm = PWM(Pin(4), freq=1000)\nwhile lab.running():\n    v = pot.read()               # 0～4095\n    pwm.duty_u16(v * 16)         # 0～65520\n    print('ADC', v, '亮度', v * 100 // 4095, '%')\n    lab.send(adc=v)\n    lab.sleep(0.1)\n",
-  "expect": "執行中在可變電阻上按住上下拖（或右側滑桿），LED 亮度跟著變，主控台印 ADC 值。",
+  "code": "import lab, ssd1306, time, math\nfrom machine import Pin, I2C\ni2c = I2C(0, scl=Pin(22), sda=Pin(21)); oled = ssd1306.SSD1306_I2C(128, 64, i2c)\nbtn = Pin(5, Pin.IN, Pin.PULL_UP); h, m, s = 9, 41, 0; last = time.ticks_ms()\ndef draw():\n    oled.fill(0); oled.text('%02d:%02d:%02d' % (h, m, s), 0, 4)\n    cx, cy, r = 96, 32, 28\n    for k in range(12): a = k * math.pi / 6; oled.pixel(int(cx + r * math.sin(a)), int(cy - r * math.cos(a)), 1)\n    a = s * math.pi / 30; oled.line(cx, cy, int(cx + (r - 4) * math.sin(a)), int(cy - (r - 4) * math.cos(a)), 1)\n    a = (h % 12 + m / 60) * math.pi / 6; oled.line(cx, cy, int(cx + (r - 14) * math.sin(a)), int(cy - (r - 14) * math.cos(a)), 1)\n    oled.text('btn:+1h', 0, 50); oled.show()\ndraw()\nwhile lab.running():\n    if time.ticks_diff(time.ticks_ms(), last) >= 1000:\n        last = time.ticks_add(last, 1000); s += 1\n        if s == 60: s = 0; m += 1\n        if m == 60: m = 0; h = (h + 1) % 24\n        draw(); print('%02d:%02d:%02d' % (h, m, s))\n    if btn.value() == 0:\n        h = (h + 1) % 24; draw()\n        while lab.running() and btn.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "OLED 每秒更新，按鍵加小時。",
   "try": [
-   "把亮度對應改成反的：轉到底反而最暗",
-   "加上門檻：ADC 小於 500 就把 LED 關掉"
+   "加第二顆按鍵調分",
+   "整點閃一下"
   ],
+  "verify": {
+   "console": "\\d\\d:\\d\\d:\\d\\d"
+  },
+  "board": "devkit",
   "boardName": "ESP32 DevKit"
  },
  {
-  "id": "ldr_nightlight@devkit",
-  "title": "光敏夜燈",
-  "level": "進階",
-  "summary": "光敏模組的 AO 隨光線改變電壓，暗到門檻以下就自動開燈。",
-  "board": "devkit",
+  "id": "dk_water_level@devkit",
+  "title": "水塔水位計",
+  "level": "入門",
+  "summary": "可變電阻模擬水位，LED 長條一格一格亮，滿水位閃爍提醒。",
   "breadboard": null,
   "parts": {
-   "ldr1": {
-    "type": "photoresistor-sensor",
-    "x": 290,
-    "y": 260,
+   "pot1": {
+    "type": "potentiometer",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "bar1": {
+    "type": "led-bar-graph",
+    "x": 470,
+    "y": 150,
     "rot": 0,
     "attrs": {}
    },
    "r1": {
     "type": "resistor",
+    "x": 380,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 380,
+    "y": 175,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 380,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r4": {
+    "type": "resistor",
+    "x": 380,
+    "y": 225,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r5": {
+    "type": "resistor",
+    "x": 380,
+    "y": 250,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "board:D34",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:D12",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bar1:A1",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D13",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "bar1:A2",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D14",
+    "b": "r3:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r3:2",
+    "b": "bar1:A3",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D27",
+    "b": "r4:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r4:2",
+    "b": "bar1:A4",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D26",
+    "b": "r5:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r5:2",
+    "b": "bar1:A5",
+    "color": "#e90"
+   },
+   {
+    "a": "bar1:C1",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C2",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C3",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C4",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C5",
+    "b": "board:GND.1",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "可變電阻 VCC→3V3、GND→GND、SIG→D34",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "D12/D13/D14/D27/D26 各經 220Ω 接長條 A1～A5",
+    "wires": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "C1～C5 接 GND",
+    "wires": [
+     13,
+     14,
+     15,
+     16,
+     17
+    ]
+   },
+   {
+    "text": "執行後拖可變電阻",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\npot = ADC(Pin(34), atten=ADC.ATTN_11DB); bars = [Pin(p, Pin.OUT) for p in (12, 13, 14, 27, 26)]; blink = 0\nwhile lab.running():\n    v = pot.read(); n = v * 6 // 4096\n    for i, p in enumerate(bars): p.value(1 if i < n else 0)\n    if n >= 5: blink ^= 1; bars[4].value(blink); print('滿水位！')\n    print('水位', v * 100 // 4095, '%，亮', min(n, 5), '格'); lab.send(level=v)\n    lab.sleep(0.25)\n",
+  "expect": "旋鈕越高亮越多格，到頂第五格閃爍。",
+  "try": [
+   "低於 1 格時蜂鳴器警報",
+   "改成 10 格"
+  ],
+  "verify": {
+   "adc": {
+    "34": 4000
+   },
+   "console": "滿水位"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_nightlight@devkit",
+  "title": "光敏夜燈",
+  "level": "進階",
+  "summary": "光敏模組變暗自動開燈。",
+  "breadboard": null,
+  "parts": {
+   "ldr1": {
+    "type": "photoresistor-sensor",
     "x": 300,
-    "y": 120,
+    "y": 70,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 330,
+    "y": 220,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -3294,8 +4451,8 @@
    },
    "led1": {
     "type": "led",
-    "x": 400,
-    "y": 100,
+    "x": 430,
+    "y": 200,
     "rot": 0,
     "attrs": {
      "color": "white"
@@ -3311,17 +4468,17 @@
    {
     "a": "ldr1:GND",
     "b": "board:GND.1",
-    "color": "#111"
+    "color": "#222"
    },
    {
     "a": "ldr1:AO",
-    "b": "board:D18",
-    "color": "#27d"
+    "b": "board:D35",
+    "color": "#dc2"
    },
    {
     "a": "board:D4",
     "b": "r1:1",
-    "color": "#d33"
+    "color": "#e90"
    },
    {
     "a": "r1:2",
@@ -3331,122 +4488,59 @@
    {
     "a": "led1:C",
     "b": "board:GND.1",
-    "color": "#111"
+    "color": "#222"
    }
   ],
   "steps": [
    {
-    "text": "光敏模組 VCC 接 3V3、GND.1 接 GND.1",
+    "text": "光敏模組 VCC→3V3、GND→GND、AO→D35",
     "wires": [
      0,
-     1
-    ]
-   },
-   {
-    "text": "AO（類比輸出）接 D18",
-    "wires": [
+     1,
      2
     ]
    },
    {
-    "text": "LED：D4 → 220Ω → LED → GND.1",
+    "text": "D4 → 220Ω → LED → GND",
     "wires": [
      3,
      4,
      5
     ]
+   },
+   {
+    "text": "執行後在模組上往下拖變暗",
+    "wires": []
    }
   ],
-  "code": "import lab\nfrom machine import Pin, ADC\n\nldr = ADC(Pin(18), atten=ADC.ATTN_11DB)   # 模擬器允許 D18 當 ADC；實機請改用 ADC 腳位\nled = Pin(4, Pin.OUT)\nwhile lab.running():\n    v = ldr.read()\n    dark = v < 1500          # 門檻：越暗 AO 越低\n    led.value(1 if dark else 0)\n    print('光線', v, '→', '開燈' if dark else '關燈')\n    lab.send(light=v)\n    lab.sleep(0.2)\n",
-  "expect": "執行中在光敏模組上按住往下拖（變暗），LED 亮起；往上拖（變亮）就熄滅。",
+  "code": "import lab\nfrom machine import Pin, ADC\nldr = ADC(Pin(35), atten=ADC.ATTN_11DB); led = Pin(4, Pin.OUT)\nwhile lab.running():\n    v = ldr.read(); dark = v < 1500; led.value(1 if dark else 0)\n    print('光線', v, '→', '開燈' if dark else '關燈'); lab.send(light=v); lab.sleep(0.2)\n",
+  "expect": "拖暗就開燈。",
   "try": [
-   "把門檻 1500 改成 3000，看什麼亮度才會開燈",
-   "改成用 PWM 讓越暗越亮"
+   "改門檻",
+   "加遲滯避免閃爍"
   ],
-  "boardName": "ESP32 DevKit"
- },
- {
-  "id": "buzzer_scale@devkit",
-  "title": "蜂鳴器音階",
-  "level": "進階",
-  "summary": "PWM 改頻率就是改音高：Do Re Mi 的頻率是 262、294、330…。",
-  "board": "devkit",
-  "breadboard": null,
-  "parts": {
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 150,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
+  "verify": {
+   "ui": {
+    "ldr1": {
+     "light": 0.05
     }
    },
-   "bz1": {
-    "type": "buzzer",
-    "x": 400,
-    "y": 100,
-    "rot": 0,
-    "attrs": {}
-   }
+   "console": "開燈"
   },
-  "wires": [
-   {
-    "a": "board:D4",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "bz1:1",
-    "color": "#e90"
-   },
-   {
-    "a": "bz1:2",
-    "b": "board:GND.1",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "D4 → 220Ω 電阻（限流，蜂鳴器直接接腳位會超過 40 mA）",
-    "wires": [
-     0
-    ]
-   },
-   {
-    "text": "電阻 → 蜂鳴器 1 腳",
-    "wires": [
-     1
-    ]
-   },
-   {
-    "text": "蜂鳴器 2 腳 → GND.1",
-    "wires": [
-     2
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nbz = PWM(Pin(4), freq=262)\nnotes = [262, 294, 330, 349, 392, 440, 494, 523]   # Do Re Mi Fa So La Si Do\nnames = ['Do', 'Re', 'Mi', 'Fa', 'So', 'La', 'Si', 'Do']\nwhile lab.running():\n    for f, n in zip(notes, names):\n        bz.freq(f)\n        bz.duty_u16(32768)   # 50% 工作比\n        print(n, f, 'Hz')\n        lab.sleep(0.3)\n        bz.duty_u16(0)       # 停一下\n        lab.sleep(0.05)\n",
-  "expect": "主控台依序印出 Do～Do 與頻率；蜂鳴器上出現音符記號代表有訊號（模擬器不發聲）。",
-  "try": [
-   "把 notes 改成你喜歡的旋律",
-   "每個音的長度改成不一樣（節奏）"
-  ],
+  "board": "devkit",
   "boardName": "ESP32 DevKit"
  },
  {
-  "id": "servo_sweep@devkit",
+  "id": "dk_servo@devkit",
   "title": "伺服掃描",
   "level": "進階",
-  "summary": "伺服馬達吃 50 Hz 的 PWM，脈寬 0.5～2.5 ms 對應 0～180 度。",
-  "board": "devkit",
+  "summary": "伺服 0→180→0 來回掃。",
   "breadboard": null,
   "parts": {
    "servo1": {
     "type": "servo",
-    "x": 320,
-    "y": 230,
+    "x": 300,
+    "y": 80,
     "rot": 0,
     "attrs": {}
    }
@@ -3460,7 +4554,7 @@
    {
     "a": "servo1:GND",
     "b": "board:GND.1",
-    "color": "#111"
+    "color": "#222"
    },
    {
     "a": "servo1:PWM",
@@ -3470,51 +4564,49 @@
   ],
   "steps": [
    {
-    "text": "伺服的 V+（紅）接 VIN，馬達要另外吃電",
+    "text": "伺服 V+ 接 VIN（5V）、GND 接 GND",
     "wires": [
-     0
-    ]
-   },
-   {
-    "text": "GND.1（棕）接 GND.1",
-    "wires": [
+     0,
      1
     ]
    },
    {
-    "text": "PWM（橘）接 D5，程式用 50 Hz 的 PWM 控制角度",
+    "text": "PWM 接 D5",
     "wires": [
      2
     ]
    }
   ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nservo = PWM(Pin(5), freq=50)\n\ndef angle(a):\n    ms = 0.5 + a / 180 * 2.0          # 0.5～2.5 ms\n    servo.duty_u16(int(ms / 20 * 65535))\n\nwhile lab.running():\n    for a in (0, 45, 90, 135, 180, 135, 90, 45):\n        angle(a)\n        print('角度', a)\n        lab.sleep(0.5)\n",
-  "expect": "伺服的擺臂依 0→180→0 度來回掃，主控台印出角度。",
+  "code": "import lab\nfrom machine import Pin, PWM\nservo = PWM(Pin(5), freq=50)\ndef angle(a): servo.duty_u16(int((0.5 + a / 180 * 2.0) / 20 * 65535))\nwhile lab.running():\n    for a in (0, 45, 90, 135, 180, 135, 90, 45): angle(a); print('角度', a); lab.sleep(0.5)\n",
+  "expect": "擺臂來回掃。",
   "try": [
-   "把 V+ 改接 3V3，看模擬器怎麼說",
-   "加一個可變電阻，用 ADC 值決定角度"
+   "用可變電阻控角度",
+   "按鍵讓它停在 90°"
   ],
+  "verify": {
+   "console": "角度"
+  },
+  "board": "devkit",
   "boardName": "ESP32 DevKit"
  },
  {
-  "id": "rgb_mix@devkit",
+  "id": "dk_rgb@devkit",
   "title": "RGB 混色",
   "level": "進階",
-  "summary": "共陰極 RGB LED：三色各一支 PWM，調工作比就能混出任何顏色。",
-  "board": "devkit",
+  "summary": "三路 PWM 混出七種顏色。",
   "breadboard": null,
   "parts": {
    "rgb1": {
     "type": "rgb-led",
-    "x": 480,
-    "y": 60,
+    "x": 420,
+    "y": 80,
     "rot": 0,
     "attrs": {}
    },
    "r1": {
     "type": "resistor",
-    "x": 300,
-    "y": 110,
+    "x": 320,
+    "y": 60,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -3522,8 +4614,8 @@
    },
    "r2": {
     "type": "resistor",
-    "x": 300,
-    "y": 160,
+    "x": 320,
+    "y": 110,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -3531,8 +4623,8 @@
    },
    "r3": {
     "type": "resistor",
-    "x": 300,
-    "y": 210,
+    "x": 320,
+    "y": 160,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -3541,7 +4633,7 @@
   },
   "wires": [
    {
-    "a": "board:D4",
+    "a": "board:D25",
     "b": "r1:1",
     "color": "#d33"
    },
@@ -3551,7 +4643,7 @@
     "color": "#d33"
    },
    {
-    "a": "board:D5",
+    "a": "board:D26",
     "b": "r2:1",
     "color": "#2a7"
    },
@@ -3561,252 +4653,70 @@
     "color": "#2a7"
    },
    {
-    "a": "board:D18",
+    "a": "board:D27",
     "b": "r3:1",
-    "color": "#27d"
+    "color": "#36c"
    },
    {
     "a": "r3:2",
     "b": "rgb1:B",
-    "color": "#27d"
+    "color": "#36c"
    },
    {
     "a": "rgb1:COM",
     "b": "board:GND.1",
-    "color": "#111"
+    "color": "#222"
    }
   ],
   "steps": [
    {
-    "text": "紅：D4 → 220Ω → R 腳",
+    "text": "D25→220Ω→R、D26→220Ω→G、D27→220Ω→B",
     "wires": [
      0,
-     1
-    ]
-   },
-   {
-    "text": "綠：D5 → 220Ω → G 腳",
-    "wires": [
+     1,
      2,
-     3
-    ]
-   },
-   {
-    "text": "藍：D18 → 220Ω → B 腳",
-    "wires": [
+     3,
      4,
      5
     ]
    },
    {
-    "text": "共陰極 COM（最長腳）接 GND.1",
+    "text": "COM 接 GND（共陰）",
     "wires": [
      6
     ]
    }
   ],
-  "code": "import lab\nfrom machine import Pin, PWM\n\nr = PWM(Pin(4), freq=1000)\ng = PWM(Pin(5), freq=1000)\nb = PWM(Pin(18), freq=1000)\ncolors = [('紅', 65535, 0, 0), ('綠', 0, 65535, 0), ('藍', 0, 0, 65535), ('黃', 65535, 65535, 0), ('青', 0, 65535, 65535), ('紫', 65535, 0, 65535), ('白', 65535, 65535, 65535)]\nwhile lab.running():\n    for name, rv, gv, bv in colors:\n        r.duty_u16(rv); g.duty_u16(gv); b.duty_u16(bv)\n        print(name)\n        lab.sleep(0.6)\n",
-  "expect": "RGB LED 依序變紅、綠、藍、黃、青、紫、白，主控台印顏色名。",
+  "code": "import lab\nfrom machine import Pin, PWM\nr, g, b = (PWM(Pin(p), freq=1000) for p in (25, 26, 27))\ncolors = {'紅': (1, 0, 0), '綠': (0, 1, 0), '藍': (0, 0, 1), '黃': (1, 1, 0), '青': (0, 1, 1), '紫': (1, 0, 1), '白': (1, 1, 1)}\nwhile lab.running():\n    for name, (cr, cg, cb) in colors.items():\n        r.duty_u16(cr * 40000); g.duty_u16(cg * 40000); b.duty_u16(cb * 40000); print(name); lab.sleep(0.6)\n",
+  "expect": "RGB LED 輪流七色。",
   "try": [
-   "做漸層：讓紅慢慢變成藍",
-   "只用兩色混出橘色（紅滿、綠一半）"
+   "做漸變彩虹",
+   "用可變電阻調色相"
   ],
-  "boardName": "ESP32 DevKit"
- },
- {
-  "id": "oled_text@devkit",
-  "title": "OLED 顯示文字",
-  "level": "進階",
-  "summary": "I2C 介面的 SSD1306：兩條線（SDA、SCL）就能顯示文字與圖形。",
-  "board": "devkit",
-  "breadboard": null,
-  "parts": {
-   "oled1": {
-    "type": "ssd1306",
-    "x": 320,
-    "y": 230,
-    "rot": 0,
-    "attrs": {}
-   }
+  "verify": {
+   "console": "紅"
   },
-  "wires": [
-   {
-    "a": "oled1:3V3",
-    "b": "board:3V3",
-    "color": "#d33"
-   },
-   {
-    "a": "oled1:GND",
-    "b": "board:GND.1",
-    "color": "#111"
-   },
-   {
-    "a": "oled1:DATA",
-    "b": "board:D4",
-    "color": "#27d"
-   },
-   {
-    "a": "oled1:CLK",
-    "b": "board:D5",
-    "color": "#2a7"
-   }
-  ],
-  "steps": [
-   {
-    "text": "OLED 的 3V3 接 3V3、GND.1 接 GND.1",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "DATA（SDA）接 D4",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "CLK（SCL）接 D5；程式用 I2C(0, scl=Pin(5), sda=Pin(4))",
-    "wires": [
-     3
-    ]
-   }
-  ],
-  "code": "import lab\nimport ssd1306\nfrom machine import Pin, I2C\n\ni2c = I2C(0, scl=Pin(5), sda=Pin(4))\nprint('I2C 掃到', i2c.scan())      # 應該看到 [60]（0x3C）\noled = ssd1306.SSD1306_I2C(128, 64, i2c)\nn = 0\nwhile lab.running():\n    oled.fill(0)\n    oled.text('ESP32 AI Lab', 0, 0)\n    oled.text('count: %d' % n, 0, 16)\n    oled.rect(0, 32, 128, 12, 1)\n    oled.fill_rect(2, 34, (n % 32) * 4, 8, 1)   # 進度條\n    oled.show()\n    print('畫面更新', n)\n    n += 1\n    lab.sleep(0.5)\n",
-  "expect": "OLED 顯示 ESP32 AI Lab、計數與一條會長的進度條；主控台印 I2C 掃到 [60]。",
-  "try": [
-   "用 oled.pixel(x, y, 1) 畫一個笑臉",
-   "把 GND.1 線拔掉，看模擬器怎麼提示「沒有供電」"
-  ],
+  "board": "devkit",
   "boardName": "ESP32 DevKit"
  },
  {
-  "id": "ultrasonic@devkit",
-  "title": "超音波測距",
+  "id": "dk_weather_lcd@devkit",
+  "title": "天氣站",
   "level": "進階",
-  "summary": "HC-SR04：TRIG 送 10 µs 脈衝，ECHO 的高電位時間 ÷ 58 就是公分。",
-  "board": "devkit",
-  "breadboard": null,
-  "parts": {
-   "us1": {
-    "type": "hc-sr04",
-    "x": 300,
-    "y": 240,
-    "rot": 0,
-    "attrs": {}
-   },
-   "r1": {
-    "type": "resistor",
-    "x": 300,
-    "y": 110,
-    "rot": 0,
-    "attrs": {
-     "value": "220"
-    }
-   },
-   "led1": {
-    "type": "led",
-    "x": 400,
-    "y": 90,
-    "rot": 0,
-    "attrs": {
-     "color": "red"
-    }
-   }
-  },
-  "wires": [
-   {
-    "a": "us1:VCC",
-    "b": "board:VIN",
-    "color": "#d33"
-   },
-   {
-    "a": "us1:GND",
-    "b": "board:GND.1",
-    "color": "#111"
-   },
-   {
-    "a": "us1:TRIG",
-    "b": "board:D5",
-    "color": "#2a7"
-   },
-   {
-    "a": "us1:ECHO",
-    "b": "board:D4",
-    "color": "#e90"
-   },
-   {
-    "a": "board:D18",
-    "b": "r1:1",
-    "color": "#d33"
-   },
-   {
-    "a": "r1:2",
-    "b": "led1:A",
-    "color": "#e90"
-   },
-   {
-    "a": "led1:C",
-    "b": "board:GND.1",
-    "color": "#111"
-   }
-  ],
-  "steps": [
-   {
-    "text": "HC-SR04 的 VCC 接 VIN、GND.1 接 GND.1",
-    "wires": [
-     0,
-     1
-    ]
-   },
-   {
-    "text": "TRIG 接 D5（輸出）",
-    "wires": [
-     2
-    ]
-   },
-   {
-    "text": "ECHO 接 D4（輸入；實機建議加分壓，5 V 回到 3.3 V 腳位）",
-    "wires": [
-     3
-    ]
-   },
-   {
-    "text": "警示 LED：D18 → 220Ω → LED → GND.1",
-    "wires": [
-     4,
-     5,
-     6
-    ]
-   }
-  ],
-  "code": "import lab\nfrom machine import Pin, time_pulse_us\n\ntrig = Pin(5, Pin.OUT)\necho = Pin(4, Pin.IN)\nled = Pin(18, Pin.OUT)\nwhile lab.running():\n    trig.value(1)\n    trig.value(0)                          # 10 µs 的脈衝（模擬器近似）\n    us = time_pulse_us(echo, 1, 30000)     # ECHO 高電位多久（微秒）\n    if us < 0:\n        print('沒有回波')\n    else:\n        cm = us / 58\n        led.value(1 if cm < 20 else 0)      # 20 公分內亮燈\n        print('距離 %.1f cm' % cm)\n        lab.send(cm=round(cm, 1))\n    lab.sleep(0.3)\n",
-  "expect": "主控台印出距離（預設 100 cm）；執行中在感測器上按住往下拖把距離拉到 20 cm 以內，LED 亮。",
-  "try": [
-   "把門檻改成 50 cm",
-   "距離越近讓 LED 閃越快"
-  ],
-  "boardName": "ESP32 DevKit"
- },
- {
-  "id": "dht_display@devkit",
-  "title": "溫濕度顯示",
-  "level": "進階",
-  "summary": "DHT22 一條資料線回傳溫濕度，讀到的值顯示在 OLED 上。",
-  "board": "devkit",
+  "summary": "DHT22 溫濕度顯示在 LCD1602，第二行用符號畫天氣。",
   "breadboard": null,
   "parts": {
    "dht1": {
     "type": "dht22",
-    "x": 520,
+    "x": 320,
     "y": 60,
     "rot": 0,
     "attrs": {}
    },
-   "oled1": {
-    "type": "ssd1306",
-    "x": 320,
-    "y": 230,
+   "lcd1": {
+    "type": "lcd1602",
+    "x": 300,
+    "y": 200,
     "rot": 0,
     "attrs": {}
    }
@@ -3820,12 +4730,1079 @@
    {
     "a": "dht1:GND",
     "b": "board:GND.1",
-    "color": "#111"
+    "color": "#222"
    },
    {
     "a": "dht1:SDA",
+    "b": "board:D4",
+    "color": "#dc2"
+   },
+   {
+    "a": "lcd1:VCC",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "lcd1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "lcd1:SDA",
+    "b": "board:D21",
+    "color": "#36c"
+   },
+   {
+    "a": "lcd1:SCL",
+    "b": "board:D22",
+    "color": "#2a7"
+   }
+  ],
+  "steps": [
+   {
+    "text": "DHT22 VCC→3V3、GND→GND、SDA→D4",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "LCD1602 VCC→VIN（5V）、GND→GND",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "SDA→D21、SCL→D22（I2C 位址 0x27）",
+    "wires": [
+     5,
+     6
+    ]
+   },
+   {
+    "text": "執行後點 DHT22 用滑桿改溫濕度",
+    "wires": []
+   }
+  ],
+  "code": "import lab, dht\nfrom machine import Pin, I2C\nfrom machine_i2c_lcd import I2cLcd\nsensor = dht.DHT22(Pin(4)); i2c = I2C(0, scl=Pin(22), sda=Pin(21)); lcd = I2cLcd(i2c, 0x27, 2, 16)\nwhile lab.running():\n    try:\n        sensor.measure(); t, h = sensor.temperature(), sensor.humidity()\n        kind = 'RAIN  ////' if h > 80 else ('CLOUD (~~)' if h > 55 else 'SUNNY  \\\\|/')\n        lcd.move_to(0, 0); lcd.putstr('%5.1fC  %3.0f%%  ' % (t, h)); lcd.move_to(0, 1); lcd.putstr('%-16s' % kind)\n        print('溫度', t, '濕度', h, kind); lab.send(temp=t, humi=h)\n    except OSError as e: print('讀不到 DHT22', e)\n    lab.sleep(2)\n",
+  "expect": "LCD 第一行溫濕度、第二行天氣字樣，每 2 秒更新。",
+  "try": [
+   "加露點計算",
+   "濕度過高閃背光"
+  ],
+  "verify": {
+   "console": "濕度"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_parking@devkit",
+  "title": "停車感測器",
+  "level": "進階",
+  "summary": "超音波越近，LED 長條亮越多格、蜂鳴器嗶越快，像倒車雷達。",
+  "breadboard": null,
+  "parts": {
+   "us1": {
+    "type": "hc-sr04",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "bar1": {
+    "type": "led-bar-graph",
+    "x": 470,
+    "y": 150,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 380,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 380,
+    "y": 175,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 380,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r4": {
+    "type": "resistor",
+    "x": 380,
+    "y": 225,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r5": {
+    "type": "resistor",
+    "x": 380,
+    "y": 250,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "r6": {
+    "type": "resistor",
+    "x": 330,
+    "y": 300,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 430,
+    "y": 290,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "us1:VCC",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "us1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "us1:TRIG",
+    "b": "board:D5",
+    "color": "#dc2"
+   },
+   {
+    "a": "us1:ECHO",
     "b": "board:D18",
-    "color": "#27d"
+    "color": "#2a7"
+   },
+   {
+    "a": "board:D12",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "bar1:A1",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D13",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "bar1:A2",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D14",
+    "b": "r3:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r3:2",
+    "b": "bar1:A3",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D27",
+    "b": "r4:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r4:2",
+    "b": "bar1:A4",
+    "color": "#e90"
+   },
+   {
+    "a": "board:D26",
+    "b": "r5:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r5:2",
+    "b": "bar1:A5",
+    "color": "#e90"
+   },
+   {
+    "a": "bar1:C1",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C2",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C3",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C4",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "bar1:C5",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "board:D4",
+    "b": "r6:1",
+    "color": "#93c"
+   },
+   {
+    "a": "r6:2",
+    "b": "bz1:1",
+    "color": "#93c"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND.1",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "HC-SR04 VCC→VIN、GND→GND、TRIG→D5、ECHO→D18",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "D12/D13/D14/D27/D26 各經 220Ω 接 LED 長條 A1～A5",
+    "wires": [
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ]
+   },
+   {
+    "text": "C1～C5 接 GND",
+    "wires": [
+     14,
+     15,
+     16,
+     17,
+     18
+    ]
+   },
+   {
+    "text": "D4 → 220Ω → 蜂鳴器 → GND",
+    "wires": [
+     19,
+     20,
+     21
+    ]
+   },
+   {
+    "text": "執行後在感測器上往下拖拉近距離",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, PWM, time_pulse_us\ntrig = Pin(5, Pin.OUT); echo = Pin(18, Pin.IN); bz = PWM(Pin(4), freq=1500); bz.duty_u16(0)\nbars = [Pin(p, Pin.OUT) for p in (12, 13, 14, 27, 26)]\nwhile lab.running():\n    trig.value(1); trig.value(0); us = time_pulse_us(echo, 1, 30000); cm = us / 58 if us > 0 else 200\n    n = max(0, min(5, int((100 - cm) / 20) + 1)) if cm < 100 else 0\n    for i, p in enumerate(bars): p.value(1 if i < n else 0)\n    print('距離 %.0f cm，亮 %d 格' % (cm, n)); lab.send(cm=round(cm, 1))\n    if n >= 3: bz.duty_u16(20000); lab.sleep(0.05); bz.duty_u16(0); lab.sleep(0.6 - n * 0.1)\n    else: lab.sleep(0.3)\n",
+  "expect": "100 cm 內開始亮格，越近越多格；60 cm 內蜂鳴器開始嗶，越近越急。",
+  "try": [
+   "改成 10 格",
+   "最近一格改紅色警示（換 LED 顏色屬性）"
+  ],
+  "verify": {
+   "console": "距離"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_pir_relay@devkit",
+  "title": "人體感應燈",
+  "level": "進階",
+  "summary": "PIR 偵測到人就讓繼電器導通、點亮燈（示範用 LED 當大燈），沒人 5 秒後關。",
+  "breadboard": null,
+  "parts": {
+   "pir1": {
+    "type": "pir",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "relay1": {
+    "type": "relay",
+    "x": 300,
+    "y": 170,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 460,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 540,
+    "y": 180,
+    "rot": 0,
+    "attrs": {
+     "color": "white"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "pir1:VCC",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "pir1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "pir1:OUT",
+    "b": "board:D5",
+    "color": "#dc2"
+   },
+   {
+    "a": "relay1:VCC",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "relay1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "relay1:IN",
+    "b": "board:D4",
+    "color": "#e90"
+   },
+   {
+    "a": "relay1:COM",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "relay1:NO",
+    "b": "r1:1",
+    "color": "#93c"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#93c"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND.1",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "PIR VCC→VIN、GND→GND、OUT→D5",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "繼電器 VCC→VIN、GND→GND、IN→D4",
+    "wires": [
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "COM 接 VIN，NO → 220Ω → LED → GND（繼電器吸合燈才亮）",
+    "wires": [
+     6,
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "執行後點 PIR 模組讓它「偵測到人」",
+    "wires": []
+   }
+  ],
+  "code": "import lab, time\nfrom machine import Pin\npir = Pin(5, Pin.IN); relay = Pin(4, Pin.OUT); last = 0; on = False\nwhile lab.running():\n    if pir.value() == 1:\n        last = time.ticks_ms()\n        if not on: on = True; relay.value(1); print('有人 → 開燈')\n    elif on and time.ticks_diff(time.ticks_ms(), last) > 5000:\n        on = False; relay.value(0); print('沒人 5 秒 → 關燈')\n    lab.sleep(0.1)\n",
+  "expect": "點 PIR 讓它偵測到人，繼電器吸合、LED 亮；5 秒沒動靜就關。",
+  "try": [
+   "延遲改 10 秒",
+   "加光敏：白天不開燈"
+  ],
+  "verify": {},
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_stepper@devkit",
+  "title": "步進馬達轉盤",
+  "level": "進階",
+  "summary": "按一下按鍵，步進馬達轉 90°；再按再轉，像轉盤。",
+  "breadboard": null,
+  "parts": {
+   "st1": {
+    "type": "stepper",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 330,
+    "y": 250,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "st1:A+",
+    "b": "board:D12",
+    "color": "#d33"
+   },
+   {
+    "a": "st1:A-",
+    "b": "board:D13",
+    "color": "#e90"
+   },
+   {
+    "a": "st1:B+",
+    "b": "board:D14",
+    "color": "#36c"
+   },
+   {
+    "a": "st1:B-",
+    "b": "board:D27",
+    "color": "#2a7"
+   },
+   {
+    "a": "board:D5",
+    "b": "btn1:1.l",
+    "color": "#93c"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND.1",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "步進馬達 A+/A-/B+/B- 接 D12/D13/D14/D27（模擬器直接驅動；實機要接驅動板）",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "按鍵接 D5 與 GND",
+    "wires": [
+     4,
+     5
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ncoils = [Pin(p, Pin.OUT) for p in (12, 13, 14, 27)]\nSEQ = [(1, 0, 1, 0), (0, 1, 1, 0), (0, 1, 0, 1), (1, 0, 0, 1)]   # 全步序列\nbtn = Pin(5, Pin.IN, Pin.PULL_UP); pos = 0\ndef step(n):\n    global pos\n    for _ in range(n):\n        pos += 1\n        for c, v in zip(coils, SEQ[pos % 4]): c.value(v)\n        lab.sleep(0.01)\nwhile lab.running():\n    if btn.value() == 0:\n        print('轉 90°'); step(50)      # 200 步一圈的馬達：50 步＝90°\n        while lab.running() and btn.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "按一下轉 90°。",
+  "try": [
+   "改成反轉",
+   "連按兩下轉一圈"
+  ],
+  "verify": {},
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_crossing@devkit",
+  "title": "鐵路平交道",
+  "level": "進階",
+  "summary": "按鍵模擬火車壓到軌道：兩顆紅燈交替閃、蜂鳴器噹噹響 5 秒。",
+  "breadboard": null,
+  "parts": {
+   "r1": {
+    "type": "resistor",
+    "x": 330,
+    "y": 70,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 430,
+    "y": 50,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 330,
+    "y": 140,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led2": {
+    "type": "led",
+    "x": 430,
+    "y": 120,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 330,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 430,
+    "y": 180,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 330,
+    "y": 290,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D12",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "board:D13",
+    "b": "r2:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r2:2",
+    "b": "led2:A",
+    "color": "#d33"
+   },
+   {
+    "a": "led2:C",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "board:D4",
+    "b": "r3:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r3:2",
+    "b": "bz1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "board:D5",
+    "b": "btn1:1.l",
+    "color": "#36c"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND.1",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D12、D13 各 → 220Ω → 紅 LED → GND",
+    "wires": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "D4 → 220Ω → 蜂鳴器 → GND",
+    "wires": [
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "text": "按鍵（軌道感應）接 D5 與 GND",
+    "wires": [
+     9,
+     10
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, PWM\nl1, l2 = Pin(12, Pin.OUT), Pin(13, Pin.OUT); bz = PWM(Pin(4), freq=700); bz.duty_u16(0); sensor = Pin(5, Pin.IN, Pin.PULL_UP)\nwhile lab.running():\n    if sensor.value() == 0:\n        print('火車來了！')\n        for i in range(10):\n            l1.value(i % 2); l2.value(1 - i % 2); bz.freq(700 if i % 2 else 900); bz.duty_u16(25000); lab.sleep(0.25); bz.duty_u16(0); lab.sleep(0.25)\n        l1.value(0); l2.value(0); print('火車通過')\n    lab.sleep(0.05)\n",
+  "expect": "按一下按鍵，兩紅燈交替閃 5 秒、蜂鳴器高低音交替。",
+  "try": [
+   "加一支伺服當柵欄",
+   "延長到按第二次才解除"
+  ],
+  "verify": {},
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_gimbal@devkit",
+  "title": "搖桿雲台",
+  "level": "專題",
+  "summary": "搖桿左右控水平伺服、上下控垂直伺服。",
+  "breadboard": null,
+  "parts": {
+   "joy1": {
+    "type": "joystick",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "servo1": {
+    "type": "servo",
+    "x": 480,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "servo2": {
+    "type": "servo",
+    "x": 480,
+    "y": 180,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "joy1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "joy1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "joy1:HORZ",
+    "b": "board:D34",
+    "color": "#dc2"
+   },
+   {
+    "a": "joy1:VERT",
+    "b": "board:D35",
+    "color": "#2a7"
+   },
+   {
+    "a": "servo1:V+",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "servo1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "servo1:PWM",
+    "b": "board:D5",
+    "color": "#e90"
+   },
+   {
+    "a": "servo2:V+",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "servo2:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "servo2:PWM",
+    "b": "board:D18",
+    "color": "#93c"
+   }
+  ],
+  "steps": [
+   {
+    "text": "搖桿 VCC→3V3、GND→GND、HORZ→D34、VERT→D35",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "水平伺服 PWM→D5、垂直伺服 PWM→D18，V+ 都接 VIN",
+    "wires": [
+     4,
+     5,
+     6,
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "執行後在搖桿上按住拖",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, PWM, ADC\nhx = ADC(Pin(34), atten=ADC.ATTN_11DB); vy = ADC(Pin(35), atten=ADC.ATTN_11DB)\npan = PWM(Pin(5), freq=50); tilt = PWM(Pin(18), freq=50)\ndef angle(s, a): s.duty_u16(int((0.5 + a / 180 * 2.0) / 20 * 65535))\nwhile lab.running():\n    a1 = hx.read() * 180 // 4095; a2 = vy.read() * 180 // 4095\n    angle(pan, a1); angle(tilt, a2); print('水平', a1, '垂直', a2); lab.sleep(0.1)\n",
+  "expect": "搖桿往哪推，兩顆伺服就轉到對應角度。",
+  "try": [
+   "加按下搖桿回正",
+   "限制角度 30～150"
+  ],
+  "verify": {
+   "adc": {
+    "34": 3500
+   },
+   "console": "水平"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_smart_home@devkit",
+  "title": "智慧家庭面板",
+  "level": "專題",
+  "summary": "兩顆按鍵開關「電燈」（繼電器）與顯示模式，LCD 顯示溫濕度與電器狀態。",
+  "breadboard": null,
+  "parts": {
+   "btn1": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn2": {
+    "type": "pushbutton",
+    "x": 400,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "relay1": {
+    "type": "relay",
+    "x": 300,
+    "y": 130,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 460,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 540,
+    "y": 130,
+    "rot": 0,
+    "attrs": {
+     "color": "yellow"
+    }
+   },
+   "dht1": {
+    "type": "dht22",
+    "x": 320,
+    "y": 230,
+    "rot": 0,
+    "attrs": {}
+   },
+   "lcd1": {
+    "type": "lcd1602",
+    "x": 300,
+    "y": 330,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D12",
+    "b": "btn1:1.l",
+    "color": "#36c"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "board:D13",
+    "b": "btn2:1.l",
+    "color": "#2a7"
+   },
+   {
+    "a": "btn2:2.l",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "relay1:VCC",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "relay1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "relay1:IN",
+    "b": "board:D4",
+    "color": "#e90"
+   },
+   {
+    "a": "relay1:COM",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "relay1:NO",
+    "b": "r1:1",
+    "color": "#93c"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#93c"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "dht1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "dht1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "dht1:SDA",
+    "b": "board:D5",
+    "color": "#dc2"
+   },
+   {
+    "a": "lcd1:VCC",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "lcd1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "lcd1:SDA",
+    "b": "board:D21",
+    "color": "#36c"
+   },
+   {
+    "a": "lcd1:SCL",
+    "b": "board:D22",
+    "color": "#2a7"
+   }
+  ],
+  "steps": [
+   {
+    "text": "按鍵 1 接 D12、按鍵 2 接 D13（另一側都接 GND）",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "繼電器 VCC→VIN、GND→GND、IN→D4；COM→VIN、NO→220Ω→LED→GND",
+    "wires": [
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "DHT22 SDA→D5",
+    "wires": [
+     11,
+     12,
+     13
+    ]
+   },
+   {
+    "text": "LCD SDA→D21、SCL→D22",
+    "wires": [
+     14,
+     15,
+     16,
+     17
+    ]
+   }
+  ],
+  "code": "import lab, dht\nfrom machine import Pin, I2C\nfrom machine_i2c_lcd import I2cLcd\nb1 = Pin(12, Pin.IN, Pin.PULL_UP); b2 = Pin(13, Pin.IN, Pin.PULL_UP); relay = Pin(4, Pin.OUT)\nsensor = dht.DHT22(Pin(5)); lcd = I2cLcd(I2C(0, scl=Pin(22), sda=Pin(21)), 0x27, 2, 16)\nlight = False; mode = 0; t = h = None; tick = 0\nwhile lab.running():\n    if b1.value() == 0:\n        light = not light; relay.value(1 if light else 0); print('電燈', '開' if light else '關')\n        while lab.running() and b1.value() == 0: lab.sleep(0.02)\n    if b2.value() == 0:\n        mode = (mode + 1) % 2; print('顯示模式', mode)\n        while lab.running() and b2.value() == 0: lab.sleep(0.02)\n    if tick % 20 == 0:\n        try: sensor.measure(); t, h = sensor.temperature(), sensor.humidity()\n        except OSError: pass\n    lcd.move_to(0, 0)\n    if mode == 0 and t is not None: lcd.putstr('%4.1fC %3.0f%%     ' % (t, h))\n    else: lcd.putstr('HOME PANEL      ')\n    lcd.move_to(0, 1); lcd.putstr('Light: %-3s      ' % ('ON' if light else 'OFF'))\n    tick += 1; lab.sleep(0.1)\n",
+  "expect": "按鍵 1 開關電燈（繼電器＋LED），按鍵 2 切換 LCD 第一行顯示；溫濕度每 2 秒更新。",
+  "try": [
+   "加「溫度超過 30 度自動開風扇」",
+   "加第三顆按鍵控蜂鳴器門鈴"
+  ],
+  "verify": {},
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "dk_dice_board@devkit",
+  "title": "電子骰子＋排行榜",
+  "level": "專題",
+  "summary": "按鍵擲骰，OLED 顯示點數與最近五次排行，蜂鳴器叮一聲。",
+  "breadboard": null,
+  "parts": {
+   "btn1": {
+    "type": "pushbutton",
+    "x": 330,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "oled1": {
+    "type": "ssd1306",
+    "x": 300,
+    "y": 130,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 330,
+    "y": 280,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 430,
+    "y": 240,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D5",
+    "b": "btn1:1.l",
+    "color": "#36c"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND.1",
+    "color": "#222"
    },
    {
     "a": "oled1:3V3",
@@ -3835,110 +5812,68 @@
    {
     "a": "oled1:GND",
     "b": "board:GND.1",
-    "color": "#111"
+    "color": "#222"
    },
    {
     "a": "oled1:DATA",
-    "b": "board:D4",
-    "color": "#27d"
+    "b": "board:D21",
+    "color": "#36c"
    },
    {
     "a": "oled1:CLK",
-    "b": "board:D5",
-    "color": "#2a7"
-   }
-  ],
-  "steps": [
-   {
-    "text": "DHT22：VCC 接 3V3、GND.1 接 GND.1",
-    "wires": [
-     0,
-     1
-    ]
+    "b": "board:D22",
+    "color": "#dc2"
    },
    {
-    "text": "DHT22 的 SDA 接 D18",
-    "wires": [
-     2
-    ]
+    "a": "board:D4",
+    "b": "r1:1",
+    "color": "#e90"
    },
    {
-    "text": "OLED：3V3、GND.1",
-    "wires": [
-     3,
-     4
-    ]
+    "a": "r1:2",
+    "b": "bz1:1",
+    "color": "#e90"
    },
    {
-    "text": "OLED 的 DATA 接 D4、CLK 接 D5",
-    "wires": [
-     5,
-     6
-    ]
-   }
-  ],
-  "code": "import lab\nimport dht, ssd1306\nfrom machine import Pin, I2C\n\nsensor = dht.DHT22(Pin(18))\ni2c = I2C(0, scl=Pin(5), sda=Pin(4))\noled = ssd1306.SSD1306_I2C(128, 64, i2c)\nwhile lab.running():\n    try:\n        sensor.measure()\n        t, h = sensor.temperature(), sensor.humidity()\n        oled.fill(0)\n        oled.text('Temp: %.1f C' % t, 0, 0)\n        oled.text('Humi: %.0f %%' % h, 0, 16)\n        oled.show()\n        print('溫度', t, '濕度', h)\n        lab.send(temp=t, humi=h)\n    except OSError as e:\n        print('讀不到 DHT22：', e)\n    lab.sleep(2)       # DHT22 兩秒才能讀一次\n",
-  "expect": "OLED 與主控台每 2 秒更新溫濕度；右側屬性面板的滑桿可以改溫濕度。",
-  "try": [
-   "溫度超過 30 度在 OLED 顯示「太熱」",
-   "把 SDA 線拔掉，看 except 會印什麼"
-  ],
-  "boardName": "ESP32 DevKit"
- },
- {
-  "id": "neopixel_chase@devkit",
-  "title": "NeoPixel 跑馬燈",
-  "level": "進階",
-  "summary": "WS2812 只用一條資料線控制很多顆全彩 LED，程式用 neopixel 模組。",
-  "board": "devkit",
-  "breadboard": null,
-  "parts": {
-   "np1": {
-    "type": "neopixel-strip",
-    "x": 300,
-    "y": 260,
-    "rot": 0,
-    "attrs": {}
-   }
-  },
-  "wires": [
-   {
-    "a": "np1:VCC",
-    "b": "board:VIN",
-    "color": "#d33"
-   },
-   {
-    "a": "np1:GND",
+    "a": "bz1:2",
     "b": "board:GND.1",
-    "color": "#111"
-   },
-   {
-    "a": "np1:DIN",
-    "b": "board:D4",
-    "color": "#27d"
+    "color": "#222"
    }
   ],
   "steps": [
    {
-    "text": "燈條 VCC 接 VIN、GND.1 接 GND.1（8 顆全亮約 480 mA，不要再多）",
+    "text": "按鍵接 D5 與 GND",
     "wires": [
      0,
      1
     ]
    },
    {
-    "text": "DIN（資料入）接 D4",
+    "text": "OLED 3V3、GND、DATA→D21、CLK→D22",
     "wires": [
-     2
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "D4 → 220Ω → 蜂鳴器 → GND",
+    "wires": [
+     6,
+     7,
+     8
     ]
    }
   ],
-  "code": "import lab\nimport neopixel\nfrom machine import Pin\n\nnp = neopixel.NeoPixel(Pin(4), 8)   # 8 顆\ncolors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]\ni = 0\nwhile lab.running():\n    np.fill((0, 0, 0))\n    np[i % 8] = colors[(i // 8) % 4]\n    np[(i + 1) % 8] = (20, 20, 20)     # 尾巴淡淡的\n    np.write()\n    print('亮第', i % 8, '顆')\n    i += 1\n    lab.sleep(0.12)\n",
-  "expect": "一顆亮點在 8 顆燈上跑，每跑一圈換一種顏色。",
+  "code": "import lab, ssd1306, random\nfrom machine import Pin, I2C, PWM\nbtn = Pin(5, Pin.IN, Pin.PULL_UP); bz = PWM(Pin(4), freq=880); bz.duty_u16(0)\noled = ssd1306.SSD1306_I2C(128, 64, I2C(0, scl=Pin(22), sda=Pin(21))); hist = []\nDOTS = {1: [(1, 1)], 2: [(0, 0), (2, 2)], 3: [(0, 0), (1, 1), (2, 2)], 4: [(0, 0), (2, 0), (0, 2), (2, 2)], 5: [(0, 0), (2, 0), (1, 1), (0, 2), (2, 2)], 6: [(0, 0), (2, 0), (0, 1), (2, 1), (0, 2), (2, 2)]}\ndef draw(n):\n    oled.fill(0); oled.rect(4, 4, 56, 56, 1)\n    for x, y in DOTS[n]: oled.fill_rect(12 + x * 18, 12 + y * 18, 8, 8, 1)\n    oled.text('last 5', 70, 0)\n    for i, v in enumerate(hist[-5:]): oled.text('#%d: %d' % (i + 1, v), 70, 12 + i * 10)\n    oled.show()\ndraw(6)\nwhile lab.running():\n    if btn.value() == 0:\n        for i in range(10): n = random.randint(1, 6); draw(n); lab.sleep(0.05 + i * 0.02)\n        hist.append(n); draw(n); bz.duty_u16(30000); lab.sleep(0.1); bz.duty_u16(0); print('擲出', n, '紀錄', hist[-5:])\n        while lab.running() and btn.value() == 0: lab.sleep(0.02)\n    lab.sleep(0.02)\n",
+  "expect": "按一下骰子滾動停住、響一聲，右側列出最近五次。",
   "try": [
-   "改成彩虹：每顆不同顏色一起往前移",
-   "把顏色亮度降到 (30, 0, 0) 省電"
+   "算平均值",
+   "兩人輪流比大小"
   ],
+  "verify": {},
+  "board": "devkit",
   "boardName": "ESP32 DevKit"
  }
 ]

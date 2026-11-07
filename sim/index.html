@@ -385,8 +385,9 @@ function buildExampleCards(body, filter) {
   const list = EXAMPLES.map((e, i) => [e, i]).filter(([e]) => e.board === board && (!filter || e.title.includes(filter) || e.summary.includes(filter) || e.level.includes(filter)));
   const note = document.createElement("div"); note.className = "ex-note"; note.textContent = EXAMPLES.length ? (list.length ? "點一下載入整個電路與程式（會換掉畫布上的東西），右下角會出現接線步驟。" : (filter ? "沒有符合的範例" : "這塊板子還沒有範例")) : "範例載入中…"; body.appendChild(note);
   if (!list.length) return;
-  const grid = document.createElement("div"); grid.className = "items"; body.appendChild(grid);
+  let grid = null, lastLevel = null;
   for (const [ex, i] of list) {
+    if (ex.level !== lastLevel) { lastLevel = ex.level; const h = document.createElement("h4"); h.textContent = "範例：" + ex.level; body.appendChild(h); grid = document.createElement("div"); grid.className = "items"; body.appendChild(grid); }
     const d = document.createElement("div"); d.className = "item ex"; d.dataset.ex = i; d.title = ex.summary;
     const th = document.createElement("div"); th.className = "thumb";
     // 縮圖：挑這個電路最有代表性的元件（不是電阻的那個），沒有就畫板子
