@@ -7,6 +7,7 @@ import { BREADBOARD, holeAt } from "./breadboard.js";
 import { toWokwiDiagram, fromWokwiDiagram } from "./diagram.js";
 import { createEngine } from "./engine.js";
 import { attachPart } from "./parts.js";
+import { routeWire, routeAll } from "./router.js";
 
 const SVGNS = "http://www.w3.org/2000/svg";
 export const WIRE_COLORS = ["#d33", "#111", "#2a7", "#27d", "#e90", "#a3c", "#999", "#fff"];
@@ -159,7 +160,8 @@ export function createSimulator(opts) {
   function wirePath(w) {
     const a = pinPos(w.a), b = pinPos(w.b); if (!a || !b) return null;
     const pts = [a, ...(w.pts || []), b];
-    if (pts.length === 2) { const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, bend = Math.min(40, L * 0.25); return `M${a[0]},${a[1]} Q${(a[0] + b[0]) / 2 - dy / L * bend},${(a[1] + b[1]) / 2 + dx / L * bend} ${b[0]},${b[1]}`; }
+    // 沒有轉折點：自動整線開著就畫直線（整線器算出來是直的），關著才畫微彎的曲線
+    if (pts.length === 2 && !autoWire) { const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, bend = Math.min(40, L * 0.25); return `M${a[0]},${a[1]} Q${(a[0] + b[0]) / 2 - dy / L * bend},${(a[1] + b[1]) / 2 + dx / L * bend} ${b[0]},${b[1]}`; }
     return "M" + pts.map((p) => p[0] + "," + p[1]).join(" L");
   }
   function renderWires() {
@@ -355,11 +357,11 @@ export function createSimulator(opts) {
       if (to && to !== drag.from) {
         if (to.startsWith("board:") && !boardRefOf(to.slice(6))) { toast("這支腳（" + to.slice(6) + "）不能接線"); }
         else {
-          pushUndo(); doc.wires.push({ a: drag.from, b: to, color: WIRE_COLORS[api.wireColor] || WIRE_COLORS[0], pts: [] }); select("wire:" + (doc.wires.length - 1)); render(); tick();
+          pushUndo(); doc.wires.push({ a: drag.from, b: to, color: WIRE_COLORS[api.wireColor] || WIRE_COLORS[0], pts: [] }); if (autoWire) routeWires([doc.wires.length - 1]); select("wire:" + (doc.wires.length - 1)); render(); tick();
           for (const ref of [drag.from, to]) { const inf = pinInfo(ref); if (inf.reserved) toast(`注意：${inf.title} 是保留腳位（${inf.reserved}）`, "warn"); }
         }
       }
-    } else if (drag.kind === "items") { if (drag.moved) { pushUndo(); tick(); } }
+    } else if (drag.kind === "items") { if (drag.moved) { if (autoWire) routeWires(doc.wires.map((w, i) => i).filter((i) => drag.ids.some((id) => doc.wires[i].a.startsWith(id + ":") || doc.wires[i].b.startsWith(id + ":")))); pushUndo(); render(); tick(); } }
     else if (drag.kind === "wp") { pushUndo(); }
     else if (drag.kind === "aim") { const t = under(ev); const w = t.closest && t.closest("path.wire,path.wire-hit"), it = t.closest && t.closest(".sim-item"); if (w) select("wire:" + w.dataset.index); else if (it) select(it.dataset.id); }
     else if (drag.kind === "bbtn") { pressedButtons.delete(drag.gpio); if (engine) engine.releaseButton(drag.gpio); applyState(); }
@@ -415,6 +417,20 @@ export function createSimulator(opts) {
   let lastSnap = snapshot();
   function pushUndo() { const s = snapshot(); if (s === lastSnap) return; undoStack.push(lastSnap); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; lastSnap = s; onStatus({ undo: undoStack.length, redo: redoStack.length }); }
   function restore(s) { const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] }); }
+  // ---------- 自動整線（router.js）：直角、避開元件、並行線錯開 ----------
+  let autoWire = (() => { try { return localStorage.getItem("sim.autowire") !== "0"; } catch { return true; } })();
+  function obstacles() { return bounds().items.map((it) => ({ x: it.x, y: it.y, w: it.w, h: it.h })); }
+  /** 重走指定的線（沒給＝全部）；回傳整了幾條 */
+  function routeWires(indices) {
+    const obs = obstacles(); const idx = indices || doc.wires.map((w, i) => i);
+    const list = idx.map((i) => ({ i, a: pinPos(doc.wires[i].a), b: pinPos(doc.wires[i].b) })).filter((x) => x.a && x.b);
+    // 其他沒重走的線先佔格子，新線避開它們
+    const used = new Set();
+    for (let i = 0; i < doc.wires.length; i++) if (!idx.includes(i)) for (const p of [pinPos(doc.wires[i].a), ...(doc.wires[i].pts || []), pinPos(doc.wires[i].b)].filter(Boolean)) used.add(Math.round(p[0] / 10) + "," + Math.round(p[1] / 10));
+    let n = 0;
+    for (const x of list.sort((p, q) => (Math.abs(q.a[0] - q.b[0]) + Math.abs(q.a[1] - q.b[1])) - (Math.abs(p.a[0] - p.b[0]) + Math.abs(p.a[1] - p.b[1])))) { const pts = routeWire({ a: x.a, b: x.b, obstacles: obs, used }); if (pts) { doc.wires[x.i].pts = pts; n++; } }
+    return n;
+  }
   function bounds() {
     let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9; const add = (x, y, w, h) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h); };
     const bw = doc.board === "devkit" ? [106.6, 204.3] : [BOARD_ART[doc.board].w, BOARD_ART[doc.board].h]; add(doc.boardPos.x, doc.boardPos.y, bw[0], bw[1]);
@@ -443,6 +459,9 @@ export function createSimulator(opts) {
   const api = {
     doc, view, get running() { return running; }, get result() { return lastResult; }, get selected() { return selection.size === 1 ? [...selection][0] : null; }, get selection() { return [...selection]; },
     wireColor: 0, get gridSnap() { return gridSnap; }, set gridSnap(v) { gridSnap = !!v; }, get wireMode() { return wireMode; }, set wireMode(v) { wireMode = !!v; },
+    get autoWire() { return autoWire; }, set autoWire(v) { autoWire = !!v; try { localStorage.setItem("sim.autowire", autoWire ? "1" : "0"); } catch {} },
+    /** 整理走線：全部重走（會進復原堆疊）；回傳整了幾條 */
+    autoRoute(indices) { pushUndo(); const n = routeWires(indices); pushUndo(); render(); return n; },
     precise: false,   // 精準選取（手指按住時游標在左上方）
     get ui() { return ui; }, onState: null, onStructure: null,   // 簡圖檢視用：狀態變了／電路結構變了
     pinInfo, nodeVoltage, bounds, tick, render, select, toast,
