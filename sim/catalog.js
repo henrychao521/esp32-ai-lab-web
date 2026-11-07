@@ -23,6 +23,11 @@ export const CATALOG = {
   relay: { tag: "sim-relay", w: 120, h: 70, label: "繼電器模組", attrs: {}, cat: "致動" },
   stepper: { tag: "wokwi-stepper-motor", w: 163.7, h: 178.8, label: "步進馬達", attrs: { size: "17" }, cat: "致動" },
   joystick: { tag: "wokwi-analog-joystick", w: 102.8, h: 120.2, label: "搖桿", attrs: {}, interact: "joystick", cat: "輸入" },
+  // 類比／IC（analog-elements.js 自繪）
+  capacitor: { tag: "sim-capacitor", w: 36, h: 60, label: "電解電容", attrs: { value: "100u" }, cat: "類比", attrOptions: { value: ["1u", "10u", "47u", "100u", "220u", "470u", "1000u"] } },
+  diode: { tag: "sim-diode", w: 60, h: 22, label: "二極體", attrs: { model: "1N4007" }, cat: "類比", attrOptions: { model: ["1N4007", "1N4148", "1N5819"] } },
+  npn: { tag: "sim-npn", w: 44, h: 50, label: "NPN 電晶體", attrs: { model: "2N2222" }, cat: "類比", attrOptions: { model: ["2N2222", "2N3904", "8050"] } },
+  ne555: { tag: "sim-ne555", w: 90, h: 60, label: "555 計時器", attrs: {}, cat: "類比" },
 };
 for (const k of Object.keys(CATALOG)) CATALOG[k].pins = PARTS[k].pins;
 
@@ -47,6 +52,10 @@ Object.assign(PIN_TABLE, {
   "neopixel-strip": { GND: [100.7 - 1.5 * 9.6, 22.7], VCC: [100.7 - 0.5 * 9.6, 22.7], DIN: [100.7 + 0.5 * 9.6, 22.7], DOUT: [100.7 + 1.5 * 9.6, 22.7] },
   pir: { VCC: [36.2, 92], OUT: [45.9, 92], GND: [55.6, 92] },
   relay: { VCC: [12, 64], GND: [28, 64], IN: [44, 64], NO: [76, 64], COM: [92, 64], NC: [108, 64] },
+  capacitor: { "+": [10, 60], "-": [26, 60] },
+  diode: { A: [0, 11], K: [60, 11] },
+  npn: { E: [10, 50], B: [22, 50], C: [34, 50] },
+  ne555: { GND: [15, 60], TRIG: [35, 60], OUT: [55, 60], RESET: [75, 60], CTRL: [75, 0], THR: [55, 0], DIS: [35, 0], VCC: [15, 0] },
   stepper: { "A-": [66.8, 178.8], "A+": [66.8 + 2.54 * mm, 178.8], "B+": [66.8 + 5.08 * mm, 178.8], "B-": [66.8 + 7.62 * mm, 178.8] },
   joystick: { VCC: [33, 115.8], VERT: [42.6, 115.8], HORZ: [52.2, 115.8], SEL: [61.8, 115.8], GND: [71.4, 115.8] },
 });

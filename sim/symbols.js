@@ -51,6 +51,10 @@ function twoPin(a, b, body, draw) {
 export const SYMBOLS = {
   // IEC 60617：電阻是長方形
   resistor: () => twoPin("1", "2", 40, (x) => `<rect x="${x}" y="9" width="40" height="12" class="sch-body"/>`),
+  capacitor: () => twoPin("+", "-", 24, (x) => `<line x1="${x}" y1="15" x2="${x + 9}" y2="15" class="sch-pin"/><line x1="${x + 9}" y1="5" x2="${x + 9}" y2="25" class="sch-body" stroke-width="2"/><path d="M${x + 15},5 a10,10 0 0 0 0,20" class="sch-body" fill="none" stroke-width="2"/><line x1="${x + 15}" y1="15" x2="${x + 24}" y2="15" class="sch-pin"/><text x="${x + 2}" y="6" font-size="7" class="sch-txt">+</text>`),
+  diode: () => twoPin("A", "K", 30, (x, st) => `<line x1="${x}" y1="15" x2="${x + 8}" y2="15" class="sch-pin"/><polygon points="${x + 8},6 ${x + 8},24 ${x + 22},15" class="sch-body"${st.on ? ' fill="#fbbf24"' : ""}/><line x1="${x + 22}" y1="6" x2="${x + 22}" y2="24" class="sch-body" stroke-width="2"/><line x1="${x + 22}" y1="15" x2="${x + 30}" y2="15" class="sch-pin"/>`),
+  npn: () => blockSymbol({ title: "NPN", left: ["B"], right: ["C", "E"], minW: 50 }),
+  ne555: () => blockSymbol({ title: "NE555", left: ["TRIG", "THR", "DIS", "CTRL"], right: ["VCC", "OUT", "RESET", "GND"], minW: 80 }),
   // LED：二極體＋兩支小箭頭；亮時三角形填色
   led: () => twoPin("A", "C", 36, (x, st) => {
     const c = x + 18; const fill = st.on ? (st.color || "#e33") : "none"; const burned = st.burned;

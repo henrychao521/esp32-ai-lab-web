@@ -28,6 +28,11 @@ export const PARTS = {
   "photoresistor-sensor": { pins: ["VCC", "GND", "DO", "AO"], label: "光敏模組", attrs: {} },
   buzzer: { pins: ["1", "2"], label: "蜂鳴器", attrs: {} },
   servo: { pins: ["GND", "V+", "PWM"], label: "伺服馬達", attrs: {} },
+  // 類比／IC（2026-11-07 轉型 P1）
+  capacitor: { pins: ["+", "-"], label: "電容", attrs: { value: "100u" } },
+  diode: { pins: ["A", "K"], label: "二極體", attrs: { model: "1N4007" } },
+  npn: { pins: ["E", "B", "C"], label: "NPN 電晶體", attrs: { model: "2N2222" } },
+  ne555: { pins: ["GND", "TRIG", "OUT", "RESET", "CTRL", "THR", "DIS", "VCC"], label: "555 計時器", attrs: {} },
   "led-bar-graph": { pins: ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10"], label: "LED 長條", attrs: { color: "red" } },
   "rgb-led": { pins: ["R", "COM", "G", "B"], label: "RGB LED", attrs: {} },
   ssd1306: { pins: ["DATA", "CLK", "DC", "RST", "CS", "3V3", "VIN", "GND"], label: "OLED SSD1306", attrs: {}, i2c: 0x3C },
@@ -73,6 +78,11 @@ export function buildNets(circuit, extraLinks = []) {
   return { find, nets, same: (a, b) => find(a) === find(b) };
 }
 
+/** 電容值："100u"、"4.7uF"、"10n"、"1m"（法拉） */
+export function parseC(v) { const s = String(v ?? "100u").toLowerCase().replace(/f|µ/g, (m) => (m === "µ" ? "u" : "")); const m = /^([\d.]+)\s*([pnum]?)$/.exec(s.trim()); if (!m) return 100e-6; return parseFloat(m[1]) * ({ p: 1e-12, n: 1e-9, u: 1e-6, m: 1e-3, "": 1 })[m[2]]; }
+const DIODES = { "1N4007": { Is: 7e-9, n: 1.8 }, "1N4148": { Is: 2.5e-9, n: 1.75 }, "1N5819": { Is: 3e-6, n: 1.1 } };
+const NPNS = { "2N2222": { Is: 1e-14, bf: 200, br: 3 }, "2N3904": { Is: 1e-14, bf: 150, br: 3 }, "8050": { Is: 1e-14, bf: 120, br: 3 } };
+export const DYNAMIC_TYPES = new Set(["capacitor", "ne555"]);   // 需要時間步進的元件
 function parseR(v) { const s = String(v ?? "220").toLowerCase().replace(/ω|ohm|s/g, ""); const m = /^([\d.]+)\s*([km]?)$/.exec(s); if (!m) return 220; return Number(m[1]) * (m[2] === "k" ? 1e3 : m[2] === "m" ? 1e6 : 1); }
 
 /** 主解法。回傳每個網路電壓與每個元件狀態；LED／電源短路／腳位過流以迭代與事後檢查判定。 */
@@ -99,7 +109,7 @@ export function solve(circuit, io = {}, extraLinks = []) {
 
 function solveOnce(circuit, io = {}, extraLinks = []) {
   const B = BOARDS[circuit.board] || BOARDS.devkit;
-  const N = buildNets(circuit, extraLinks);
+  const N = io.nets || buildNets(circuit, extraLinks);   // 暫態每步呼叫：結構沒變就沿用上一步的網路表
   const pins = io.pins || {}, modes = io.modes || {}, pulls = io.pulls || {}, pwm = io.pwm || {}, ui = io.ui || {};
   const burned = new Set(io.burned || []);
   const warnings = [];
@@ -116,6 +126,9 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
   const elems = [];
   const addR = (a, b, r) => elems.push({ type: "R", a, b, g: 1 / Math.max(r, 1e-3) });
   const addV = (a, b, v, r, tag) => elems.push({ type: "V", a, b, v, g: 1 / Math.max(r, 1e-3), tag });
+  // 暫態（電容）與非線性（二極體、電晶體）：io.dyn = { dt, state }；dt 為 0 代表只算直流穩態
+  const dyn = io.dyn || null, dt = dyn && dyn.dt > 0 ? dyn.dt : 0, dstate = (dyn && dyn.state) || {}, nextState = {};
+  const nonlin = [];   // {type:"diode", a, b, Is, n, part} | {type:"npn", c, b, e, Is, bf, br, part}
 
   // 電源：GND 是參考；3V3／5V／VIN 是接 GND 的理想源（內阻 0.5Ω 以便算短路電流）
   for (const [name, v] of Object.entries(B.power)) if (v > 0) addV(node("board:" + name), -1, v, 0.5, "supply:" + name);
@@ -173,6 +186,25 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
         addR(a("COM"), energized ? a("NO") : a("NC"), 0.1); break;   // 常閉／常開由 IN 決定（用上一輪電壓，差一個 tick）
       }
       case "stepper": addR(a("A+"), a("A-"), 30); addR(a("B+"), a("B-"), 30); break;
+      case "capacitor": {   // 後向尤拉伴隨模型：g=C/dt 並聯「上一步電壓」源；直流時開路
+        const C = parseC(p.attrs?.value); const vPrev = dstate[id]?.v ?? 0;
+        if (dt > 0) addV(a("+"), a("-"), vPrev, dt / C, "cap:" + id); else addR(a("+"), a("-"), 1e9);
+        nextState[id] = { v: vPrev }; break;
+      }
+      case "diode": { const m = DIODES[p.attrs?.model] || DIODES["1N4007"]; nonlin.push({ type: "diode", a: a("A"), b: a("K"), Is: m.Is, n: m.n, part: id }); break; }
+      case "npn": { const m = NPNS[p.attrs?.model] || NPNS["2N2222"]; nonlin.push({ type: "npn", c: a("C"), b: a("B"), e: a("E"), Is: m.Is, bf: m.bf, br: m.br, part: id }); break; }
+      case "ne555": {   // 行為模型：比較器＋RS 正反器（用上一步電壓判斷），OUT 推挽、DIS 放電開關
+        const vcc = V0(a("VCC")) - V0(a("GND")), gnd = V0(a("GND"));
+        const floating = (pin) => (N.nets[N.find(id + ":" + pin)] || []).every((m) => m.startsWith(id + ":") || m.startsWith("bb:"));
+        const trig = V0(a("TRIG")) - gnd, thr = V0(a("THR")) - gnd, reset = floating("RESET") ? vcc : V0(a("RESET")) - gnd;
+        let q = dstate[id]?.q ?? 0;
+        if (vcc < 2) q = 0; else if (reset < 0.7) q = 0; else if (trig < vcc / 3) q = 1; else if (thr > vcc * 2 / 3) q = 0;
+        addR(a("VCC"), a("GND"), 1500); addR(a("VCC"), a("CTRL"), 5000); addR(a("CTRL"), a("GND"), 10000);
+        addR(a("THR"), -1, 1e6); addR(a("TRIG"), -1, 1e6); addR(a("RESET"), -1, 1e6);
+        addV(a("OUT"), a("GND"), q && vcc >= 2 ? Math.max(0, vcc - 1.5) : 0, 10, "ic:" + id);
+        if (!q) addR(a("DIS"), a("GND"), 1); else addR(a("DIS"), -1, 1e9);
+        nextState[id] = { q, vcc }; break;
+      }
       case "joystick": {
         const total = 10000; const fx = Math.max(0, Math.min(1, (u.x ?? 0) * 0.5 + 0.5)), fy = Math.max(0, Math.min(1, (u.y ?? 0) * 0.5 + 0.5));
         addR(a("GND"), a("HORZ"), Math.max(1, total * fx)); addR(a("HORZ"), a("VCC"), Math.max(1, total * (1 - fx)));
@@ -192,8 +224,27 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       if (ledOn.get(L.key)) { const vf = LED_VF[L.color] ?? 2.0; E.push({ type: "V", a: L.A, b: L.C, v: vf, g: 1 / 10, tag: "led:" + L.key }); }
       else E.push({ type: "R", a: L.A, b: L.C, g: 1e-9 });
     }
+    // 二極體／電晶體：以上一輪電壓線性化（Newton），限制一步最多跳 Vlim 以免爆炸
+    const Vt = 0.02585, VLIM = 0.85;
+    const Vn = (nd) => (nd === undefined || nd < 0 ? 0 : nodeV[nd]);
+    const dio = (va, vb, Is, nn) => { const vd = Math.min(VLIM, va - vb); const ex = Math.exp(vd / (nn * Vt)); const g = Is * ex / (nn * Vt) + 1e-9; const i = Is * (ex - 1); return { g, v: vd - i / g }; };
+    for (const q of nonlin) {
+      if (q.type === "diode") { const d = dio(Vn(q.a), Vn(q.b), q.Is, q.n); E.push({ type: "V", a: q.a, b: q.b, v: d.v, g: d.g, tag: "dio:" + q.part }); }
+      else {   // Ebers–Moll 傳輸模型：IF（B→E）、IR（B→C）、集極電流 IF−IR
+        const vbe = Math.min(VLIM, Vn(q.b) - Vn(q.e)), vbc = Math.min(VLIM, Vn(q.b) - Vn(q.c));
+        const eF = Math.exp(vbe / Vt), eR = Math.exp(vbc / Vt);
+        const gF = q.Is * eF / Vt + 1e-9, IF = q.Is * (eF - 1), gR = q.Is * eR / Vt + 1e-9, IR = q.Is * (eR - 1);
+        E.push({ type: "V", a: q.b, b: q.e, v: vbe - IF / gF, g: gF / q.bf });   // 基極－射極二極體（除以 βF）
+        E.push({ type: "V", a: q.b, b: q.c, v: vbc - IR / gR, g: gR / q.br });   // 基極－集極二極體（除以 βR）
+        E.push({ type: "G4", a: q.c, b: q.e, c: q.b, d: q.e, g: gF });            // 集極電流 gF·vbe
+        E.push({ type: "G4", a: q.c, b: q.e, c: q.b, d: q.c, g: -gR });           // − gR·vbc
+        E.push({ type: "I", a: q.c, b: q.e, i: (IF - gF * vbe) - (IR - gR * vbc) });
+      }
+    }
+    const prevNode = nodeV;
     nodeV = solveMNA(n, E);
     let changed = false;
+    if (nonlin.length) { let dmax = 0; for (let k = 0; k < n; k++) dmax = Math.max(dmax, Math.abs(nodeV[k] - prevNode[k])); if (dmax > 1e-3) changed = true; }
     for (const L of ledList) {
       if (burned.has(L.key)) continue;
       const vA = L.A < 0 ? 0 : nodeV[L.A], vC = L.C < 0 ? 0 : nodeV[L.C];
@@ -205,6 +256,10 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     if (!changed) break;
   }
   const V = (nd) => (nd === undefined || nd < 0 ? 0 : nodeV[nd]);
+  for (const [id, p] of Object.entries(circuit.parts || {})) {
+    if (p.type !== "capacitor") continue; const a = (pin) => node(id + ":" + pin);
+    nextState[id] = { v: dt > 0 ? V(a("+")) - V(a("-")) : (dstate[id]?.v ?? 0) };
+  }
 
   // 事後檢查：LED 電流、極性、無電阻；電源短路；GPIO 過流；浮接
   for (const L of ledList) {
@@ -289,6 +344,10 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       case "lcd1602": case "hc-sr04": case "dht22": case "neopixel-strip": case "pir": case "joystick": st.powered = vp("VCC") - vp("GND") > 2.5; break;
       case "stepper": st.a = vp("A+") - vp("A-"); st.b = vp("B+") - vp("B-"); break;
       case "relay": st.powered = vp("VCC") - vp("GND") > 2.5; st.energized = st.powered && (vp("IN") - vp("GND") > 1.5); break;
+      case "capacitor": st.v = vp("+") - vp("-"); if (st.v < -1.0) warn("CAP_REVERSE", id, `${id} 電解電容接反了`, "為什麼：電解電容有極性，長腳（+）要接高電位；反接會發熱甚至鼓起爆開。", "怎麼改：把 + 腳接到電壓高的那一邊。"); break;
+      case "diode": { const vd = vp("A") - vp("K"); st.on = vd > 0.5; st.vd = vd; break; }
+      case "npn": { const vbe = vp("B") - vp("E"), vce = vp("C") - vp("E"); st.on = vbe > 0.6; st.sat = st.on && vce < 0.3; st.vbe = vbe; st.vce = vce; break; }
+      case "ne555": st.q = !!(nextState[id] && nextState[id].q); st.out = vp("OUT") - vp("GND"); st.powered = vp("VCC") - vp("GND") > 2.5; break;
     }
     if (st.powered === false && ["ssd1306", "lcd1602", "hc-sr04", "dht22", "neopixel-strip", "pir", "relay", "joystick"].includes(p.type)) {
       const hasAnyWire = PARTS[p.type].pins.some((pin) => (N.nets[N.find(id + ":" + pin)] || []).some((m) => !m.startsWith(id + ":") && !m.startsWith("bb:")));
@@ -315,7 +374,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     }
     if (miss.length) warn("PIN_UNWIRED", "board", `程式用了 GPIO${miss.join("、GPIO")}，但板子上這${miss.length > 1 ? "幾" : ""}支腳沒接線`, "為什麼：程式裡 Pin(編號) 的編號是晶片的 GPIO 號碼，不一定等於板子上印的字（XIAO 的 D9 是 GPIO8、D10 是 GPIO9）。", "怎麼改：把線接到板子上對應這個 GPIO 的腳，或把程式的編號改成你接線那支腳的 GPIO（滑到板子腳位上可看對應）。");
   }
-  return { nets: N, nodeV: nodeVolt, parts: partState, warnings, inputs, adc, burned: [...burned] };
+  return { nets: N, nodeV: nodeVolt, parts: partState, warnings, inputs, adc, burned: [...burned], dynState: nextState };
 }
 
 /** 修正節點分析（Norton 形式：每個電壓源＝電流源 v·g 並聯電導 g），高斯消去。a／b 為 -1 表示 GND。 */
@@ -325,6 +384,11 @@ export function solveMNA(n, elems) {
   const I = new Float64Array(n);
   for (const e of elems) {
     const { a, b, g } = e;
+    if (e.type === "I") { if (a >= 0) I[a] -= e.i; if (b >= 0) I[b] += e.i; continue; }   // 電流 i 由 a 流到 b
+    if (e.type === "G4") {   // 壓控電流源：a→b 的電流 = g·(v_c − v_d)
+      const { c, d } = e;
+      if (a >= 0 && c >= 0) G[a][c] += g; if (a >= 0 && d >= 0) G[a][d] -= g; if (b >= 0 && c >= 0) G[b][c] -= g; if (b >= 0 && d >= 0) G[b][d] += g; continue;
+    }
     if (a >= 0) G[a][a] += g;
     if (b >= 0) G[b][b] += g;
     if (a >= 0 && b >= 0) { G[a][b] -= g; G[b][a] -= g; }

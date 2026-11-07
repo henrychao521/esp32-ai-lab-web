@@ -16,6 +16,10 @@ const uuid = () => { seq++; const h = (n) => (seq * 2654435761 + n * 40503).toSt
 const KI = {
   resistor: { ref: "R", fp: "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" },
   led: { ref: "D", fp: "LED_THT:LED_D5.0mm" },
+  capacitor: { ref: "C", fp: "Capacitor_THT:CP_Radial_D5.0mm_P2.50mm" },
+  diode: { ref: "D", fp: "Diode_THT:D_DO-41_SOD81_P10.16mm_Horizontal" },
+  npn: { ref: "Q", fp: "Package_TO_SOT_THT:TO-92_Inline" },
+  ne555: { ref: "U", fp: "Package_DIP:DIP-8_W7.62mm" },
   pushbutton: { ref: "SW", fp: "Button_Switch_THT:SW_PUSH_6mm" },
   "slide-switch": { ref: "SW", fp: "Button_Switch_THT:SW_Slide_SPDT_Angled_CK_OS102011MA1Q" },
   potentiometer: { ref: "RV", fp: "Potentiometer_THT:Potentiometer_Alps_RK09K_Single_Vertical" },

@@ -2,7 +2,7 @@
 // 畫布：拖放元件、腳位拉線（可加轉折點、選色、標籤）、麵包板吸附與導通提示、格線吸附、平移縮放（滾輪／兩指）、多選、對齊、復原重做。
 // 執行：透過 engine.js 的共用介面（docs/sim-engine-api.md），腳位事件 → 電路解法（circuit.js）→ 元件畫面與回灌輸入。
 import { CATALOG, PIN_TABLE, DEVKIT_PINMAP, DEVKIT_PINS, BOARD_ART } from "./catalog.js";
-import { solve, BOARDS, PARTS } from "./circuit.js";
+import { solve, BOARDS, PARTS, DYNAMIC_TYPES } from "./circuit.js";
 import { BREADBOARD, holeAt } from "./breadboard.js";
 import { toWokwiDiagram, fromWokwiDiagram } from "./diagram.js";
 import { createEngine } from "./engine.js";
@@ -216,8 +216,52 @@ export function createSimulator(opts) {
   const boardButtons = () => (doc.board === "tqt_pro" ? [0, 47] : doc.board === "tdisplay_s3" ? [0, 14] : [0]);
   let stoppedForShort = false;
   let lastStructure = "";
+  // ---------- 暫態時間步進（電容、555）：有這類元件時每一幀走好幾個 dt，探針記錄節點電壓給示波器 ----------
+  let dynState = {}, dynLoop = null, simT = 0, dynLastReal = 0, dynLag = 0; const PROBE_MAX = 4000, FRAME_BUDGET_MS = 10;
+  // 步長：只有電容（RC）用 1 ms 就很準；有 555 用 0.2 ms（音頻 555 追不上即時就放慢，不會卡住畫面）
+  const dtFor = () => (Object.values(doc.parts).some((p) => p.type === "ne555") ? 2e-4 : 1e-3);
+  let netsCache = null, netsKey = "";
+  const probes = [];            // 節點參考（例如 "c1:+"、"board:4"）
+  const probeData = {};         // ref → [[t, v], ...]
+  const hasDyn = () => Object.values(doc.parts).some((p) => DYNAMIC_TYPES.has(p.type));
+  function solveStep(dt) {
+    const c = circuitForSolver(), links = breadboardLinks();
+    const key = JSON.stringify(c.wires) + "|" + Object.keys(c.parts).join() + "|" + JSON.stringify(links);
+    if (key !== netsKey) { netsKey = key; netsCache = null; }
+    const r = solve(c, { ...io(), prevV: lastResult ? lastResult.nodeV : {}, dyn: { dt, state: dynState }, nets: netsCache }, links);
+    netsCache = r.nets;
+    if (r.dynState) dynState = r.dynState;
+    return r;
+  }
+  let dynBusy = false;
+  function dynFrame(ts) {
+    dynLoop = null;
+    if (!hasDyn()) { dynLastReal = 0; return; }
+    if (dynBusy) return; dynBusy = true;
+    try { dynFrameBody(ts); } finally { dynBusy = false; }
+    if (hasDyn() && !dynLoop) dynLoop = requestAnimationFrame(dynFrame);
+  }
+  function dynFrameBody(ts) {
+    const DT = dtFor(); const PROBE_EVERY = DT >= 1e-3 ? 1 : 5;
+    const real = dynLastReal ? Math.min(0.05, (ts - dynLastReal) / 1000) : DT * 10; dynLastReal = ts;
+    const want = Math.max(1, Math.round((real + dynLag) / DT)); dynLag = 0;
+    let r = null, k = 0, done = 0; const t0 = performance.now();
+    for (let i = 0; i < want; i++) {
+      r = solveStep(DT); simT += DT; done++;
+      if ((++k % PROBE_EVERY) === 0) for (const ref of probes) { const root = r.nets.find(ref); const arr = probeData[ref] || (probeData[ref] = []); arr.push([simT, r.nodeV[root] ?? 0]); if (arr.length > PROBE_MAX) arr.splice(0, arr.length - PROBE_MAX); }
+      if (performance.now() - t0 > FRAME_BUDGET_MS) break;   // 這一幀算不完：剩下的時間丟掉（模擬變慢但畫面不卡）
+    }
+    if (r) commit(r);
+  }
+  function ensureDynLoop() { if (hasDyn() && !dynLoop && !dynBusy) { dynLastReal = 0; dynLoop = requestAnimationFrame(dynFrame); } }
+  function resetDynamic() { dynState = {}; simT = 0; dynLastReal = 0; for (const k of Object.keys(probeData)) probeData[k] = []; }
   function tick() {
-    const r = solve(circuitForSolver(), { ...io(), prevV: lastResult ? lastResult.nodeV : {} }, breadboardLinks());
+    // 有暫態元件時不能用 dt=0 的直流解（電容會變開路、555 誤判），改走一小步
+    const dt = hasDyn() ? dtFor() : 0;
+    const r = solveStep(dt); if (dt) simT += dt; ensureDynLoop();
+    return commit(r);
+  }
+  function commit(r) {
     const structure = Object.keys(doc.parts).join() + "|" + doc.wires.map((w) => w.a + w.b).join() + "|" + JSON.stringify(Object.values(doc.parts).map((p) => p.snaps));
     if (structure !== lastStructure) { lastStructure = structure; lastResult = r; queueMicrotask(syncAttachments); if (api.onStructure) queueMicrotask(api.onStructure); }
     for (const w of r.warnings) if (w.code === "LED_BURN" && !burned.has(w.part) && !r.burned.every((k) => burned.has(k))) { toast(w.brief + "，看「問題」分頁", "warn"); break; }
@@ -252,6 +296,10 @@ export function createSimulator(opts) {
         case "stepper": { const rt = partRuntime[id]; el.angle = rt?.angle ?? 0; break; }
         case "joystick": { const u = ui[id] || {}; el.xValue = u.x ?? 0; el.yValue = u.y ?? 0; el.pressed = !!u.pressed; break; }
         case "relay": el.setAttribute("energized", s.energized ? "true" : "false"); el.setAttribute("powered", s.powered ? "true" : "false"); break;
+        case "capacitor": el.setAttribute("voltage", (s.v ?? 0).toFixed(2)); el.setAttribute("value", String(p.attrs?.value || "100u").replace(/u$/, "µF")); break;
+        case "diode": el.setAttribute("on", s.on ? "true" : "false"); el.setAttribute("model", p.attrs?.model || "1N4007"); break;
+        case "npn": el.setAttribute("on", s.on ? "true" : "false"); el.setAttribute("model", p.attrs?.model || "2N2222"); break;
+        case "ne555": el.setAttribute("out", s.q ? "true" : "false"); break;
       }
     }
     const boardEl = partsLayer.querySelector(".sim-board"); if (!boardEl || !engine) return;
@@ -416,7 +464,7 @@ export function createSimulator(opts) {
   function snapshot() { return JSON.stringify({ board: doc.board, parts: doc.parts, wires: doc.wires, boardPos: doc.boardPos, breadboard: doc.breadboard, schematic: doc.schematic || null, perfboard: doc.perfboard || null }); }
   let lastSnap = snapshot();
   function pushUndo() { const s = snapshot(); if (s === lastSnap) return; undoStack.push(lastSnap); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; lastSnap = s; onStatus({ undo: undoStack.length, redo: redoStack.length }); }
-  function restore(s) { const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] }); }
+  function restore(s) { resetDynamic(); const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] }); }
   // ---------- 自動整線（router.js）：直角、避開元件、並行線錯開 ----------
   let autoWire = (() => { try { return localStorage.getItem("sim.autowire") !== "0"; } catch { return true; } })();
   function obstacles() { return bounds().items.map((it) => ({ x: it.x, y: it.y, w: it.w, h: it.h })); }
@@ -560,6 +608,14 @@ export function createSimulator(opts) {
     step() { if (engine) engine.step(); },
     async reset() { if (engine) await engine.reset(); for (const k of Object.keys(ui)) delete ui[k]; burned = new Set(); pinState = engine ? engine.pins() : {}; for (const id of Object.keys(partRuntime)) { const rt = partRuntime[id]; if (rt.decoder) { const T = rt.decoder.constructor; partRuntime[id] = {}; } else partRuntime[id] = {}; } for (const id of Object.keys(attached)) { attached[id](); delete attached[id]; } syncAttachments(); tick(); },
     partRuntime, ui,
+    // 探針（示波器用）：節點參考，例如 "c1:+"、"u1:OUT"、"board:4"
+    get probes() { return probes.slice(); },
+    addProbe(ref) { if (!probes.includes(ref) && probes.length < 4) { probes.push(ref); probeData[ref] = []; ensureDynLoop(); } },
+    removeProbe(ref) { const i = probes.indexOf(ref); if (i >= 0) { probes.splice(i, 1); delete probeData[ref]; } },
+    clearProbes() { for (const k of Object.keys(probeData)) probeData[k] = []; },
+    get probeData() { return probeData; }, get simTime() { return simT; }, get hasDynamic() { return hasDyn(); },
+    /** 節點目前電壓（對 GND） */
+    nodeVoltage(ref) { const r = lastResult; if (!r) return null; const root = r.nets.find(ref); return root in r.nodeV ? r.nodeV[root] : null; },
     async check(code) { if (!engine) await api.attach(); return engine.check(code); },
     cmd(c) { if (engine) engine.cmd(c); },
   };

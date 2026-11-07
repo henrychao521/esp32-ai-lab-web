@@ -256,6 +256,156 @@
   "boardName": "T-QT Pro"
  },
  {
+  "id": "an_rc",
+  "title": "電容充放電",
+  "level": "入門",
+  "summary": "滑動開關撥到充電，電容電壓沿曲線慢慢升到 3.3 V；撥到放電慢慢掉回 0。示波器探針看曲線，程式用 ADC 把電壓印出來。",
+  "breadboard": null,
+  "parts": {
+   "sw1": {
+    "type": "slide-switch",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 420,
+    "y": 120,
+    "rot": 0,
+    "attrs": {
+     "value": "1000u"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "color": "yellow"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "sw1:1",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "sw1:3",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "sw1:2",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "c1:+",
+    "color": "#e90"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "c1:+",
+    "b": "board:G18",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:+",
+    "b": "r2:1",
+    "color": "#93c"
+   },
+   {
+    "a": "r2:2",
+    "b": "led1:A",
+    "color": "#93c"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "滑動開關腳 1 接 3V3、腳 3 接 GND、中間腳 2 → 1kΩ",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "1kΩ 另一端接電容 +，電容 − 接 GND（電解電容有極性）",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "電容 + 也接到 G18（ADC）讓程式讀電壓",
+    "wires": [
+     5
+    ]
+   },
+   {
+    "text": "電容 + → 10kΩ → LED → GND（LED 只當指示，電阻大才不會把電容拉低）",
+    "wires": [
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "text": "執行後點滑動開關撥動；示波器分頁按探針 c1:+",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(18), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3\n    bar = '#' * int(v / 3.3 * 30)\n    print('電容 %.2f V %s' % (v, bar)); lab.send(vc=round(v, 2))\n    lab.sleep(0.2)\n",
+  "expect": "開關預設在充電端：主控台電壓每 0.2 秒變大、長條變長（τ=R×C=1 秒，約 5 秒接近 3 V）；撥到另一端慢慢放電降到 0。LED 隨電壓亮暗。",
+  "try": [
+   "把 1000u 換成 100u，看充電變多快",
+   "把 1k 換成 10k"
+  ],
+  "verify": {
+   "ui": {
+    "sw1": {
+     "value": 1
+    }
+   },
+   "console": "電容"
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
   "id": "tq_weather",
   "title": "天氣站",
   "level": "進階",
@@ -816,6 +966,726 @@
   "boardName": "T-QT Pro"
  },
  {
+  "id": "an_npn_light",
+  "title": "電晶體光控開關",
+  "level": "進階",
+  "summary": "光敏模組的電壓經 10kΩ 進電晶體基極；亮的時候電晶體導通、LED 亮；暗了就熄。程式印出基極電壓與狀態。",
+  "breadboard": null,
+  "parts": {
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 170,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "q1": {
+    "type": "npn",
+    "x": 420,
+    "y": 160,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rc": {
+    "type": "resistor",
+    "x": 300,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ldr1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "rb:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "rb:2",
+    "b": "q1:B",
+    "color": "#dc2"
+   },
+   {
+    "a": "q1:E",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "board:3V3",
+    "b": "rc:1",
+    "color": "#d33"
+   },
+   {
+    "a": "rc:2",
+    "b": "led1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "led1:C",
+    "b": "q1:C",
+    "color": "#e90"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "board:G18",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "光敏模組 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "AO → 10kΩ → 電晶體 B（基極）",
+    "wires": [
+     2,
+     3
+    ]
+   },
+   {
+    "text": "E（射極）接 GND",
+    "wires": [
+     4
+    ]
+   },
+   {
+    "text": "3V3 → 220Ω → LED → 電晶體 C（集極）",
+    "wires": [
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "AO 也接 G18 讓程式看電壓",
+    "wires": [
+     8
+    ]
+   },
+   {
+    "text": "執行後在光敏模組上拖亮暗",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(18), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3\n    print('基極端 %.2f V →' % v, '導通，LED 亮' if v > 0.8 else '截止，LED 滅')\n    lab.sleep(0.3)\n",
+  "expect": "預設亮度時 LED 亮；把光敏拖到很暗，基極電壓掉到 0.7 V 以下，LED 熄滅。",
+  "try": [
+   "把 10k 換成 100k，看導通門檻怎麼變",
+   "加一顆可變電阻做靈敏度調整"
+  ],
+  "verify": {
+   "console": "導通"
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "an_555_blink",
+  "title": "555 閃燈",
+  "level": "進階",
+  "summary": "NE555 無穩態：R1=1kΩ、R2=47kΩ、C=10µF，約 1.5 Hz 閃；完全不用程式也會閃，程式只是數脈衝。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 440,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "47k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 160,
+    "rot": 0,
+    "attrs": {
+     "value": "10u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 230,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:5V",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "board:5V",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:DIS",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "u1:THR",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:G16",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 的 VCC 與 RESET 接 5V，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "5V → R1(1k) → DIS；DIS → R2(47k) → THR",
+    "wires": [
+     3,
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "THR 和 TRIG 接在一起，再接電容 +；電容 − 接 GND",
+    "wires": [
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "OUT → 220Ω → LED → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "OUT 也接 G16 讓程式數脈衝；示波器探針看 u1:THR 的三角波",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab, time\nfrom machine import Pin\nout = Pin(16, Pin.IN)\nn = 0; prev = out.value(); t0 = time.ticks_ms()\nwhile lab.running():\n    v = out.value()\n    if v and not prev:\n        n += 1; el = time.ticks_diff(time.ticks_ms(), t0) / 1000\n        print('第 %d 次脈衝，平均 %.2f Hz' % (n, n / el if el else 0))\n    prev = v\n    lab.sleep(0.01)\n",
+  "expect": "LED 約每 0.7 秒閃一次（f = 1.44 ÷ ((R1+2R2)×C)），主控台印脈衝次數與頻率；示波器 u1:THR 是 1/3～2/3 Vcc 的三角波。",
+  "try": [
+   "把 C 換成 100u，閃得慢 10 倍",
+   "把 R2 換成 4.7k 看工作比怎麼變"
+  ],
+  "verify": {
+   "console": "脈衝"
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "an_555_buzzer",
+  "title": "555 蜂鳴器",
+  "level": "進階",
+  "summary": "同一顆 555，換小電容就變成音頻：R1=1k、R2=4.7k、C=1µF ≈ 140 Hz，蜂鳴器直接響，不需要程式。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 440,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "4.7k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 160,
+    "rot": 0,
+    "attrs": {
+     "value": "1u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 230,
+    "rot": 0,
+    "attrs": {
+     "value": "100"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 420,
+    "y": 210,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:5V",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "board:5V",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:DIS",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "u1:THR",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "bz1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:G16",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 VCC、RESET 接 5V，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "R1、R2、C 照閃燈接法，但 R2=4.7k、C=1µF",
+    "wires": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "OUT → 100Ω → 蜂鳴器 → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "OUT 接 G16 讓程式量頻率",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab\n# 555 無穩態的頻率公式：f = 1.44 / ((R1 + 2·R2) × C)\nR1, R2, C = 1000, 4700, 1e-6\nf = 1.44 / ((R1 + 2 * R2) * C)\nduty = (R1 + R2) / (R1 + 2 * R2)\nprint('理論頻率 %.0f Hz，工作比 %.0f %%' % (f, duty * 100))\nprint('蜂鳴器直接由 555 驅動，和程式無關；到「示波器」按探針 u1:OUT 看方波、u1:THR 看三角波')\nn = 0\nwhile lab.running():\n    n += 1; print('第 %d 秒：還在響（換 C 試試 100n 或 10u）' % n); lab.sleep(1)\n",
+  "expect": "蜂鳴器出現音符記號（有訊號）；主控台印出理論頻率約 140 Hz；示波器探針 u1:OUT 看得到方波，把 C 改小頻率變高。",
+  "try": [
+   "把 C 換 100n 看變多高（模擬器約到 1 kHz）",
+   "用可變電阻取代 R2 做滑音"
+  ],
+  "verify": {
+   "console": "理論頻率"
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "an_555_mono",
+  "title": "555 延時燈",
+  "level": "進階",
+  "summary": "單穩態：按一下按鍵，LED 亮 1.1×R×C 秒自動熄（R=100k、C=10µF ≈ 1.1 秒），像樓梯間的定時燈。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 20,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rp": {
+    "type": "resistor",
+    "x": 440,
+    "y": 30,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "100k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 170,
+    "rot": 0,
+    "attrs": {
+     "value": "10u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 260,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 250,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:5V",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "board:5V",
+    "b": "rp:1",
+    "color": "#d33"
+   },
+   {
+    "a": "rp:2",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:TRIG",
+    "b": "btn1:1.l",
+    "color": "#dc2"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "board:5V",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:THR",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#e90"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:G16",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 VCC、RESET 接 5V，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "5V → 10kΩ → TRIG（上拉）；按鍵接 TRIG 與 GND（按下把 TRIG 拉低）",
+    "wires": [
+     3,
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "5V → 100kΩ → THR；THR 接 DIS 與電容 +，電容 − 接 GND",
+    "wires": [
+     7,
+     8,
+     9,
+     10,
+     11
+    ]
+   },
+   {
+    "text": "OUT → 220Ω → LED → GND",
+    "wires": [
+     12,
+     13,
+     14
+    ]
+   },
+   {
+    "text": "OUT 接 G16 讓程式量亮多久",
+    "wires": [
+     15
+    ]
+   }
+  ],
+  "code": "import lab, time\nfrom machine import Pin\nout = Pin(16, Pin.IN); prev = 0; t0 = 0\nwhile lab.running():\n    v = out.value()\n    if v and not prev: t0 = time.ticks_ms(); print('亮了')\n    if not v and prev: print('熄了，亮了 %.2f 秒' % (time.ticks_diff(time.ticks_ms(), t0) / 1000))\n    prev = v; lab.sleep(0.01)\n",
+  "expect": "按一下按鍵 LED 亮約 1.1 秒自動熄，主控台印出亮了幾秒；按住不放也不會更久。",
+  "try": [
+   "把 100k 換 470k 延長到 5 秒",
+   "加第二顆 LED 做「正在計時」指示"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    }
+   },
+   "console": "亮了"
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
   "id": "tq_scope",
   "title": "迷你示波器",
   "level": "專題",
@@ -1014,6 +1884,123 @@
    ],
    "console": "執行",
    "screen": true
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "an_npn_flyback",
+  "title": "電晶體驅動蜂鳴器",
+  "level": "專題",
+  "summary": "GPIO 只能給幾毫安，用 NPN 當開關去驅動蜂鳴器；蜂鳴器兩端反向並一顆二極體（飛輪），關斷時吸收反電動勢保護電晶體。",
+  "breadboard": null,
+  "parts": {
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "q1": {
+    "type": "npn",
+    "x": 420,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 420,
+    "y": 150,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d1": {
+    "type": "diode",
+    "x": 300,
+    "y": 180,
+    "rot": 0,
+    "attrs": {
+     "model": "1N4007"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "rb:1",
+    "color": "#e90"
+   },
+   {
+    "a": "rb:2",
+    "b": "q1:B",
+    "color": "#e90"
+   },
+   {
+    "a": "q1:E",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "q1:C",
+    "b": "bz1:2",
+    "color": "#93c"
+   },
+   {
+    "a": "bz1:1",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:A",
+    "b": "q1:C",
+    "color": "#2a7"
+   },
+   {
+    "a": "d1:K",
+    "b": "board:5V",
+    "color": "#2a7"
+   }
+  ],
+  "steps": [
+   {
+    "text": "G16 → 1kΩ → 電晶體 B；E 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "蜂鳴器一腳接 5V、另一腳接電晶體 C",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "二極體 A 接 C、K 接 5V（反向並聯在蜂鳴器兩端）",
+    "wires": [
+     5,
+     6
+    ]
+   },
+   {
+    "text": "執行：程式每秒切換 GPIO，蜂鳴器響停交替",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ndrv = Pin(16, Pin.OUT); n = 0\nwhile lab.running():\n    drv.value(1); print('第', n, '次：電晶體導通，蜂鳴器通電'); lab.sleep(0.5)\n    drv.value(0); print('關斷：線圈反電動勢由飛輪二極體導走'); lab.sleep(0.5)\n    n += 1\n",
+  "expect": "蜂鳴器每秒響停一次；點電晶體看屬性：導通時 Vce 很小（飽和）。拿掉二極體模擬器一樣會響，但實機電晶體會被反電動勢打壞。",
+  "try": [
+   "把 1k 換 100k，看電晶體還飽不飽和",
+   "改用繼電器模組的線圈（實機要加二極體）"
+  ],
+  "verify": {
+   "console": "導通"
   },
   "board": "tqt_pro",
   "boardName": "T-QT Pro"
@@ -1513,6 +2500,156 @@
     "boot"
    ],
    "console": "擲出"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "an_rc@xiao_esp32s3",
+  "title": "電容充放電",
+  "level": "入門",
+  "summary": "滑動開關撥到充電，電容電壓沿曲線慢慢升到 3.3 V；撥到放電慢慢掉回 0。示波器探針看曲線，程式用 ADC 把電壓印出來。",
+  "breadboard": null,
+  "parts": {
+   "sw1": {
+    "type": "slide-switch",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 420,
+    "y": 120,
+    "rot": 0,
+    "attrs": {
+     "value": "1000u"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "color": "yellow"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "sw1:1",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "sw1:3",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "sw1:2",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "c1:+",
+    "color": "#e90"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "c1:+",
+    "b": "board:D0",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:+",
+    "b": "r2:1",
+    "color": "#93c"
+   },
+   {
+    "a": "r2:2",
+    "b": "led1:A",
+    "color": "#93c"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "滑動開關腳 1 接 3V3、腳 3 接 GND、中間腳 2 → 1kΩ",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "1kΩ 另一端接電容 +，電容 − 接 GND（電解電容有極性）",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "電容 + 也接到 D0（ADC）讓程式讀電壓",
+    "wires": [
+     5
+    ]
+   },
+   {
+    "text": "電容 + → 10kΩ → LED → GND（LED 只當指示，電阻大才不會把電容拉低）",
+    "wires": [
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "text": "執行後點滑動開關撥動；示波器分頁按探針 c1:+",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(1), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3\n    bar = '#' * int(v / 3.3 * 30)\n    print('電容 %.2f V %s' % (v, bar)); lab.send(vc=round(v, 2))\n    lab.sleep(0.2)\n",
+  "expect": "開關預設在充電端：主控台電壓每 0.2 秒變大、長條變長（τ=R×C=1 秒，約 5 秒接近 3 V）；撥到另一端慢慢放電降到 0。LED 隨電壓亮暗。",
+  "try": [
+   "把 1000u 換成 100u，看充電變多快",
+   "把 1k 換成 10k"
+  ],
+  "verify": {
+   "ui": {
+    "sw1": {
+     "value": 1
+    }
+   },
+   "console": "電容"
   },
   "board": "xiao_esp32s3",
   "boardName": "XIAO ESP32S3"
@@ -2466,6 +3603,726 @@
   "boardName": "XIAO ESP32S3"
  },
  {
+  "id": "an_npn_light@xiao_esp32s3",
+  "title": "電晶體光控開關",
+  "level": "進階",
+  "summary": "光敏模組的電壓經 10kΩ 進電晶體基極；亮的時候電晶體導通、LED 亮；暗了就熄。程式印出基極電壓與狀態。",
+  "breadboard": null,
+  "parts": {
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 170,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "q1": {
+    "type": "npn",
+    "x": 420,
+    "y": 160,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rc": {
+    "type": "resistor",
+    "x": 300,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ldr1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "rb:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "rb:2",
+    "b": "q1:B",
+    "color": "#dc2"
+   },
+   {
+    "a": "q1:E",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "board:3V3",
+    "b": "rc:1",
+    "color": "#d33"
+   },
+   {
+    "a": "rc:2",
+    "b": "led1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "led1:C",
+    "b": "q1:C",
+    "color": "#e90"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "board:D0",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "光敏模組 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "AO → 10kΩ → 電晶體 B（基極）",
+    "wires": [
+     2,
+     3
+    ]
+   },
+   {
+    "text": "E（射極）接 GND",
+    "wires": [
+     4
+    ]
+   },
+   {
+    "text": "3V3 → 220Ω → LED → 電晶體 C（集極）",
+    "wires": [
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "AO 也接 D0 讓程式看電壓",
+    "wires": [
+     8
+    ]
+   },
+   {
+    "text": "執行後在光敏模組上拖亮暗",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(1), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3\n    print('基極端 %.2f V →' % v, '導通，LED 亮' if v > 0.8 else '截止，LED 滅')\n    lab.sleep(0.3)\n",
+  "expect": "預設亮度時 LED 亮；把光敏拖到很暗，基極電壓掉到 0.7 V 以下，LED 熄滅。",
+  "try": [
+   "把 10k 換成 100k，看導通門檻怎麼變",
+   "加一顆可變電阻做靈敏度調整"
+  ],
+  "verify": {
+   "console": "導通"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "an_555_blink@xiao_esp32s3",
+  "title": "555 閃燈",
+  "level": "進階",
+  "summary": "NE555 無穩態：R1=1kΩ、R2=47kΩ、C=10µF，約 1.5 Hz 閃；完全不用程式也會閃，程式只是數脈衝。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 440,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "47k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 160,
+    "rot": 0,
+    "attrs": {
+     "value": "10u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 230,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:5V",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "board:5V",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:DIS",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "u1:THR",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:D2",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 的 VCC 與 RESET 接 5V，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "5V → R1(1k) → DIS；DIS → R2(47k) → THR",
+    "wires": [
+     3,
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "THR 和 TRIG 接在一起，再接電容 +；電容 − 接 GND",
+    "wires": [
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "OUT → 220Ω → LED → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "OUT 也接 D2 讓程式數脈衝；示波器探針看 u1:THR 的三角波",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab, time\nfrom machine import Pin\nout = Pin(3, Pin.IN)\nn = 0; prev = out.value(); t0 = time.ticks_ms()\nwhile lab.running():\n    v = out.value()\n    if v and not prev:\n        n += 1; el = time.ticks_diff(time.ticks_ms(), t0) / 1000\n        print('第 %d 次脈衝，平均 %.2f Hz' % (n, n / el if el else 0))\n    prev = v\n    lab.sleep(0.01)\n",
+  "expect": "LED 約每 0.7 秒閃一次（f = 1.44 ÷ ((R1+2R2)×C)），主控台印脈衝次數與頻率；示波器 u1:THR 是 1/3～2/3 Vcc 的三角波。",
+  "try": [
+   "把 C 換成 100u，閃得慢 10 倍",
+   "把 R2 換成 4.7k 看工作比怎麼變"
+  ],
+  "verify": {
+   "console": "脈衝"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "an_555_buzzer@xiao_esp32s3",
+  "title": "555 蜂鳴器",
+  "level": "進階",
+  "summary": "同一顆 555，換小電容就變成音頻：R1=1k、R2=4.7k、C=1µF ≈ 140 Hz，蜂鳴器直接響，不需要程式。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 440,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "4.7k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 160,
+    "rot": 0,
+    "attrs": {
+     "value": "1u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 230,
+    "rot": 0,
+    "attrs": {
+     "value": "100"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 420,
+    "y": 210,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:5V",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "board:5V",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:DIS",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "u1:THR",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "bz1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:D2",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 VCC、RESET 接 5V，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "R1、R2、C 照閃燈接法，但 R2=4.7k、C=1µF",
+    "wires": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "OUT → 100Ω → 蜂鳴器 → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "OUT 接 D2 讓程式量頻率",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab\n# 555 無穩態的頻率公式：f = 1.44 / ((R1 + 2·R2) × C)\nR1, R2, C = 1000, 4700, 1e-6\nf = 1.44 / ((R1 + 2 * R2) * C)\nduty = (R1 + R2) / (R1 + 2 * R2)\nprint('理論頻率 %.0f Hz，工作比 %.0f %%' % (f, duty * 100))\nprint('蜂鳴器直接由 555 驅動，和程式無關；到「示波器」按探針 u1:OUT 看方波、u1:THR 看三角波')\nn = 0\nwhile lab.running():\n    n += 1; print('第 %d 秒：還在響（換 C 試試 100n 或 10u）' % n); lab.sleep(1)\n",
+  "expect": "蜂鳴器出現音符記號（有訊號）；主控台印出理論頻率約 140 Hz；示波器探針 u1:OUT 看得到方波，把 C 改小頻率變高。",
+  "try": [
+   "把 C 換 100n 看變多高（模擬器約到 1 kHz）",
+   "用可變電阻取代 R2 做滑音"
+  ],
+  "verify": {
+   "console": "理論頻率"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "an_555_mono@xiao_esp32s3",
+  "title": "555 延時燈",
+  "level": "進階",
+  "summary": "單穩態：按一下按鍵，LED 亮 1.1×R×C 秒自動熄（R=100k、C=10µF ≈ 1.1 秒），像樓梯間的定時燈。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 20,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rp": {
+    "type": "resistor",
+    "x": 440,
+    "y": 30,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "100k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 170,
+    "rot": 0,
+    "attrs": {
+     "value": "10u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 260,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 250,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:5V",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "board:5V",
+    "b": "rp:1",
+    "color": "#d33"
+   },
+   {
+    "a": "rp:2",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:TRIG",
+    "b": "btn1:1.l",
+    "color": "#dc2"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "board:5V",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:THR",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#e90"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:D2",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 VCC、RESET 接 5V，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "5V → 10kΩ → TRIG（上拉）；按鍵接 TRIG 與 GND（按下把 TRIG 拉低）",
+    "wires": [
+     3,
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "5V → 100kΩ → THR；THR 接 DIS 與電容 +，電容 − 接 GND",
+    "wires": [
+     7,
+     8,
+     9,
+     10,
+     11
+    ]
+   },
+   {
+    "text": "OUT → 220Ω → LED → GND",
+    "wires": [
+     12,
+     13,
+     14
+    ]
+   },
+   {
+    "text": "OUT 接 D2 讓程式量亮多久",
+    "wires": [
+     15
+    ]
+   }
+  ],
+  "code": "import lab, time\nfrom machine import Pin\nout = Pin(3, Pin.IN); prev = 0; t0 = 0\nwhile lab.running():\n    v = out.value()\n    if v and not prev: t0 = time.ticks_ms(); print('亮了')\n    if not v and prev: print('熄了，亮了 %.2f 秒' % (time.ticks_diff(time.ticks_ms(), t0) / 1000))\n    prev = v; lab.sleep(0.01)\n",
+  "expect": "按一下按鍵 LED 亮約 1.1 秒自動熄，主控台印出亮了幾秒；按住不放也不會更久。",
+  "try": [
+   "把 100k 換 470k 延長到 5 秒",
+   "加第二顆 LED 做「正在計時」指示"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    }
+   },
+   "console": "亮了"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
   "id": "xi_weather_station@xiao_esp32s3",
   "title": "小型氣象站",
   "level": "專題",
@@ -2611,6 +4468,123 @@
   ],
   "verify": {
    "console": "舒適"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "an_npn_flyback@xiao_esp32s3",
+  "title": "電晶體驅動蜂鳴器",
+  "level": "專題",
+  "summary": "GPIO 只能給幾毫安，用 NPN 當開關去驅動蜂鳴器；蜂鳴器兩端反向並一顆二極體（飛輪），關斷時吸收反電動勢保護電晶體。",
+  "breadboard": null,
+  "parts": {
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "q1": {
+    "type": "npn",
+    "x": 420,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 420,
+    "y": 150,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d1": {
+    "type": "diode",
+    "x": 300,
+    "y": 180,
+    "rot": 0,
+    "attrs": {
+     "model": "1N4007"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D2",
+    "b": "rb:1",
+    "color": "#e90"
+   },
+   {
+    "a": "rb:2",
+    "b": "q1:B",
+    "color": "#e90"
+   },
+   {
+    "a": "q1:E",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "q1:C",
+    "b": "bz1:2",
+    "color": "#93c"
+   },
+   {
+    "a": "bz1:1",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:A",
+    "b": "q1:C",
+    "color": "#2a7"
+   },
+   {
+    "a": "d1:K",
+    "b": "board:5V",
+    "color": "#2a7"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D2 → 1kΩ → 電晶體 B；E 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "蜂鳴器一腳接 5V、另一腳接電晶體 C",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "二極體 A 接 C、K 接 5V（反向並聯在蜂鳴器兩端）",
+    "wires": [
+     5,
+     6
+    ]
+   },
+   {
+    "text": "執行：程式每秒切換 GPIO，蜂鳴器響停交替",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ndrv = Pin(3, Pin.OUT); n = 0\nwhile lab.running():\n    drv.value(1); print('第', n, '次：電晶體導通，蜂鳴器通電'); lab.sleep(0.5)\n    drv.value(0); print('關斷：線圈反電動勢由飛輪二極體導走'); lab.sleep(0.5)\n    n += 1\n",
+  "expect": "蜂鳴器每秒響停一次；點電晶體看屬性：導通時 Vce 很小（飽和）。拿掉二極體模擬器一樣會響，但實機電晶體會被反電動勢打壞。",
+  "try": [
+   "把 1k 換 100k，看電晶體還飽不飽和",
+   "改用繼電器模組的線圈（實機要加二極體）"
+  ],
+  "verify": {
+   "console": "導通"
   },
   "board": "xiao_esp32s3",
   "boardName": "XIAO ESP32S3"
@@ -3058,6 +5032,156 @@
   "boardName": "T-Display S3"
  },
  {
+  "id": "an_rc@tdisplay_s3",
+  "title": "電容充放電",
+  "level": "入門",
+  "summary": "滑動開關撥到充電，電容電壓沿曲線慢慢升到 3.3 V；撥到放電慢慢掉回 0。示波器探針看曲線，程式用 ADC 把電壓印出來。",
+  "breadboard": null,
+  "parts": {
+   "sw1": {
+    "type": "slide-switch",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 420,
+    "y": 120,
+    "rot": 0,
+    "attrs": {
+     "value": "1000u"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "color": "yellow"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "sw1:1",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "sw1:3",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "sw1:2",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "c1:+",
+    "color": "#e90"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "c1:+",
+    "b": "board:G1",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:+",
+    "b": "r2:1",
+    "color": "#93c"
+   },
+   {
+    "a": "r2:2",
+    "b": "led1:A",
+    "color": "#93c"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "滑動開關腳 1 接 3V3、腳 3 接 GND、中間腳 2 → 1kΩ",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "1kΩ 另一端接電容 +，電容 − 接 GND（電解電容有極性）",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "電容 + 也接到 G1（ADC）讓程式讀電壓",
+    "wires": [
+     5
+    ]
+   },
+   {
+    "text": "電容 + → 10kΩ → LED → GND（LED 只當指示，電阻大才不會把電容拉低）",
+    "wires": [
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "text": "執行後點滑動開關撥動；示波器分頁按探針 c1:+",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(1), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3\n    bar = '#' * int(v / 3.3 * 30)\n    print('電容 %.2f V %s' % (v, bar)); lab.send(vc=round(v, 2))\n    lab.sleep(0.2)\n",
+  "expect": "開關預設在充電端：主控台電壓每 0.2 秒變大、長條變長（τ=R×C=1 秒，約 5 秒接近 3 V）；撥到另一端慢慢放電降到 0。LED 隨電壓亮暗。",
+  "try": [
+   "把 1000u 換成 100u，看充電變多快",
+   "把 1k 換成 10k"
+  ],
+  "verify": {
+   "ui": {
+    "sw1": {
+     "value": 1
+    }
+   },
+   "console": "電容"
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
   "id": "td_weather@tdisplay_s3",
   "title": "天氣站",
   "level": "進階",
@@ -3387,6 +5511,726 @@
   "boardName": "T-Display S3"
  },
  {
+  "id": "an_npn_light@tdisplay_s3",
+  "title": "電晶體光控開關",
+  "level": "進階",
+  "summary": "光敏模組的電壓經 10kΩ 進電晶體基極；亮的時候電晶體導通、LED 亮；暗了就熄。程式印出基極電壓與狀態。",
+  "breadboard": null,
+  "parts": {
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 170,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "q1": {
+    "type": "npn",
+    "x": 420,
+    "y": 160,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rc": {
+    "type": "resistor",
+    "x": 300,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ldr1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "rb:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "rb:2",
+    "b": "q1:B",
+    "color": "#dc2"
+   },
+   {
+    "a": "q1:E",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "board:3V3",
+    "b": "rc:1",
+    "color": "#d33"
+   },
+   {
+    "a": "rc:2",
+    "b": "led1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "led1:C",
+    "b": "q1:C",
+    "color": "#e90"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "board:G1",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "光敏模組 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "AO → 10kΩ → 電晶體 B（基極）",
+    "wires": [
+     2,
+     3
+    ]
+   },
+   {
+    "text": "E（射極）接 GND",
+    "wires": [
+     4
+    ]
+   },
+   {
+    "text": "3V3 → 220Ω → LED → 電晶體 C（集極）",
+    "wires": [
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "AO 也接 G1 讓程式看電壓",
+    "wires": [
+     8
+    ]
+   },
+   {
+    "text": "執行後在光敏模組上拖亮暗",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(1), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3\n    print('基極端 %.2f V →' % v, '導通，LED 亮' if v > 0.8 else '截止，LED 滅')\n    lab.sleep(0.3)\n",
+  "expect": "預設亮度時 LED 亮；把光敏拖到很暗，基極電壓掉到 0.7 V 以下，LED 熄滅。",
+  "try": [
+   "把 10k 換成 100k，看導通門檻怎麼變",
+   "加一顆可變電阻做靈敏度調整"
+  ],
+  "verify": {
+   "console": "導通"
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "an_555_blink@tdisplay_s3",
+  "title": "555 閃燈",
+  "level": "進階",
+  "summary": "NE555 無穩態：R1=1kΩ、R2=47kΩ、C=10µF，約 1.5 Hz 閃；完全不用程式也會閃，程式只是數脈衝。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 440,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "47k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 160,
+    "rot": 0,
+    "attrs": {
+     "value": "10u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 230,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:5V",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "board:5V",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:DIS",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "u1:THR",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:G16",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 的 VCC 與 RESET 接 5V，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "5V → R1(1k) → DIS；DIS → R2(47k) → THR",
+    "wires": [
+     3,
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "THR 和 TRIG 接在一起，再接電容 +；電容 − 接 GND",
+    "wires": [
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "OUT → 220Ω → LED → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "OUT 也接 G16 讓程式數脈衝；示波器探針看 u1:THR 的三角波",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab, time\nfrom machine import Pin\nout = Pin(16, Pin.IN)\nn = 0; prev = out.value(); t0 = time.ticks_ms()\nwhile lab.running():\n    v = out.value()\n    if v and not prev:\n        n += 1; el = time.ticks_diff(time.ticks_ms(), t0) / 1000\n        print('第 %d 次脈衝，平均 %.2f Hz' % (n, n / el if el else 0))\n    prev = v\n    lab.sleep(0.01)\n",
+  "expect": "LED 約每 0.7 秒閃一次（f = 1.44 ÷ ((R1+2R2)×C)），主控台印脈衝次數與頻率；示波器 u1:THR 是 1/3～2/3 Vcc 的三角波。",
+  "try": [
+   "把 C 換成 100u，閃得慢 10 倍",
+   "把 R2 換成 4.7k 看工作比怎麼變"
+  ],
+  "verify": {
+   "console": "脈衝"
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "an_555_buzzer@tdisplay_s3",
+  "title": "555 蜂鳴器",
+  "level": "進階",
+  "summary": "同一顆 555，換小電容就變成音頻：R1=1k、R2=4.7k、C=1µF ≈ 140 Hz，蜂鳴器直接響，不需要程式。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 440,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "4.7k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 160,
+    "rot": 0,
+    "attrs": {
+     "value": "1u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 230,
+    "rot": 0,
+    "attrs": {
+     "value": "100"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 420,
+    "y": 210,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:5V",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "board:5V",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:DIS",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "u1:THR",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "bz1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:G16",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 VCC、RESET 接 5V，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "R1、R2、C 照閃燈接法，但 R2=4.7k、C=1µF",
+    "wires": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "OUT → 100Ω → 蜂鳴器 → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "OUT 接 G16 讓程式量頻率",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab\n# 555 無穩態的頻率公式：f = 1.44 / ((R1 + 2·R2) × C)\nR1, R2, C = 1000, 4700, 1e-6\nf = 1.44 / ((R1 + 2 * R2) * C)\nduty = (R1 + R2) / (R1 + 2 * R2)\nprint('理論頻率 %.0f Hz，工作比 %.0f %%' % (f, duty * 100))\nprint('蜂鳴器直接由 555 驅動，和程式無關；到「示波器」按探針 u1:OUT 看方波、u1:THR 看三角波')\nn = 0\nwhile lab.running():\n    n += 1; print('第 %d 秒：還在響（換 C 試試 100n 或 10u）' % n); lab.sleep(1)\n",
+  "expect": "蜂鳴器出現音符記號（有訊號）；主控台印出理論頻率約 140 Hz；示波器探針 u1:OUT 看得到方波，把 C 改小頻率變高。",
+  "try": [
+   "把 C 換 100n 看變多高（模擬器約到 1 kHz）",
+   "用可變電阻取代 R2 做滑音"
+  ],
+  "verify": {
+   "console": "理論頻率"
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "an_555_mono@tdisplay_s3",
+  "title": "555 延時燈",
+  "level": "進階",
+  "summary": "單穩態：按一下按鍵，LED 亮 1.1×R×C 秒自動熄（R=100k、C=10µF ≈ 1.1 秒），像樓梯間的定時燈。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 20,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rp": {
+    "type": "resistor",
+    "x": 440,
+    "y": 30,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "100k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 170,
+    "rot": 0,
+    "attrs": {
+     "value": "10u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 260,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 250,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:5V",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "board:5V",
+    "b": "rp:1",
+    "color": "#d33"
+   },
+   {
+    "a": "rp:2",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:TRIG",
+    "b": "btn1:1.l",
+    "color": "#dc2"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "board:5V",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:THR",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#e90"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:G16",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 VCC、RESET 接 5V，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "5V → 10kΩ → TRIG（上拉）；按鍵接 TRIG 與 GND（按下把 TRIG 拉低）",
+    "wires": [
+     3,
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "5V → 100kΩ → THR；THR 接 DIS 與電容 +，電容 − 接 GND",
+    "wires": [
+     7,
+     8,
+     9,
+     10,
+     11
+    ]
+   },
+   {
+    "text": "OUT → 220Ω → LED → GND",
+    "wires": [
+     12,
+     13,
+     14
+    ]
+   },
+   {
+    "text": "OUT 接 G16 讓程式量亮多久",
+    "wires": [
+     15
+    ]
+   }
+  ],
+  "code": "import lab, time\nfrom machine import Pin\nout = Pin(16, Pin.IN); prev = 0; t0 = 0\nwhile lab.running():\n    v = out.value()\n    if v and not prev: t0 = time.ticks_ms(); print('亮了')\n    if not v and prev: print('熄了，亮了 %.2f 秒' % (time.ticks_diff(time.ticks_ms(), t0) / 1000))\n    prev = v; lab.sleep(0.01)\n",
+  "expect": "按一下按鍵 LED 亮約 1.1 秒自動熄，主控台印出亮了幾秒；按住不放也不會更久。",
+  "try": [
+   "把 100k 換 470k 延長到 5 秒",
+   "加第二顆 LED 做「正在計時」指示"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    }
+   },
+   "console": "亮了"
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
   "id": "td_joystick_paint@tdisplay_s3",
   "title": "搖桿畫板",
   "level": "專題",
@@ -3532,6 +6376,123 @@
     "1": 3000
    },
    "screen": true
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "an_npn_flyback@tdisplay_s3",
+  "title": "電晶體驅動蜂鳴器",
+  "level": "專題",
+  "summary": "GPIO 只能給幾毫安，用 NPN 當開關去驅動蜂鳴器；蜂鳴器兩端反向並一顆二極體（飛輪），關斷時吸收反電動勢保護電晶體。",
+  "breadboard": null,
+  "parts": {
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "q1": {
+    "type": "npn",
+    "x": 420,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 420,
+    "y": 150,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d1": {
+    "type": "diode",
+    "x": 300,
+    "y": 180,
+    "rot": 0,
+    "attrs": {
+     "model": "1N4007"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:G16",
+    "b": "rb:1",
+    "color": "#e90"
+   },
+   {
+    "a": "rb:2",
+    "b": "q1:B",
+    "color": "#e90"
+   },
+   {
+    "a": "q1:E",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "q1:C",
+    "b": "bz1:2",
+    "color": "#93c"
+   },
+   {
+    "a": "bz1:1",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:A",
+    "b": "q1:C",
+    "color": "#2a7"
+   },
+   {
+    "a": "d1:K",
+    "b": "board:5V",
+    "color": "#2a7"
+   }
+  ],
+  "steps": [
+   {
+    "text": "G16 → 1kΩ → 電晶體 B；E 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "蜂鳴器一腳接 5V、另一腳接電晶體 C",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "二極體 A 接 C、K 接 5V（反向並聯在蜂鳴器兩端）",
+    "wires": [
+     5,
+     6
+    ]
+   },
+   {
+    "text": "執行：程式每秒切換 GPIO，蜂鳴器響停交替",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ndrv = Pin(16, Pin.OUT); n = 0\nwhile lab.running():\n    drv.value(1); print('第', n, '次：電晶體導通，蜂鳴器通電'); lab.sleep(0.5)\n    drv.value(0); print('關斷：線圈反電動勢由飛輪二極體導走'); lab.sleep(0.5)\n    n += 1\n",
+  "expect": "蜂鳴器每秒響停一次；點電晶體看屬性：導通時 Vce 很小（飽和）。拿掉二極體模擬器一樣會響，但實機電晶體會被反電動勢打壞。",
+  "try": [
+   "把 1k 換 100k，看電晶體還飽不飽和",
+   "改用繼電器模組的線圈（實機要加二極體）"
+  ],
+  "verify": {
+   "console": "導通"
   },
   "board": "tdisplay_s3",
   "boardName": "T-Display S3"
@@ -4422,6 +7383,156 @@
     "34": 4000
    },
    "console": "滿水位"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "an_rc@devkit",
+  "title": "電容充放電",
+  "level": "入門",
+  "summary": "滑動開關撥到充電，電容電壓沿曲線慢慢升到 3.3 V；撥到放電慢慢掉回 0。示波器探針看曲線，程式用 ADC 把電壓印出來。",
+  "breadboard": null,
+  "parts": {
+   "sw1": {
+    "type": "slide-switch",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 420,
+    "y": 120,
+    "rot": 0,
+    "attrs": {
+     "value": "1000u"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "color": "yellow"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "sw1:1",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "sw1:3",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "sw1:2",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "c1:+",
+    "color": "#e90"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "c1:+",
+    "b": "board:D34",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:+",
+    "b": "r2:1",
+    "color": "#93c"
+   },
+   {
+    "a": "r2:2",
+    "b": "led1:A",
+    "color": "#93c"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND.1",
+    "color": "#222"
+   }
+  ],
+  "steps": [
+   {
+    "text": "滑動開關腳 1 接 3V3、腳 3 接 GND、中間腳 2 → 1kΩ",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "1kΩ 另一端接電容 +，電容 − 接 GND（電解電容有極性）",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "電容 + 也接到 D34（ADC）讓程式讀電壓",
+    "wires": [
+     5
+    ]
+   },
+   {
+    "text": "電容 + → 10kΩ → LED → GND（LED 只當指示，電阻大才不會把電容拉低）",
+    "wires": [
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "text": "執行後點滑動開關撥動；示波器分頁按探針 c1:+",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(34), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3\n    bar = '#' * int(v / 3.3 * 30)\n    print('電容 %.2f V %s' % (v, bar)); lab.send(vc=round(v, 2))\n    lab.sleep(0.2)\n",
+  "expect": "開關預設在充電端：主控台電壓每 0.2 秒變大、長條變長（τ=R×C=1 秒，約 5 秒接近 3 V）；撥到另一端慢慢放電降到 0。LED 隨電壓亮暗。",
+  "try": [
+   "把 1000u 換成 100u，看充電變多快",
+   "把 1k 換成 10k"
+  ],
+  "verify": {
+   "ui": {
+    "sw1": {
+     "value": 1
+    }
+   },
+   "console": "電容"
   },
   "board": "devkit",
   "boardName": "ESP32 DevKit"
@@ -5431,6 +8542,726 @@
   "boardName": "ESP32 DevKit"
  },
  {
+  "id": "an_npn_light@devkit",
+  "title": "電晶體光控開關",
+  "level": "進階",
+  "summary": "光敏模組的電壓經 10kΩ 進電晶體基極；亮的時候電晶體導通、LED 亮；暗了就熄。程式印出基極電壓與狀態。",
+  "breadboard": null,
+  "parts": {
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 170,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "q1": {
+    "type": "npn",
+    "x": 420,
+    "y": 160,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rc": {
+    "type": "resistor",
+    "x": 300,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ldr1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "rb:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "rb:2",
+    "b": "q1:B",
+    "color": "#dc2"
+   },
+   {
+    "a": "q1:E",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "board:3V3",
+    "b": "rc:1",
+    "color": "#d33"
+   },
+   {
+    "a": "rc:2",
+    "b": "led1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "led1:C",
+    "b": "q1:C",
+    "color": "#e90"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "board:D34",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "光敏模組 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "AO → 10kΩ → 電晶體 B（基極）",
+    "wires": [
+     2,
+     3
+    ]
+   },
+   {
+    "text": "E（射極）接 GND",
+    "wires": [
+     4
+    ]
+   },
+   {
+    "text": "3V3 → 220Ω → LED → 電晶體 C（集極）",
+    "wires": [
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "AO 也接 D34 讓程式看電壓",
+    "wires": [
+     8
+    ]
+   },
+   {
+    "text": "執行後在光敏模組上拖亮暗",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(34), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3\n    print('基極端 %.2f V →' % v, '導通，LED 亮' if v > 0.8 else '截止，LED 滅')\n    lab.sleep(0.3)\n",
+  "expect": "預設亮度時 LED 亮；把光敏拖到很暗，基極電壓掉到 0.7 V 以下，LED 熄滅。",
+  "try": [
+   "把 10k 換成 100k，看導通門檻怎麼變",
+   "加一顆可變電阻做靈敏度調整"
+  ],
+  "verify": {
+   "console": "導通"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "an_555_blink@devkit",
+  "title": "555 閃燈",
+  "level": "進階",
+  "summary": "NE555 無穩態：R1=1kΩ、R2=47kΩ、C=10µF，約 1.5 Hz 閃；完全不用程式也會閃，程式只是數脈衝。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 440,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "47k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 160,
+    "rot": 0,
+    "attrs": {
+     "value": "10u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 230,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:VIN",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "board:VIN",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:DIS",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "u1:THR",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:D4",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 的 VCC 與 RESET 接 VIN，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "VIN → R1(1k) → DIS；DIS → R2(47k) → THR",
+    "wires": [
+     3,
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "THR 和 TRIG 接在一起，再接電容 +；電容 − 接 GND",
+    "wires": [
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "OUT → 220Ω → LED → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "OUT 也接 D4 讓程式數脈衝；示波器探針看 u1:THR 的三角波",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab, time\nfrom machine import Pin\nout = Pin(4, Pin.IN)\nn = 0; prev = out.value(); t0 = time.ticks_ms()\nwhile lab.running():\n    v = out.value()\n    if v and not prev:\n        n += 1; el = time.ticks_diff(time.ticks_ms(), t0) / 1000\n        print('第 %d 次脈衝，平均 %.2f Hz' % (n, n / el if el else 0))\n    prev = v\n    lab.sleep(0.01)\n",
+  "expect": "LED 約每 0.7 秒閃一次（f = 1.44 ÷ ((R1+2R2)×C)），主控台印脈衝次數與頻率；示波器 u1:THR 是 1/3～2/3 Vcc 的三角波。",
+  "try": [
+   "把 C 換成 100u，閃得慢 10 倍",
+   "把 R2 換成 4.7k 看工作比怎麼變"
+  ],
+  "verify": {
+   "console": "脈衝"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "an_555_buzzer@devkit",
+  "title": "555 蜂鳴器",
+  "level": "進階",
+  "summary": "同一顆 555，換小電容就變成音頻：R1=1k、R2=4.7k、C=1µF ≈ 140 Hz，蜂鳴器直接響，不需要程式。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 440,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "value": "4.7k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 160,
+    "rot": 0,
+    "attrs": {
+     "value": "1u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 230,
+    "rot": 0,
+    "attrs": {
+     "value": "100"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 420,
+    "y": 210,
+    "rot": 0,
+    "attrs": {}
+   }
+  },
+  "wires": [
+   {
+    "a": "board:VIN",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "board:VIN",
+    "b": "r1:1",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:DIS",
+    "b": "r2:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r2:2",
+    "b": "u1:THR",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#dc2"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "bz1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "bz1:2",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:D4",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 VCC、RESET 接 VIN，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "R1、R2、C 照閃燈接法，但 R2=4.7k、C=1µF",
+    "wires": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "OUT → 100Ω → 蜂鳴器 → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "OUT 接 D4 讓程式量頻率",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab\n# 555 無穩態的頻率公式：f = 1.44 / ((R1 + 2·R2) × C)\nR1, R2, C = 1000, 4700, 1e-6\nf = 1.44 / ((R1 + 2 * R2) * C)\nduty = (R1 + R2) / (R1 + 2 * R2)\nprint('理論頻率 %.0f Hz，工作比 %.0f %%' % (f, duty * 100))\nprint('蜂鳴器直接由 555 驅動，和程式無關；到「示波器」按探針 u1:OUT 看方波、u1:THR 看三角波')\nn = 0\nwhile lab.running():\n    n += 1; print('第 %d 秒：還在響（換 C 試試 100n 或 10u）' % n); lab.sleep(1)\n",
+  "expect": "蜂鳴器出現音符記號（有訊號）；主控台印出理論頻率約 140 Hz；示波器探針 u1:OUT 看得到方波，把 C 改小頻率變高。",
+  "try": [
+   "把 C 換 100n 看變多高（模擬器約到 1 kHz）",
+   "用可變電阻取代 R2 做滑音"
+  ],
+  "verify": {
+   "console": "理論頻率"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "an_555_mono@devkit",
+  "title": "555 延時燈",
+  "level": "進階",
+  "summary": "單穩態：按一下按鍵，LED 亮 1.1×R×C 秒自動熄（R=100k、C=10µF ≈ 1.1 秒），像樓梯間的定時燈。",
+  "breadboard": null,
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 20,
+    "rot": 0,
+    "attrs": {}
+   },
+   "rp": {
+    "type": "resistor",
+    "x": 440,
+    "y": 30,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "100k"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 460,
+    "y": 170,
+    "rot": 0,
+    "attrs": {
+     "value": "10u"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 300,
+    "y": 260,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 250,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:VIN",
+    "b": "u1:VCC",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "u1:RESET",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "board:VIN",
+    "b": "rp:1",
+    "color": "#d33"
+   },
+   {
+    "a": "rp:2",
+    "b": "u1:TRIG",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:TRIG",
+    "b": "btn1:1.l",
+    "color": "#dc2"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "board:VIN",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "u1:THR",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:THR",
+    "b": "u1:DIS",
+    "color": "#e90"
+   },
+   {
+    "a": "u1:THR",
+    "b": "c1:+",
+    "color": "#e90"
+   },
+   {
+    "a": "c1:-",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "r3:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r3:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT",
+    "b": "board:D4",
+    "color": "#0aa"
+   }
+  ],
+  "steps": [
+   {
+    "text": "555 VCC、RESET 接 VIN，GND 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "VIN → 10kΩ → TRIG（上拉）；按鍵接 TRIG 與 GND（按下把 TRIG 拉低）",
+    "wires": [
+     3,
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "text": "VIN → 100kΩ → THR；THR 接 DIS 與電容 +，電容 − 接 GND",
+    "wires": [
+     7,
+     8,
+     9,
+     10,
+     11
+    ]
+   },
+   {
+    "text": "OUT → 220Ω → LED → GND",
+    "wires": [
+     12,
+     13,
+     14
+    ]
+   },
+   {
+    "text": "OUT 接 D4 讓程式量亮多久",
+    "wires": [
+     15
+    ]
+   }
+  ],
+  "code": "import lab, time\nfrom machine import Pin\nout = Pin(4, Pin.IN); prev = 0; t0 = 0\nwhile lab.running():\n    v = out.value()\n    if v and not prev: t0 = time.ticks_ms(); print('亮了')\n    if not v and prev: print('熄了，亮了 %.2f 秒' % (time.ticks_diff(time.ticks_ms(), t0) / 1000))\n    prev = v; lab.sleep(0.01)\n",
+  "expect": "按一下按鍵 LED 亮約 1.1 秒自動熄，主控台印出亮了幾秒；按住不放也不會更久。",
+  "try": [
+   "把 100k 換 470k 延長到 5 秒",
+   "加第二顆 LED 做「正在計時」指示"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    }
+   },
+   "console": "亮了"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
   "id": "dk_gimbal@devkit",
   "title": "搖桿雲台",
   "level": "專題",
@@ -5873,6 +9704,123 @@
    "兩人輪流比大小"
   ],
   "verify": {},
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "an_npn_flyback@devkit",
+  "title": "電晶體驅動蜂鳴器",
+  "level": "專題",
+  "summary": "GPIO 只能給幾毫安，用 NPN 當開關去驅動蜂鳴器；蜂鳴器兩端反向並一顆二極體（飛輪），關斷時吸收反電動勢保護電晶體。",
+  "breadboard": null,
+  "parts": {
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   },
+   "q1": {
+    "type": "npn",
+    "x": 420,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 420,
+    "y": 150,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d1": {
+    "type": "diode",
+    "x": 300,
+    "y": 180,
+    "rot": 0,
+    "attrs": {
+     "model": "1N4007"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:D4",
+    "b": "rb:1",
+    "color": "#e90"
+   },
+   {
+    "a": "rb:2",
+    "b": "q1:B",
+    "color": "#e90"
+   },
+   {
+    "a": "q1:E",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "q1:C",
+    "b": "bz1:2",
+    "color": "#93c"
+   },
+   {
+    "a": "bz1:1",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:A",
+    "b": "q1:C",
+    "color": "#2a7"
+   },
+   {
+    "a": "d1:K",
+    "b": "board:VIN",
+    "color": "#2a7"
+   }
+  ],
+  "steps": [
+   {
+    "text": "D4 → 1kΩ → 電晶體 B；E 接 GND",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "text": "蜂鳴器一腳接 VIN、另一腳接電晶體 C",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "text": "二極體 A 接 C、K 接 VIN（反向並聯在蜂鳴器兩端）",
+    "wires": [
+     5,
+     6
+    ]
+   },
+   {
+    "text": "執行：程式每秒切換 GPIO，蜂鳴器響停交替",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ndrv = Pin(4, Pin.OUT); n = 0\nwhile lab.running():\n    drv.value(1); print('第', n, '次：電晶體導通，蜂鳴器通電'); lab.sleep(0.5)\n    drv.value(0); print('關斷：線圈反電動勢由飛輪二極體導走'); lab.sleep(0.5)\n    n += 1\n",
+  "expect": "蜂鳴器每秒響停一次；點電晶體看屬性：導通時 Vce 很小（飽和）。拿掉二極體模擬器一樣會響，但實機電晶體會被反電動勢打壞。",
+  "try": [
+   "把 1k 換 100k，看電晶體還飽不飽和",
+   "改用繼電器模組的線圈（實機要加二極體）"
+  ],
+  "verify": {
+   "console": "導通"
+  },
   "board": "devkit",
   "boardName": "ESP32 DevKit"
  }

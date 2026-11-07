@@ -328,7 +328,7 @@ dialog{position:relative}
     <table><thead><tr><th>網路（相連的腳位）</th><th>電壓</th></tr></thead><tbody id="nets"></tbody></table>
   </div></div></div>
   <div class="pane" id="pane-scope"><div class="pane-col">
-    <div class="bar" style="border-top:0;border-bottom:1px solid var(--line)"><span>腳位（最多 4 支）：</span><span id="scope-pins"></span><span style="flex:1"></span><label>時間窗 <select id="scope-win"><option value="2">2 秒</option><option value="5" selected>5 秒</option><option value="10">10 秒</option></select></label><button id="scope-clear">清除</button></div>
+    <div class="bar" style="border-top:0;border-bottom:1px solid var(--line)"><span>腳位（最多 4 支）：</span><span id="scope-pins"></span><span id="scope-probes"></span><span style="flex:1"></span><label>時間窗 <select id="scope-win"><option value="2">2 秒</option><option value="5" selected>5 秒</option><option value="10">10 秒</option></select></label><button id="scope-clear">清除</button></div>
     <canvas id="scope" style="flex:1;min-height:0;width:100%;background:var(--term)"></canvas>
     <div class="bar"><span class="muted">快速引擎：由腳位變化事件畫數位波形；PWM 腳顯示工作比。真韌體引擎：時間軸是模擬時脈（µs），邊緣時間＝實機。</span></div>
   </div></div>
@@ -338,6 +338,7 @@ dialog{position:relative}
 </section>
 <script src="vendor/wokwi-elements.bundle.min.js"></script>
 <script type="module" src="./relay-element.js"></script>
+<script type="module" src="./analog-elements.js"></script>
 <script type="module">
 import { createSimulator, WIRE_COLORS } from "./sim.js";
 import { mountSchematic } from "./schematic-view.js";
@@ -353,6 +354,7 @@ const CATS = [
   ["板子", ["__board", "__examples"]], ["基本", ["resistor", "led", "rgb-led", "led-bar-graph", "__bb"]], ["輸入", ["pushbutton", "slide-switch", "potentiometer", "photoresistor-sensor"]],
   ["輸出", ["buzzer", "servo"]], ["顯示", ["ssd1306", "lcd1602"]], ["感測", ["hc-sr04", "dht22", "pir"]],
   ["致動", ["relay", "stepper", "neopixel-strip"]], ["通訊／控制", ["joystick"]],
+  ["類比／IC", ["capacitor", "diode", "npn", "ne555"]],
 ];
 let EXAMPLES = [];   // examples.json 載入後填入；元件庫的範例卡和「更多→範例電路」共用
 const nm = (t) => { const s = document.createElement("span"); s.className = "nm"; s.textContent = t; return s; };
@@ -864,7 +866,15 @@ function scopeAttach() {
   sim.engine.on("pin", (g, lv, tUs) => { (scope.hist[g] = scope.hist[g] || []).push([tUs / 1000, lv]); if (scope.hist[g].length > 5000) scope.hist[g].shift(); });
   sim.engine.on("pwm", (g, hz, duty) => { (scope.hist[g] = scope.hist[g] || []).push([sim.engine.time() / 1000, duty > 0 ? 0.5 + duty / 2 : 0, "pwm", hz, duty]); });
 }
+function scopeProbesUI() {
+  const el = $("scope-probes"); if (!el) return; el.innerHTML = "";
+  const refs = []; for (const [id, p] of Object.entries(sim.doc.parts)) { if (p.type === "capacitor") refs.push(id + ":+"); if (p.type === "ne555") { refs.push(id + ":OUT"); refs.push(id + ":THR"); } if (p.type === "npn") refs.push(id + ":C"); if (p.type === "diode") refs.push(id + ":K"); }
+  if (!refs.length) return;
+  const sp = document.createElement("span"); sp.className = "muted"; sp.textContent = "　探針（電壓）："; el.appendChild(sp);
+  for (const ref of refs) { const b = document.createElement("button"); b.className = "icon" + (sim.probes.includes(ref) ? " on" : ""); b.textContent = ref; b.addEventListener("click", () => { if (sim.probes.includes(ref)) sim.removeProbe(ref); else sim.addProbe(ref); scopeProbesUI(); }); el.appendChild(b); }
+}
 function scopePinsUI() {
+  scopeProbesUI();
   const el = $("scope-pins"); el.innerHTML = "";
   const gpios = [...new Set([...Object.keys(sim.engine ? sim.engine.pins() : {}), ...Object.keys(scope.hist)].map(Number))].sort((a, b) => a - b);
   for (const g of gpios) { const b = document.createElement("button"); b.className = "icon" + (scope.pins.includes(g) ? " on" : ""); b.textContent = "GPIO" + g; b.addEventListener("click", () => { if (scope.pins.includes(g)) scope.pins = scope.pins.filter((x) => x !== g); else if (scope.pins.length < 4) scope.pins.push(g); scopePinsUI(); }); el.appendChild(b); }
@@ -889,11 +899,22 @@ function drawScope() {
     if (lastPwm) { ctx.fillStyle = "#e90"; ctx.fillText(`PWM ${lastPwm[3]} Hz，目前工作比 ${Math.round(lastPwm[4] * 100)}%`, 60, y0 + 10); }
     ctx.lineTo(W, y1 - last * (y1 - y0)); ctx.stroke();
   });
+  // 類比探針：用模擬時間軸（秒），畫在同一張圖上（0～5.5 V）
+  const pr = sim.probes; if (pr.length) {
+    const tNow = sim.simTime, tw = Number($("scope-win").value), tA = tNow - tw;
+    const yOf = (v) => H - 14 - Math.max(0, Math.min(5.5, v)) / 5.5 * (H - 28);
+    ctx.strokeStyle = "#444"; ctx.setLineDash([3, 3]); for (const v of [1, 2, 3, 4, 5]) { ctx.beginPath(); ctx.moveTo(0, yOf(v)); ctx.lineTo(W, yOf(v)); ctx.stroke(); ctx.fillStyle = "#6b7280"; ctx.fillText(v + "V", 2, yOf(v) - 2); } ctx.setLineDash([]);
+    pr.forEach((ref, i) => {
+      const pts = (sim.probeData[ref] || []).filter((p) => p[0] >= tA); ctx.strokeStyle = ["#fbbf24", "#60a5fa", "#f472b6", "#34d399"][i % 4]; ctx.lineWidth = 1.5; ctx.beginPath();
+      pts.forEach((p, k) => { const x = (p[0] - tA) / tw * W, y = yOf(p[1]); if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }); ctx.stroke();
+      const last = pts[pts.length - 1]; ctx.fillStyle = ctx.strokeStyle; ctx.font = "11px sans-serif"; ctx.fillText(ref + (last ? " " + last[1].toFixed(2) + " V" : ""), W - 150, 14 + i * 14);
+    });
+  }
   ctx.fillStyle = "#6b7280"; ctx.font = "10px sans-serif"; for (let i = 0; i <= 5; i++) ctx.fillText(((t0 + (win * i) / 5) / 1000).toFixed(1) + "s", (W * i) / 5 + 2, H - 2);
 }
 let scopeKey = "";
 setInterval(() => { drawScope(); if ($("pane-scope").classList.contains("active")) { const key = Object.keys(sim.engine ? sim.engine.pins() : {}).join(",") + "|" + scope.pins.join(","); if (key !== scopeKey) { scopeKey = key; scopePinsUI(); } } }, 100);
-$("scope-clear").addEventListener("click", () => { scope.hist = {}; });
+$("scope-clear").addEventListener("click", () => { scope.hist = {}; sim.clearProbes(); });
 // ---------- 序列埠監視器 ----------
 const serial = $("serial");
 function serialLog(s, cls) { const d = document.createElement("div"); d.className = cls || ""; d.textContent = ($("serial-ts").checked ? ts() + " " : "") + s; serial.appendChild(d); while (serial.childNodes.length > 1000) serial.removeChild(serial.firstChild); serial.scrollTop = serial.scrollHeight; }
