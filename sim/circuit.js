@@ -213,6 +213,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     const i = on ? Math.max(0, ((vA - vC) - vf) / 10) : 0;
     const st = partState[L.part] = partState[L.part] || { leds: {} };
     st.leds[L.key] = { on, i, vA, vC, burned: burned.has(L.key) };
+    if (burned.has(L.key)) { warn("LED_BURN", L.part, `${L.part} 已燒毀`, "為什麼：剛才電流超過 LED 上限 30 mA（沒有串電阻，電流只受腳位內阻限制）。", "怎麼改：按「重置」或重新「執行」讓 LED 復活，並在 LED 長腳（A）和 GPIO 之間串 220 Ω～1 kΩ 電阻。"); continue; }
     if (i > LED_I_MAX && !burned.has(L.key)) {
       burned.add(L.key); st.leds[L.key].burned = true; st.leds[L.key].on = false;
       warn("LED_BURN", L.part, `${L.part} 燒毀了（${(i * 1000).toFixed(0)} mA）`, "為什麼：LED 一導通電壓就被夾在順向壓降（紅約 1.8 V），沒有電阻分壓的話電流只受腳位內阻限制，會超過 LED 的上限 30 mA，發熱燒斷。", "怎麼改：刪掉這顆 LED 重放一顆，在 LED 的長腳（A）和 GPIO 之間串 220 Ω～1 kΩ 電阻（3.3 V 時 220 Ω 約 7 mA，剛好亮）。");
@@ -305,6 +306,15 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
   }
   const nodeVolt = {};
   for (const r of netIds) nodeVolt[r] = r === gndRoot ? 0 : nodeV[idx.get(r)];
+  // 程式用了某支 GPIO（設成輸出／輸入／PWM／ADC），板子上那支腳卻沒接任何線：十之八九是腳位編號對錯（XIAO 的 D9 是 GPIO8）
+  if (!io._pwmInner) {
+    const bd = BOARDS[circuit.board] || {}; const miss = [];
+    for (const g of Object.keys(modes)) {
+      const n = Number(g); if (!bd.gpios || !bd.gpios.includes(n) || (bd.reserved && bd.reserved[n])) continue;
+      const ref = "board:" + n; if (!(circuit.wires || []).some(([a, b]) => a === ref || b === ref)) miss.push(n);
+    }
+    if (miss.length) warn("PIN_UNWIRED", "board", `程式用了 GPIO${miss.join("、GPIO")}，但板子上這${miss.length > 1 ? "幾" : ""}支腳沒接線`, "為什麼：程式裡 Pin(編號) 的編號是晶片的 GPIO 號碼，不一定等於板子上印的字（XIAO 的 D9 是 GPIO8、D10 是 GPIO9）。", "怎麼改：把線接到板子上對應這個 GPIO 的腳，或把程式的編號改成你接線那支腳的 GPIO（滑到板子腳位上可看對應）。");
+  }
   return { nets: N, nodeV: nodeVolt, parts: partState, warnings, inputs, adc, burned: [...burned] };
 }
 

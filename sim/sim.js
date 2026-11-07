@@ -136,7 +136,7 @@ export function createSimulator(opts) {
       for (const b of a.buttons) s += `<rect class="bbtn" data-gpio="${b.gpio}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="2" fill="#333" stroke="#888"/><text x="${b.x + b.w / 2}" y="${b.y + b.h + 8}" fill="#bbb" font-size="6" text-anchor="middle" font-family="sans-serif">${b.label}</text>`;
       if (a.led) s += `<circle class="bled" cx="${a.led.x}" cy="${a.led.y}" r="4" fill="#553" stroke="#776"/>`;
       for (const [name, x, y] of a.pins) {
-        const bottomRow = y > a.h - 30, left = x < a.w / 2;
+        const bottomRow = y > a.h - 30 && x > 16 && x < a.w - 16, left = x < a.w / 2;
         s += `<circle cx="${x}" cy="${y}" r="3.2" fill="#111" stroke="#d4af37" stroke-width="1.2"/>`;
         s += bottomRow ? `<text x="${x}" y="${y - 6}" fill="#ddd" font-size="6.5" text-anchor="middle" font-family="sans-serif">${name}</text>` : `<text x="${x + (left ? 6 : -6)}" y="${y + 2.5}" fill="#ddd" font-size="6.5" text-anchor="${left ? "start" : "end"}" font-family="sans-serif">${name}</text>`;
       }
@@ -164,6 +164,8 @@ export function createSimulator(opts) {
   }
   function renderWires() {
     wireLayer.innerHTML = "";
+    const hits = document.createElementNS(SVGNS, "g"); hits.setAttribute("class", "wire-hits"); wireLayer.appendChild(hits);
+    doc.wires.forEach((w, i) => { const d = wirePath(w); if (!d) return; const h = document.createElementNS(SVGNS, "path"); h.setAttribute("d", d); h.setAttribute("class", "wire-hit"); h.dataset.index = i; hits.appendChild(h); });
     doc.wires.forEach((w, i) => {
       const d = wirePath(w); if (!d) return;
       const hl = hlWires.has(i);
@@ -216,6 +218,7 @@ export function createSimulator(opts) {
     const r = solve(circuitForSolver(), { ...io(), prevV: lastResult ? lastResult.nodeV : {} }, breadboardLinks());
     const structure = Object.keys(doc.parts).join() + "|" + doc.wires.map((w) => w.a + w.b).join() + "|" + JSON.stringify(Object.values(doc.parts).map((p) => p.snaps));
     if (structure !== lastStructure) { lastStructure = structure; lastResult = r; queueMicrotask(syncAttachments); }
+    for (const w of r.warnings) if (w.code === "LED_BURN" && !burned.has(w.part) && !r.burned.every((k) => burned.has(k))) { toast(w.brief + "，看「問題」分頁", "warn"); break; }
     lastResult = r; burned = new Set(r.burned);
     shortNets = r.warnings.filter((w) => (w.code === "SHORT" || w.code === "SUPPLY_MIX") && w.net).map((w) => w.net);
     if (engine) {
@@ -264,10 +267,31 @@ export function createSimulator(opts) {
   // ---------- 互動 ----------
   let drag = null; const pointers = new Map(); const pressedButtons = new Set();
   let wireMode = false;
+  // 精準選取（手機）：手指按住時游標顯示在指尖左上方，點選／拉線都以游標位置為準，手指不會遮住目標
+  const PREC = { dx: -34, dy: -42 };
+  const cursorEl = document.createElement("div"); cursorEl.className = "sim-cursor"; viewport.appendChild(cursorEl);
+  const precise = (ev) => api.precise && ev.pointerType === "touch";
+  const MAGNET = 16;   // 游標離腳位、麵包板孔、轉折點 16 px 內就吸上去（螢幕像素）
+  function toScreen(wx, wy) { const r = viewport.getBoundingClientRect(); return [r.left + view.x + wx * view.z, r.top + view.y + wy * view.z]; }
+  const evPt = (ev) => {
+    if (!precise(ev)) return [ev.clientX, ev.clientY];
+    const raw = [ev.clientX + PREC.dx, ev.clientY + PREC.dy];
+    const [wx, wy] = toWorld(raw[0], raw[1]);
+    const near = nearestPin(wx, wy, MAGNET / view.z); if (near) return toScreen(...pinPos(near));
+    for (const w of doc.wires) for (const pt of (w.pts || [])) if (Math.hypot(pt[0] - wx, pt[1] - wy) * view.z < MAGNET) return toScreen(pt[0], pt[1]);
+    return raw;
+  };
+  const under = (ev) => { const [x, y] = evPt(ev); const el = document.elementFromPoint(x, y); return el && viewport.contains(el) ? el : viewport; };
+  const evTarget = (ev) => (precise(ev) ? under(ev) : ev.target);
+  let cursorTimer = null;
+  function showCursor(ev) { if (!precise(ev)) return; const r = viewport.getBoundingClientRect(); const [x, y] = evPt(ev); cursorEl.style.left = (x - r.left) + "px"; cursorEl.style.top = (y - r.top) + "px"; cursorEl.style.display = "block"; clearTimeout(cursorTimer); }
+  function hideCursor() { clearTimeout(cursorTimer); cursorTimer = setTimeout(() => { cursorEl.style.display = "none"; }, 350); }
   viewport.addEventListener("pointerdown", (ev) => {
     pointers.set(ev.pointerId, [ev.clientX, ev.clientY]);
     if (pointers.size === 2) { drag = { kind: "pinch", z0: view.z, d0: pinchDist(), c0: pinchCenter(), v0: { ...view } }; return; }
-    const t = ev.target;
+    if (ev.pointerType === "touch" && ev.target.closest && ev.target.closest("button,select,input,textarea,#steps")) { pointers.delete(ev.pointerId); return; }
+    showCursor(ev);
+    const t = evTarget(ev);
     if (t.closest && t.closest("button,select,input,textarea,#steps")) { pointers.delete(ev.pointerId); return; }   // 浮動按鈕、步驟框：交給它們自己，不當成平移
     const wp = t.closest && t.closest("circle.wp");
     if (wp) { ev.preventDefault(); viewport.setPointerCapture(ev.pointerId); drag = { kind: "wp", wire: Number(wp.dataset.wire), pt: Number(wp.dataset.pt) }; return; }
@@ -277,7 +301,7 @@ export function createSimulator(opts) {
       if (ref.startsWith("board:") && !boardRefOf(ref.slice(6))) { toast("這支腳（" + ref.slice(6) + "）不能接線"); return; }
       ev.preventDefault(); viewport.setPointerCapture(ev.pointerId); drag = { kind: "wire", from: ref }; const p = pinPos(ref); tempWire.setAttribute("d", `M${p[0]},${p[1]} L${p[0]},${p[1]}`); tempWire.style.display = "block"; return;
     }
-    const wireEl = t.closest && t.closest("path.wire");
+    const wireEl = t.closest && t.closest("path.wire,path.wire-hit");
     if (wireEl) { select("wire:" + wireEl.dataset.index, ev.shiftKey); return; }
     const item = t.closest && t.closest(".sim-item");
     if (item) {
@@ -290,39 +314,43 @@ export function createSimulator(opts) {
       if (t.closest && t.closest(".bbtn")) { const g = Number(t.closest(".bbtn").dataset.gpio); pressedButtons.add(g); if (engine) engine.pressButton(g); applyState(); drag = { kind: "bbtn", gpio: g }; viewport.setPointerCapture(ev.pointerId); return; }
       if (running && id !== "board" && id !== "bb") return;
       ev.preventDefault(); viewport.setPointerCapture(ev.pointerId);
-      const [wx, wy] = toWorld(ev.clientX, ev.clientY);
+      const [wx, wy] = toWorld(...evPt(ev));
       const ids = selection.has(id) ? [...selection].filter((s) => !s.startsWith("wire:")) : [id];
       drag = { kind: "items", ids, start: [wx, wy], orig: Object.fromEntries(ids.map((s) => [s, { ...posOf(s) }])), moved: false };
       return;
     }
     select(null);
+    // 觸控：單指按空白處不平移（平移、縮放都交給兩指），改成「瞄準」：手指移動時游標跟著走，放開選游標下的線或元件
+    if (ev.pointerType === "touch") { drag = { kind: "aim" }; viewport.setPointerCapture(ev.pointerId); return; }
     drag = { kind: "pan", sx: ev.clientX, sy: ev.clientY, vx: view.x, vy: view.y }; viewport.setPointerCapture(ev.pointerId);
   });
   const posOf = (id) => (id === "board" ? doc.boardPos : id === "bb" ? doc.breadboard : doc.parts[id]);
   viewport.addEventListener("pointermove", (ev) => {
     if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, [ev.clientX, ev.clientY]);
-    const [wx, wy] = toWorld(ev.clientX, ev.clientY);
-    if (!drag) { hover(ev.target); return; }
+    if (drag) showCursor(ev);
+    const [wx, wy] = toWorld(...evPt(ev));
+    if (!drag) { hover(evTarget(ev)); return; }
     if (drag.kind === "pinch" && pointers.size === 2) {
       const d = pinchDist(), c = pinchCenter(); const z = Math.max(0.25, Math.min(4, drag.z0 * d / drag.d0));
       const r = viewport.getBoundingClientRect(); const ox = (drag.c0[0] - r.left - drag.v0.x) / drag.z0, oy = (drag.c0[1] - r.top - drag.v0.y) / drag.z0;
       view.z = z; view.x = c[0] - r.left - ox * z; view.y = c[1] - r.top - oy * z; applyView(); return;
     }
     if (drag.kind === "pan") { view.x = drag.vx + ev.clientX - drag.sx; view.y = drag.vy + ev.clientY - drag.sy; applyView(); return; }
+    if (drag.kind === "aim") { hover(under(ev)); return; }
     if (drag.kind === "items") {
       const dx = wx - drag.start[0], dy = wy - drag.start[1];
       for (const id of drag.ids) { const o = drag.orig[id], pos = posOf(id); if (!pos || !o) continue; pos.x = snap(o.x + dx); pos.y = snap(o.y + dy); if (id !== "board" && id !== "bb") snapPart(id); }
       drag.moved = true; render(); return;
     }
-    if (drag.kind === "wp") { const w = doc.wires[drag.wire]; w.pts[drag.pt] = [snap(wx), snap(wy)]; renderWires(); return; }
+    if (drag.kind === "wp") { const w = doc.wires[drag.wire]; w.pts[drag.pt] = [Math.round(wx), Math.round(wy)]; renderWires(); return; }
     if (drag.kind === "wire") { const p = pinPos(drag.from); const near = nearestPin(wx, wy, 10); const q = near ? pinPos(near) : [wx, wy]; tempWire.setAttribute("d", `M${p[0]},${p[1]} L${q[0]},${q[1]}`); highlightStrip(near && near.startsWith("bb:") ? near.slice(3) : null); return; }
     if (drag.kind === "interact") interactMove(drag, ev);
   });
   const endPointer = (ev) => {
-    pointers.delete(ev.pointerId);
+    pointers.delete(ev.pointerId); hideCursor();
     if (!drag) return;
     if (drag.kind === "wire") {
-      const [wx, wy] = toWorld(ev.clientX, ev.clientY); const to = nearestPin(wx, wy, 12);
+      const [wx, wy] = toWorld(...evPt(ev)); const to = nearestPin(wx, wy, 12);
       tempWire.style.display = "none"; highlightStrip(null);
       if (to && to !== drag.from) {
         if (to.startsWith("board:") && !boardRefOf(to.slice(6))) { toast("這支腳（" + to.slice(6) + "）不能接線"); }
@@ -333,14 +361,15 @@ export function createSimulator(opts) {
       }
     } else if (drag.kind === "items") { if (drag.moved) { pushUndo(); tick(); } }
     else if (drag.kind === "wp") { pushUndo(); }
+    else if (drag.kind === "aim") { const t = under(ev); const w = t.closest && t.closest("path.wire,path.wire-hit"), it = t.closest && t.closest(".sim-item"); if (w) select("wire:" + w.dataset.index); else if (it) select(it.dataset.id); }
     else if (drag.kind === "bbtn") { pressedButtons.delete(drag.gpio); if (engine) engine.releaseButton(drag.gpio); applyState(); }
     else if (drag.kind === "interact") interactEnd(drag);
     drag = pointers.size === 2 ? drag : null;
   };
   viewport.addEventListener("pointerup", endPointer); viewport.addEventListener("pointercancel", endPointer);
   viewport.addEventListener("dblclick", (ev) => {
-    const wireEl = ev.target.closest && ev.target.closest("path.wire");
-    if (wireEl) { const i = Number(wireEl.dataset.index), w = doc.wires[i]; const [wx, wy] = toWorld(ev.clientX, ev.clientY); pushUndo(); w.pts = w.pts || []; w.pts.splice(nearestSegment(w, wx, wy), 0, [snap(wx), snap(wy)]); select("wire:" + i); render(); }
+    const wireEl = ev.target.closest && ev.target.closest("path.wire,path.wire-hit");
+    if (wireEl) { const i = Number(wireEl.dataset.index), w = doc.wires[i]; const [wx, wy] = toWorld(ev.clientX, ev.clientY); pushUndo(); w.pts = w.pts || []; w.pts.splice(nearestSegment(w, wx, wy), 0, [Math.round(wx), Math.round(wy)]); select("wire:" + i); render(); }
   });
   viewport.addEventListener("wheel", (ev) => { ev.preventDefault(); zoomAt(ev.clientX, ev.clientY, ev.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
   viewport.addEventListener("pointerleave", () => { lastHover = null; onHover(null); });
@@ -365,12 +394,12 @@ export function createSimulator(opts) {
     else if (kind === "knob" || kind === "light") { drag = { kind: "interact", id, mode: kind, sy: ev.clientY, v0: kind === "light" ? (ui[id].light ?? 0.5) : (ui[id].value ?? 0.5) }; viewport.setPointerCapture(ev.pointerId); }
     else if (kind === "distance") { drag = { kind: "interact", id, mode: "distance", sy: ev.clientY, v0: ui[id].distance ?? 100 }; viewport.setPointerCapture(ev.pointerId); }
     else if (kind === "motion") { ui[id].motion = true; tick(); clearTimeout(ui[id]._t); ui[id]._t = setTimeout(() => { ui[id].motion = false; tick(); }, 2500); onStatus({ toast: { text: id + "：偵測到人（OUT 高電位 2.5 秒）", kind: "info" } }); }
-    else if (kind === "joystick") { const [wx, wy] = toWorld(ev.clientX, ev.clientY); drag = { kind: "interact", id, mode: "joystick", cx: wx, cy: wy }; viewport.setPointerCapture(ev.pointerId); if (ev.shiftKey) { ui[id].pressed = true; } tick(); }
+    else if (kind === "joystick") { const [wx, wy] = toWorld(...evPt(ev)); drag = { kind: "interact", id, mode: "joystick", cx: wx, cy: wy }; viewport.setPointerCapture(ev.pointerId); if (ev.shiftKey) { ui[id].pressed = true; } tick(); }
     else if (kind === "climate") { onStatus({ toast: { text: "溫濕度在右側屬性面板用滑桿調整", kind: "info" } }); }
   }
   function interactMove(d, ev) {
     if (d.mode === "distance") { const v = Math.max(2, Math.min(400, Math.round(d.v0 + (d.sy - ev.clientY) * 2))); ui[d.id].distance = v; tick(); const el = partEls[d.id]; if (el) el.querySelector(".sim-label").textContent = "距離 " + v + " cm"; return; }
-    if (d.mode === "joystick") { const [wx, wy] = toWorld(ev.clientX, ev.clientY); const x = Math.max(-1, Math.min(1, (wx - d.cx) / 40)), y = Math.max(-1, Math.min(1, (wy - d.cy) / 40)); ui[d.id].x = Math.round(x * 100) / 100; ui[d.id].y = Math.round(y * 100) / 100; tick(); return; }
+    if (d.mode === "joystick") { const [wx, wy] = toWorld(...evPt(ev)); const x = Math.max(-1, Math.min(1, (wx - d.cx) / 40)), y = Math.max(-1, Math.min(1, (wy - d.cy) / 40)); ui[d.id].x = Math.round(x * 100) / 100; ui[d.id].y = Math.round(y * 100) / 100; tick(); return; }
     if (d.mode === "knob" || d.mode === "light") { const v = Math.max(0, Math.min(1, d.v0 + (d.sy - ev.clientY) / 150)); if (d.mode === "knob") ui[d.id].value = v; else ui[d.id].light = v; tick(); const el = partEls[d.id]; if (el) el.querySelector(".sim-label").textContent = (d.mode === "knob" ? "轉到 " : "光線 ") + Math.round(v * 100) + "%"; } }
   function interactEnd(d) { if (d.mode === "press") { ui[d.id].pressed = false; tick(); } if (d.mode === "joystick") { ui[d.id].x = 0; ui[d.id].y = 0; ui[d.id].pressed = false; tick(); } render(); }
 
@@ -414,6 +443,7 @@ export function createSimulator(opts) {
   const api = {
     doc, view, get running() { return running; }, get result() { return lastResult; }, get selected() { return selection.size === 1 ? [...selection][0] : null; }, get selection() { return [...selection]; },
     wireColor: 0, get gridSnap() { return gridSnap; }, set gridSnap(v) { gridSnap = !!v; }, get wireMode() { return wireMode; }, set wireMode(v) { wireMode = !!v; },
+    precise: false,   // 精準選取（手指按住時游標在左上方）
     pinInfo, nodeVoltage, bounds, tick, render, select, toast,
     highlightWires(idx) { hlWires = new Set(idx || []); renderWires(); },
     /** 老師模式用：正規化的網路表（每個網路＝排序後的元件腳／板子腳清單，忽略麵包板孔與沒接東西的網路） */

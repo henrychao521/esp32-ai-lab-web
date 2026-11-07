@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>電路模擬器 — ESP32 AI 實驗室</title>
 <style>
 :root{color-scheme:light dark;--bg:#f4f4f5;--panel:#fff;--ink:#1c1917;--muted:#6b7280;--line:#d4d4d8;--accent:#ff6a2b;--term:#0b0d10;--term-ink:#e7e5e4;--ok:#2a7;--warn:#e90;--bad:#e33}
@@ -18,13 +18,15 @@ button.icon{min-width:30px;padding:4px 6px}
 header{grid-area:top;display:flex;align-items:center;gap:5px;padding:0 8px;border-bottom:2px solid var(--line);background:var(--panel);overflow-x:auto;white-space:nowrap;scrollbar-width:none}
 header b{margin-right:6px;font-size:15px}
 .status{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}.status .dot{width:9px;height:9px;border-radius:50%;background:#999}.status .dot.on{background:var(--ok)}.status .dot.short{background:var(--bad)}
-.pal{grid-area:pal;border-right:2px solid var(--line);overflow:auto;background:var(--panel);display:flex;flex-direction:column}
+.pal{grid-area:pal;border-right:2px solid var(--line);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;background:var(--panel);display:flex;flex-direction:column}
 .pal .search{padding:8px;border-bottom:1px solid var(--line)}.pal .search input{width:100%}
 .pal h4{margin:8px 8px 2px;font-size:11px;color:var(--muted);letter-spacing:.5px}
-.pal .items{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px 8px}
-.pal .item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:grab;font-size:11px;text-align:center;min-height:74px;justify-content:flex-end;user-select:none;-webkit-user-select:none;touch-action:none}
+.pal .scroll-hint{display:none;margin:6px 8px 0;font-size:11px;color:var(--muted)}
+.pal .items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:4px 8px}
+.pal .item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:grab;font-size:11px;text-align:center;height:88px;min-width:0;overflow:hidden;justify-content:flex-end;user-select:none;-webkit-user-select:none;touch-action:pan-y}
+.pal .item .nm{max-width:100%;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pal .item.soon{opacity:.45;cursor:not-allowed}
-.pal .thumb{height:40px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.pal .thumb{height:40px;width:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .pal .thumb>*{transform-origin:center;transform:scale(var(--s,.6))}
 .sim-viewport{grid-area:canvas;position:relative;overflow:hidden;touch-action:none;background:linear-gradient(var(--line) 1px,transparent 1px) 0 0/24px 24px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/24px 24px,var(--bg);cursor:grab}
 .sim-world{position:absolute;left:0;top:0;transform-origin:0 0;width:0;height:0}
@@ -53,6 +55,12 @@ svg.sim-wires path.wire.short{stroke:#f00;stroke-width:5;animation:shortblink .5
 @keyframes shortblink{from{opacity:1}to{opacity:.35}}
 svg.sim-wires path.wire.hl{stroke-width:6;filter:drop-shadow(0 0 4px #ff6a2b);animation:hlblink .7s infinite alternate}
 svg.sim-wires path.wire.dim{opacity:.25}
+svg.sim-wires path.wire-hit{fill:none;stroke:transparent;stroke-width:18;stroke-linecap:round;stroke-linejoin:round;pointer-events:stroke;cursor:pointer}
+/* 精準選取的游標：在指尖左上方，pointer-events:none 才不會被 elementFromPoint 撈到自己 */
+.sim-cursor{display:none;position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border:2px solid var(--accent);border-radius:50%;background:rgba(255,106,43,.12);pointer-events:none;z-index:4;box-shadow:0 0 0 1px var(--bg)}
+.sim-cursor::before,.sim-cursor::after{content:"";position:absolute;background:var(--accent)}
+.sim-cursor::before{left:50%;top:-8px;width:2px;height:38px;margin-left:-1px}.sim-cursor::after{top:50%;left:-8px;height:2px;width:38px;margin-top:-1px}
+.sim-part.burned .sim-label{color:#f33;border-color:#f33}.sim-part.burned .sim-label::before{content:"燒毀 "}
 @keyframes hlblink{from{opacity:1}to{opacity:.5}}
 #examples-dlg{border:0;border-radius:12px;padding:0;max-width:760px;width:94vw;background:var(--panel);color:var(--ink);box-shadow:0 10px 40px rgba(0,0,0,.4)}
 #examples-dlg::backdrop{background:rgba(0,0,0,.45)}
@@ -115,6 +123,8 @@ svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;
 #tour h3{margin:0 0 8px}#tour ol{margin:0 0 10px 18px;padding:0}#tour li{margin:4px 0}
 kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 5px;background:var(--bg)}
 #btn-pal{display:none}
+/* 整頁不因點兩下放大（2026-11-07 使用者回報：畫電路時整個畫面被放大、看不到其他功能） */
+html,body{touch-action:manipulation}
 @media (max-width:900px){
  body{grid-template-rows:auto minmax(0,1fr) var(--bottom-m,42vh);grid-template-columns:minmax(0,1fr);grid-template-areas:"top" "canvas" "bottom";width:100vw;overflow:hidden}
  header,.bottom,.bottom .pane,#editor,#cm,.pane-col{min-width:0;max-width:100vw}
@@ -122,12 +132,16 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
  header{flex-wrap:wrap;height:auto;padding:4px 8px;row-gap:4px;overflow:visible;white-space:normal;padding-top:calc(4px + env(safe-area-inset-top))}
  header>b,header .sep,#engine-load{display:none!important}
  header .brk{display:block;width:100%;height:0;order:5}
- #btn-pal{display:inline-block;order:1}#board{order:2;max-width:104px}#engine{order:3;max-width:118px}#firmware{order:3;max-width:96px}#btn-more{display:inline-block!important;order:4;margin-left:auto}
+ #btn-pal{display:inline-block;order:1}#btn-del,#btn-undo,#btn-redo,#btn-rotate,#btn-precise{order:2;min-width:42px}#btn-more{display:inline-block!important;order:4;margin-left:auto}
+ header #btn-del svg,header #btn-undo svg,header #btn-redo svg,header #btn-rotate svg,header #btn-precise svg{width:19px;height:19px}
  #btn-run{order:6}#btn-pause{order:7}#btn-step{order:7}#btn-reset{order:8}header .status{order:9}#power-ind{order:9}#btn-push{order:10;margin-left:auto}
  header select,header button{min-height:34px}
  header .status{max-width:96px;overflow:hidden;white-space:nowrap}#status-text{overflow:hidden;text-overflow:ellipsis}
  .pal{display:none;position:fixed;left:0;top:0;bottom:0;width:min(82vw,320px);z-index:31;box-shadow:4px 0 20px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
  .pal.open{display:flex}
+ .pal .items{padding-right:48px}
+ #pal-body{position:relative;background:linear-gradient(90deg,transparent calc(100% - 40px),color-mix(in srgb,var(--line) 35%,transparent) calc(100% - 40px))}
+ .pal .scroll-hint{display:block}
  .side{display:none;position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;max-height:56vh;z-index:31;border-left:0;border-top:2px solid var(--line);border-radius:14px 14px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.35);padding:0 12px calc(10px + env(safe-area-inset-bottom));overflow:auto}
  .side.open{display:block}
  .m-only{display:flex!important}
@@ -184,9 +198,9 @@ dialog{position:relative}
   <span class="sep"></span>
   <button id="btn-wiremode" class="icon" title="接線模式：執行中也只拉線不操作元件">⌁ 接線</button>
   <select id="wire-color" title="線色"><option value="0">紅線</option><option value="1">黑線</option><option value="2">綠線</option><option value="3">藍線</option><option value="4">橘線</option><option value="5">紫線</option><option value="6">灰線</option><option value="7">白線</option></select>
-  <button id="btn-del" class="icon" title="刪除（Delete）"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="vertical-align:-2px"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg></button>
-  <button id="btn-undo" class="icon" title="復原（⌘Z）">↶</button><button id="btn-redo" class="icon" title="重做（⇧⌘Z）">↷</button>
-  <button id="btn-rotate" class="icon" title="旋轉（R）">⟳</button>
+  <button id="btn-del" class="icon" title="刪除（Delete）" aria-label="刪除所選"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="vertical-align:-2px"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg></button>
+  <button id="btn-undo" class="icon" title="復原（⌘Z）" aria-label="復原"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button><button id="btn-redo" class="icon" title="重做（⇧⌘Z）" aria-label="重做"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+  <button id="btn-precise" class="icon" title="精準選取：手指按住時游標在指尖左上方，放開就選到游標下的線或元件" aria-label="精準選取"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M4 3l7.5 17 2.5-7 7-2.5z"/></svg></button><button id="btn-rotate" class="icon" title="旋轉（R）" aria-label="旋轉"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M12 5H6a2 2 0 0 0-2 2v3"/><path d="m9 8 3-3-3-3"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg></button>
   <span class="desk"><button id="btn-selall" class="icon" title="全選（⌘A）">⊞</button>
   <button id="btn-align-l" class="icon" title="靠左對齊">⫷</button><button id="btn-align-t" class="icon" title="靠上對齊">⫶</button>
   <button id="btn-grid" class="icon on" title="格線吸附">#</button></span>
@@ -206,6 +220,7 @@ dialog{position:relative}
 <nav class="pal" id="palette">
   <div class="m-only"><span class="grab"></span><b>元件庫</b><button class="sheet-x icon" data-close="palette" title="關閉">✕</button></div>
   <div class="search"><input id="search" type="search" placeholder="搜尋元件…"></div>
+  <div class="scroll-hint">點一下放到畫布中央；右側灰色區上下滑動不會拿到元件</div>
   <div id="pal-body"></div>
 </nav>
 <div class="sim-viewport">
@@ -248,13 +263,13 @@ dialog{position:relative}
     </div>
   </dialog>
   <div id="assign" style="display:none;position:absolute;right:10px;top:10px;z-index:4;background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;max-width:300px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px"><b id="assign-title"></b><div id="assign-text" class="muted"></div><div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap"><input id="assign-name" type="text" placeholder="座號 姓名" style="flex:1;min-width:120px"><button id="assign-submit" class="primary">交作業</button><button id="assign-close" class="icon">✕</button></div><div id="assign-result" style="margin-top:6px"></div></div>
-  <dialog id="examples-dlg"><div class="hd"><b>範例電路</b><span class="muted">點一個：電路、程式、接線步驟一起載入</span><span style="flex:1"></span><button id="examples-close">關閉</button></div><div class="grid" id="examples-grid"></div></dialog>
+  <dialog id="examples-dlg"><div class="hd"><b>範例電路</b><span class="muted">點一個：電路、程式、接線步驟一起載入</span><span style="flex:1"></span><select id="ex-board" title="哪塊板子的範例"><option value="">全部板子</option><option value="tqt_pro">T-QT Pro</option><option value="xiao_esp32s3">XIAO ESP32S3</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option></select><button id="examples-close">關閉</button></div><div class="grid" id="examples-grid"></div></dialog>
   <div id="tour"><div class="box">
     <h3>第一次用？三步驟</h3>
     <ol><li>左邊<b>元件庫</b>點一下或拖進畫布；把元件腳放到麵包板孔上會自動插進去（同一欄 5 孔相通）。</li>
     <li>按住橘色<b>腳位</b>拉到另一個腳位就是一條線；接到紅圈腳位會提醒那是保留腳。</li>
     <li>下面寫 MicroPython，按 <b>▶ 執行</b>。執行中可以按按鍵、上下拖可變電阻與光線。LED 沒串電阻會燒掉，短路會停下來並把線畫紅。</li></ol>
-    <div class="muted" style="font-size:12px">快捷鍵：<kbd>Delete</kbd> 刪除、<kbd>R</kbd> 旋轉、<kbd>⌘Z</kbd> 復原、<kbd>⌘A</kbd> 全選、<kbd>F</kbd> 縮放到全部、雙擊線加轉折點、按住 <kbd>Alt</kbd> 點兩個腳位量電壓差、滾輪／兩指縮放。</div>
+    <div class="muted" style="font-size:12px">快捷鍵：<kbd>Delete</kbd> 刪除、<kbd>R</kbd> 旋轉、<kbd>⌘Z</kbd> 復原、<kbd>⌘A</kbd> 全選、<kbd>F</kbd> 縮放到全部、雙擊線加轉折點、按住 <kbd>Alt</kbd> 點兩個腳位量電壓差、滾輪縮放。觸控：單指點選、拖元件、拉線；兩指拖曳移動畫面、兩指張合縮放。</div>
     <div style="text-align:right;margin-top:10px"><button id="tour-close" class="primary">開始</button></div>
   </div></div>
 </div>
@@ -308,6 +323,7 @@ const CATS = [
   ["輸出", ["buzzer", "servo"]], ["顯示", ["ssd1306", "lcd1602"]], ["感測", ["hc-sr04", "dht22", "pir"]],
   ["致動", ["relay", "stepper", "neopixel-strip"]], ["通訊／控制", ["joystick"]],
 ];
+const nm = (t) => { const s = document.createElement("span"); s.className = "nm"; s.textContent = t; return s; };
 function buildPalette(filter = "") {
   const body = $("pal-body"); body.innerHTML = "";
   for (const [cat, items] of CATS) {
@@ -318,10 +334,10 @@ function buildPalette(filter = "") {
     for (const t of list) {
       const d = document.createElement("div"); d.className = "item" + (t.startsWith("soon:") ? " soon" : ""); d.dataset.type = t;
       const th = document.createElement("div"); th.className = "thumb";
-      if (t.startsWith("soon:")) { th.textContent = "…"; d.append(th, document.createTextNode(t.slice(5))); grid.appendChild(d); continue; }
-      if (t === "__bb") { th.innerHTML = `<svg width="60" height="34" viewBox="0 0 60 34"><rect width="60" height="34" rx="3" fill="#f3f1ec" stroke="#c9c5bd"/>${Array.from({ length: 30 }, (_, i) => `<circle cx="${6 + (i % 10) * 5.4}" cy="${8 + Math.floor(i / 10) * 9}" r="1.2" fill="#2b2b2b"/>`).join("")}</svg>`; d.append(th, document.createTextNode("麵包板")); }
-      else if (t === "__board") { th.innerHTML = `<svg width="44" height="44" viewBox="0 0 44 44"><rect x="2" y="2" width="40" height="40" rx="5" fill="#141414" stroke="#555"/><rect x="9" y="7" width="26" height="26" fill="#000" stroke="#333"/></svg>`; d.append(th, document.createTextNode("板子（上方選單換板）")); }
-      else { const c = CATALOG[t]; const el = document.createElement(c.tag); for (const [k, v] of Object.entries(c.attrs)) el.setAttribute(k, v); th.style.setProperty("--s", Math.min(0.9, 60 / Math.max(c.w, 1), 40 / Math.max(c.h, 1)).toFixed(2)); th.appendChild(el); d.append(th, document.createTextNode(c.label)); }
+      if (t.startsWith("soon:")) { th.textContent = "…"; d.append(th, nm(t.slice(5))); grid.appendChild(d); continue; }
+      if (t === "__bb") { th.innerHTML = `<svg width="60" height="34" viewBox="0 0 60 34"><rect width="60" height="34" rx="3" fill="#f3f1ec" stroke="#c9c5bd"/>${Array.from({ length: 30 }, (_, i) => `<circle cx="${6 + (i % 10) * 5.4}" cy="${8 + Math.floor(i / 10) * 9}" r="1.2" fill="#2b2b2b"/>`).join("")}</svg>`; d.append(th, nm("麵包板")); }
+      else if (t === "__board") { th.innerHTML = `<svg width="44" height="44" viewBox="0 0 44 44"><rect x="2" y="2" width="40" height="40" rx="5" fill="#141414" stroke="#555"/><rect x="9" y="7" width="26" height="26" fill="#000" stroke="#333"/></svg>`; d.append(th, nm("板子（「更多」裡換板）")); }
+      else { const c = CATALOG[t]; const el = document.createElement(c.tag); for (const [k, v] of Object.entries(c.attrs)) el.setAttribute(k, v); th.style.setProperty("--s", Math.min(0.9, 60 / Math.max(c.w, 1), 40 / Math.max(c.h, 1)).toFixed(2)); th.appendChild(el); d.append(th, nm(c.label)); }
       grid.appendChild(d);
     }
   }
@@ -332,14 +348,18 @@ let palDrag = null;
 $("palette").addEventListener("pointerdown", (ev) => {
   const it = ev.target.closest(".item"); if (!it || it.classList.contains("soon")) return;
   palDrag = { type: it.dataset.type, sx: ev.clientX, sy: ev.clientY, moved: false, ghost: null }; it.setPointerCapture(ev.pointerId);
-  it.addEventListener("pointermove", palMove); it.addEventListener("pointerup", palUp, { once: true }); it.addEventListener("pointercancel", palUp, { once: true });
+  it.addEventListener("pointermove", palMove); it.addEventListener("pointerup", palUp, { once: true }); it.addEventListener("pointercancel", palCancel, { once: true });
 });
 function palMove(ev) {
   if (!palDrag) return; if (Math.hypot(ev.clientX - palDrag.sx, ev.clientY - palDrag.sy) < 6) return; palDrag.moved = true;
   if (!palDrag.ghost) { palDrag.ghost = document.createElement("div"); palDrag.ghost.style.cssText = "position:fixed;z-index:30;pointer-events:none;opacity:.85;padding:4px 8px;border-radius:6px;background:var(--panel);border:1px solid var(--line);font-size:12px"; palDrag.ghost.textContent = palDrag.type === "__bb" ? "麵包板" : CATALOG[palDrag.type]?.label || "板子"; document.body.appendChild(palDrag.ghost); }
   palDrag.ghost.style.left = ev.clientX + 10 + "px"; palDrag.ghost.style.top = ev.clientY + 10 + "px";
 }
+function palCancel(ev) {   // 手指在卡片上直直上下滑：瀏覽器拿去捲清單，這次不算拿元件
+  const it = ev.currentTarget; it.removeEventListener("pointermove", palMove); it.removeEventListener("pointerup", palUp); if (palDrag?.ghost) palDrag.ghost.remove(); palDrag = null;
+}
 function palUp(ev) {
+  ev.currentTarget.removeEventListener("pointercancel", palCancel);
   const it = ev.currentTarget; it.removeEventListener("pointermove", palMove); const d = palDrag; palDrag = null; if (d?.ghost) d.ghost.remove(); if (!d) return;
   const vp = document.querySelector(".sim-viewport").getBoundingClientRect();
   const inside = ev.clientX >= vp.left && ev.clientX <= vp.right && ev.clientY >= vp.top && ev.clientY <= vp.bottom;
@@ -396,6 +416,8 @@ $("btn-step").addEventListener("click", () => sim.step());
 $("btn-reset").addEventListener("click", () => { sim.reset(); log("板子已重置", "sys"); });
 $("speed").addEventListener("change", function() { if (sim.engine) sim.engine.setSpeed(Number(this.value)); if (sim.engine && !sim.engine.capabilities.cycleAccurate && this.value !== "1") toast("快速引擎只支援即時速度", "warn"); });
 $("btn-wiremode").addEventListener("click", function() { sim.wireMode = !sim.wireMode; this.classList.toggle("on", sim.wireMode); });
+$("btn-precise").addEventListener("click", function() { sim.precise = !sim.precise; this.classList.toggle("on", sim.precise); localStorage.setItem("sim.precise", sim.precise ? "1" : "0"); if (sim.precise) toast("精準選取：手指按住移動，游標在指尖左上方，放開就選到游標下的線或元件；畫面用兩指移動、縮放"); });
+if (localStorage.getItem("sim.precise") === "1" || (localStorage.getItem("sim.precise") === null && matchMedia("(pointer:coarse)").matches)) { sim.precise = true; $("btn-precise").classList.add("on"); }
 $("wire-color").addEventListener("change", function() { sim.wireColor = Number(this.value); });
 $("btn-del").addEventListener("click", () => sim.deleteSelected());
 $("btn-undo").addEventListener("click", () => sim.undo()); $("btn-redo").addEventListener("click", () => sim.redo());
@@ -505,16 +527,16 @@ $("push-go").addEventListener("click", async () => {
 // ---------- 手機版面：主要動作列＋「更多」工作表、抽屜關閉機制（寬度 ≤ 900px） ----------
 (() => {
   const mq = window.matchMedia("(max-width: 900px)");
-  const MORE = ["power-ind", "speed", "firmware", "btn-wiremode", "wire-color", "btn-del", "btn-undo", "btn-redo", "btn-rotate", "btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-clear", "btn-teacher", "btn-help"];
+  const MORE = ["board", "engine", "power-ind", "speed", "firmware", "btn-wiremode", "wire-color", "btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-clear", "btn-teacher", "btn-help"];
   const home = {};   // id → { parent, next }：搬回桌機位置用
-  const LABEL = { "power-ind": "電源指示（LED 與模組總電流，估）", speed: "模擬速度", firmware: "要執行的程式", "wire-color": "線色", "btn-wiremode": "接線模式", "btn-del": "刪除所選", "btn-undo": "復原", "btn-redo": "重做", "btn-rotate": "旋轉", "btn-selall": "全選", "btn-align-l": "靠左對齊", "btn-align-t": "靠上對齊", "btn-grid": "格線吸附", "btn-fit": "縮放到全部", "btn-examples": "範例電路", "btn-save": "儲存到瀏覽器", "btn-export": "匯出 Wokwi", "btn-png": "匯出 PNG", "btn-import": "匯入", "btn-share": "分享網址", "btn-clear": "清空畫布", "btn-teacher": "老師模式", "btn-help": "說明與快捷鍵" };
+  const LABEL = { board: "板子", engine: "執行引擎", "power-ind": "電源指示（LED 與模組總電流，估）", speed: "模擬速度", firmware: "要執行的程式", "wire-color": "線色", "btn-wiremode": "接線模式", "btn-del": "刪除所選", "btn-undo": "復原", "btn-redo": "重做", "btn-rotate": "旋轉", "btn-selall": "全選", "btn-align-l": "靠左對齊", "btn-align-t": "靠上對齊", "btn-grid": "格線吸附", "btn-fit": "縮放到全部", "btn-examples": "範例電路", "btn-save": "儲存到瀏覽器", "btn-export": "匯出 Wokwi", "btn-png": "匯出 PNG", "btn-import": "匯入", "btn-share": "分享網址", "btn-clear": "清空畫布", "btn-teacher": "老師模式", "btn-help": "說明與快捷鍵" };
   const ENGINE_LABELS = { "micropython-wasm": ["快速引擎", "快速"], "esp32sim": ["真韌體引擎（esp32sim）", "真韌體"] };
   const setEngineLabels = (short) => { for (const o of $("engine").options) if (ENGINE_LABELS[o.value]) o.textContent = ENGINE_LABELS[o.value][short ? 1 : 0]; };
   function toMobile() {
-    setEngineLabels(true);
+    setEngineLabels(false);
     const body = $("more-body"); if (body.children.length) return;
     const note = document.createElement("div"); note.className = "more-item wide"; note.id = "more-engine-note"; note.style.fontSize = "12px"; note.style.color = "var(--muted)"; note.textContent = $("engine-note").textContent; body.appendChild(note);
-    for (const id of MORE) { const el = $(id); if (!el) continue; home[id] = { parent: el.parentNode, next: el.nextSibling }; const w = document.createElement("div"); w.className = "more-item" + (el.tagName === "SELECT" || el.tagName === "SPAN" ? " wide" : ""); w.appendChild(el); const l = document.createElement("span"); l.className = "lbl"; l.textContent = LABEL[id] || el.title || ""; w.appendChild(l); body.appendChild(w); el.classList.remove("desk"); el.style.display = ""; }
+    for (const id of MORE) { const el = $(id); if (!el) continue; home[id] = { parent: el.parentNode, next: el.nextSibling }; const w = document.createElement("div"); w.className = "more-item" + (el.tagName === "SELECT" || el.tagName === "SPAN" ? " wide" : ""); w.appendChild(el); const l = document.createElement("span"); l.className = "lbl"; l.textContent = LABEL[id] || el.title || ""; w.appendChild(l); body.appendChild(w); el.classList.remove("desk"); el.style.display = ""; if (id === "engine") body.appendChild(note); }
     $("firmware").closest(".more-item").style.display = $("firmware").dataset.avail === "1" ? "" : "none";
   }
   function toDesk() {
@@ -580,8 +602,11 @@ if (q.get("bench") === "1") (async () => {
 $("tour-close").addEventListener("click", () => { $("tour").style.display = "none"; localStorage.setItem("sim.toured", "1"); });
 // ---------- 範例電路（sim/examples.json）＋步驟式接線提示 ----------
 let EXAMPLES = []; let stepState = null;
-fetch("examples.json").then((r) => r.json()).then((arr) => { EXAMPLES = arr; const g = $("examples-grid"); g.innerHTML = ""; for (const ex of arr) { const d = document.createElement("div"); d.className = "ex-card"; d.innerHTML = `<b></b><span class="lv"></span><span class="sm"></span>`; d.querySelector("b").textContent = ex.title; d.querySelector(".lv").textContent = ex.level + " · " + Object.keys(ex.parts).length + " 個元件 · " + ex.wires.length + " 條線"; d.querySelector(".sm").textContent = ex.summary; d.addEventListener("click", () => { loadExample(ex); $("examples-dlg").close(); }); g.appendChild(d); } }).catch(() => {});
-$("btn-examples").addEventListener("click", () => { if (!EXAMPLES.length) { toast("範例清單載入中…"); return; } $("examples-dlg").showModal(); });
+function renderExamples(board) { const g = $("examples-grid"); g.innerHTML = ""; for (const ex of EXAMPLES) { if (board && ex.board !== board) continue; const d = document.createElement("div"); d.className = "ex-card"; d.innerHTML = `<b></b><span class="lv"></span><span class="sm"></span>`; d.querySelector("b").textContent = ex.title; d.querySelector(".lv").textContent = (ex.boardName || ex.board) + " · " + ex.level + " · " + Object.keys(ex.parts).length + " 個元件 · " + ex.wires.length + " 條線"; d.querySelector(".sm").textContent = ex.summary; d.addEventListener("click", () => { loadExample(ex); $("examples-dlg").close(); }); g.appendChild(d); } }
+fetch("examples.json").then((r) => r.json()).then((arr) => { EXAMPLES = arr; renderExamples($("ex-board").value); }).catch(() => {});
+$("ex-board").addEventListener("change", function() { renderExamples(this.value); });
+// 開範例清單時預設只列目前板子的範例（四塊板子各有一套）
+$("btn-examples").addEventListener("click", () => { if (!EXAMPLES.length) { toast("範例清單載入中…"); return; } $("ex-board").value = sim.doc.board; renderExamples(sim.doc.board); $("examples-dlg").showModal(); });
 $("examples-close").addEventListener("click", () => $("examples-dlg").close());
 function loadExample(ex) {
   sim.stop();
