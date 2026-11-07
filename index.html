@@ -19,6 +19,7 @@ pre{background:#111;color:#d1fae5;padding:12px;border-radius:8px;font-size:13px;
 .ok{color:var(--ok)}.bad{color:var(--bad)}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px}
 esp-web-install-button{--esp-tools-button-color:var(--accent);--esp-tools-button-text-color:#fff}
 .unsupported{background:#fff7ed;border:1px solid #fdba74;padding:12px;border-radius:8px;margin-top:12px}
+.sim-entry{border-top:0;background:#fff;border:2px solid var(--ink);border-radius:12px;padding:16px 18px;margin:0 0 20px}.sim-entry h2{font-size:20px}.sim-entry .row{margin-top:8px}a.btn{text-decoration:none;color:var(--ink);display:inline-block}a.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .callout{background:#eef4ff;border:1.5px solid #0b5fff;border-radius:10px;padding:12px 16px;margin:8px 0 12px}.callout ol{margin:6px 0 0 20px;padding:0}.callout li{margin:3px 0}
 </style>
 </head>
@@ -26,6 +27,13 @@ esp-web-install-button{--esp-tools-button-color:var(--accent);--esp-tools-button
 <h1>ESP32 AI Lab 首燒</h1>
 <p class="sub">只做一次：把 MicroPython 與代理程式裝進板子，之後學生全用 Wi-Fi。需要桌機 Chrome 或 Edge（iPad／Safari 不支援 Web Serial）。</p>
 <div id="unsupported" class="unsupported" hidden>這個瀏覽器沒有 Web Serial。請改用電腦上的 Chrome 或 Edge 開這一頁。</div>
+
+<section class="sim-entry">
+<h2>先玩電路模擬器（不用板子、不用安裝）</h2>
+<p>把 LED、按鍵、感測器、OLED 拉到麵包板上接線，寫 MicroPython 按執行就亮；四塊 ESP32 板子各有 12 個範例，含分步接線提示。手機、iPad、電腦都能開。</p>
+<p class="row"><a class="btn primary" href="sim/">打開電路模擬器</a><a class="btn" href="https://apps.apple.com/tw/app/id6829088832" target="_blank" rel="noopener">iPhone／iPad App</a></p>
+<p class="hint">下面三個步驟是把真板子燒好韌體用的，只做一次；模擬器裡的程式之後可以直接推到真板子。</p>
+</section>
 
 <section>
 <h2><span>1</span>燒入 MicroPython 韌體</h2>
