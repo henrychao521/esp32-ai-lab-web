@@ -260,7 +260,10 @@
   "title": "電容充放電",
   "level": "入門",
   "summary": "滑動開關撥到充電，電容電壓沿曲線慢慢升到 3.3 V；撥到放電慢慢掉回 0。示波器探針看曲線，程式用 ADC 把電壓印出來。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 240,
+   "y": 280
+  },
   "parts": {
    "sw1": {
     "type": "slide-switch",
@@ -314,7 +317,7 @@
    },
    {
     "a": "sw1:3",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
@@ -329,7 +332,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-17",
     "color": "#222"
    },
    {
@@ -349,11 +352,22 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND",
+    "b": "bb:top-16",
     "color": "#222"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     9
+    ]
+   },
    {
     "text": "滑動開關腳 1 接 3V3、腳 3 接 GND、中間腳 2 → 1kΩ",
     "wires": [
@@ -401,6 +415,226 @@
     }
    },
    "console": "電容"
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "an_gate",
+  "title": "邏輯閘真值表",
+  "level": "入門",
+  "summary": "兩顆按鍵當輸入 A、B，74HC AND 閘輸出 Y 點 LED；點閘換成 OR／XOR／NAND 看真值表怎麼變。",
+  "breadboard": {
+   "x": 340,
+   "y": 281
+  },
+  "parts": {
+   "g1": {
+    "type": "gate",
+    "x": 420,
+    "y": 100,
+    "rot": 0,
+    "attrs": {
+     "kind": "AND"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 30,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn2": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 540,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 620,
+    "y": 180,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "g1:VCC",
+    "b": "bb:top+7",
+    "color": "#d33"
+   },
+   {
+    "a": "g1:GND",
+    "b": "bb:top-11",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+2",
+    "b": "btn1:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "g1:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "bb:top-2",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+3",
+    "b": "btn2:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn2:2.l",
+    "b": "g1:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "rb:1",
+    "color": "#0aa"
+   },
+   {
+    "a": "rb:2",
+    "b": "bb:top-3",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "board:G16",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
+   {
+    "text": "閘 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "3V3 → 按鍵 1 → A，A 經 10kΩ 下拉到 GND（沒按＝0）",
+    "wires": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "3V3 → 按鍵 2 → B，B 經 10kΩ 下拉",
+    "wires": [
+     6,
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "Y → 220Ω → LED → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "Y 也接 G16；執行後按按鍵、點閘換種類",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ny = Pin(16, Pin.IN); prev = None\nprint('按鍵 1＝A、按鍵 2＝B；點閘可換 AND/OR/XOR/NAND')\nwhile lab.running():\n    v = y.value()\n    if v != prev: print('Y =', v); prev = v\n    lab.sleep(0.05)\n",
+  "expect": "AND：兩顆都按 LED 才亮；換 OR 任一顆就亮；XOR 只按一顆亮。",
+  "try": [
+   "用兩個閘做 A AND NOT B",
+   "把真值表抄在紙上再對照"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    },
+    "btn2": {
+     "pressed": true
+    }
+   },
+   "console": "Y = 1"
   },
   "board": "tqt_pro",
   "boardName": "T-QT Pro"
@@ -734,8 +968,8 @@
    },
    "r1": {
     "type": "resistor",
-    "x": 300,
-    "y": 200,
+    "x": 340,
+    "y": 250,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -743,8 +977,8 @@
    },
    "bz1": {
     "type": "buzzer",
-    "x": 400,
-    "y": 170,
+    "x": 480,
+    "y": 220,
     "rot": 0,
     "attrs": {}
    }
@@ -1118,7 +1352,10 @@
   "title": "555 閃燈",
   "level": "進階",
   "summary": "NE555 無穩態：R1=1kΩ、R2=47kΩ、C=10µF，約 1.5 Hz 閃；完全不用程式也會閃，程式只是數脈衝。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 300
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -1175,22 +1412,22 @@
   },
   "wires": [
    {
-    "a": "board:5V",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:5V",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#d33"
    },
@@ -1221,7 +1458,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -1236,16 +1473,33 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND",
+    "b": "bb:top-15",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:G16",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、5V → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
    {
     "text": "555 的 VCC 與 RESET 接 5V，GND 接 GND",
     "wires": [
@@ -1303,7 +1557,10 @@
   "title": "555 蜂鳴器",
   "level": "進階",
   "summary": "同一顆 555，換小電容就變成音頻：R1=1k、R2=4.7k、C=1µF ≈ 140 Hz，蜂鳴器直接響，不需要程式。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 324
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -1358,22 +1615,22 @@
   },
   "wires": [
    {
-    "a": "board:5V",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:5V",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#d33"
    },
@@ -1404,7 +1661,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -1419,16 +1676,33 @@
    },
    {
     "a": "bz1:2",
-    "b": "board:GND",
+    "b": "bb:top-16",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:G16",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、5V → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
    {
     "text": "555 VCC、RESET 接 5V，GND 接 GND",
     "wires": [
@@ -1481,7 +1755,10 @@
   "title": "555 延時燈",
   "level": "進階",
   "summary": "單穩態：按一下按鍵，LED 亮 1.1×R×C 秒自動熄（R=100k、C=10µF ≈ 1.1 秒），像樓梯間的定時燈。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 330
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -1545,22 +1822,22 @@
   },
   "wires": [
    {
-    "a": "board:5V",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:5V",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+15",
     "b": "rp:1",
     "color": "#d33"
    },
@@ -1576,11 +1853,11 @@
    },
    {
     "a": "btn1:2.l",
-    "b": "board:GND",
+    "b": "bb:top-3",
     "color": "#222"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#e90"
    },
@@ -1601,7 +1878,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -1616,16 +1893,33 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND",
+    "b": "bb:top-15",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:G16",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、5V → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     16,
+     17
+    ]
+   },
    {
     "text": "555 VCC、RESET 接 5V，GND 接 GND",
     "wires": [
@@ -1681,6 +1975,284 @@
     }
    },
    "console": "亮了"
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "an_halfwave",
+  "title": "半波整流",
+  "level": "進階",
+  "summary": "交流電源（3 Vpk、5 Hz）經一顆二極體只讓正半週通過；示波器探針比較 ac:+ 和 d1:K，程式用 ADC 把負載電壓印出來。",
+  "breadboard": null,
+  "parts": {
+   "ac1": {
+    "type": "acsource",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "vpk": "3",
+     "freq": "5"
+    }
+   },
+   "d1": {
+    "type": "diode",
+    "x": 400,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 420,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ac1:+",
+    "b": "d1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "ac1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "d1:K",
+    "b": "board:G18",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "交流電源 + → 二極體 A；二極體 K → 1kΩ → GND；交流電源 − 接 GND",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "二極體 K 也接 G18 讓程式讀電壓",
+    "wires": [
+     4
+    ]
+   },
+   {
+    "text": "執行後到示波器分頁按探針 ac1:+ 與 d1:K",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(18), atten=ADC.ATTN_11DB); vmax = 0\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3; vmax = max(vmax, v)\n    print('負載 %.2f V（峰值 %.2f，約 = 3 − 0.7 的順向壓降）' % (v, vmax)); lab.sleep(0.05)\n",
+  "expect": "示波器：ac1:+ 是完整弦波、d1:K 只剩正半週，而且峰值少了約 0.7 V。",
+  "try": [
+   "把二極體反接，看變成只剩負半週（ADC 讀不到負電壓）",
+   "加一顆 100µF 電容並聯負載，看波形變平"
+  ],
+  "verify": {
+   "console": "負載"
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "an_opamp_cmp",
+  "title": "運放比較器",
+  "level": "進階",
+  "summary": "LM358 比較光敏電壓與可變電阻設定的門檻：亮度高於門檻 LED 亮；旋鈕可調靈敏度。",
+  "breadboard": {
+   "x": 270,
+   "y": 290
+  },
+  "parts": {
+   "u1": {
+    "type": "lm358",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 300,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 480,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "u1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "bb:top-10",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:VCC",
+    "b": "bb:top+16",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "bb:top-16",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "u1:IN1+",
+    "color": "#dc2"
+   },
+   {
+    "a": "pot1:VCC",
+    "b": "bb:top+21",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "bb:top-20",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "u1:IN1-",
+    "color": "#0aa"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-14",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "board:G16",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12,
+     13
+    ]
+   },
+   {
+    "text": "LM358 VCC→5V、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "光敏模組 AO → IN1+；可變電阻 SIG → IN1−（兩個模組都接 3V3／GND）",
+    "wires": [
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "OUT1 → 220Ω → LED → GND",
+    "wires": [
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "OUT1 也接 G16 讓程式看結果",
+    "wires": [
+     11
+    ]
+   },
+   {
+    "text": "執行後拖光敏與可變電阻，找出門檻",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\nout = Pin(16, Pin.IN); prev = None\nwhile lab.running():\n    v = out.value()\n    if v != prev: print('比較器輸出', '高：光線 > 門檻，LED 亮' if v else '低：光線 < 門檻，LED 滅'); prev = v\n    lab.sleep(0.1)\n",
+  "expect": "光敏拖亮 LED 亮、拖暗熄；轉可變電阻改門檻。",
+  "try": [
+   "IN+ 與 IN− 對調，變成暗才亮的夜燈",
+   "加 100k 從 OUT 回到 IN+ 做遲滯（史密特）"
+  ],
+  "verify": {
+   "ui": {
+    "ldr1": {
+     "light": 0.95
+    }
+   },
+   "console": "比較器輸出"
   },
   "board": "tqt_pro",
   "boardName": "T-QT Pro"
@@ -2001,6 +2573,661 @@
   ],
   "verify": {
    "console": "導通"
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "an_bridge",
+  "title": "橋式整流＋濾波",
+  "level": "專題",
+  "summary": "四顆二極體做全波整流，再用電容濾成近似直流；探針看 r1:1 從脈動變平滑。",
+  "breadboard": {
+   "x": 310,
+   "y": 290
+  },
+  "parts": {
+   "ac1": {
+    "type": "acsource",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "vpk": "3",
+     "freq": "5"
+    }
+   },
+   "d1": {
+    "type": "diode",
+    "x": 400,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d2": {
+    "type": "diode",
+    "x": 400,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d3": {
+    "type": "diode",
+    "x": 400,
+    "y": 120,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d4": {
+    "type": "diode",
+    "x": 400,
+    "y": 160,
+    "rot": 0,
+    "attrs": {}
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 500,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "470u"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 560,
+    "y": 110,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ac1:+",
+    "b": "d1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "ac1:-",
+    "b": "d2:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d2:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bb:top-7",
+    "b": "d3:A",
+    "color": "#222"
+   },
+   {
+    "a": "d3:K",
+    "b": "ac1:+",
+    "color": "#d33"
+   },
+   {
+    "a": "bb:top-6",
+    "b": "d4:A",
+    "color": "#222"
+   },
+   {
+    "a": "d4:K",
+    "b": "ac1:-",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:1",
+    "b": "c1:+",
+    "color": "#93c"
+   },
+   {
+    "a": "c1:-",
+    "b": "bb:top-18",
+    "color": "#222"
+   },
+   {
+    "a": "r1:2",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "r1:1",
+    "b": "board:G18",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12
+    ]
+   },
+   {
+    "text": "ac+ → d1 → 輸出；ac− → d2 → 輸出（正半週與負半週各走一顆）",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "GND → d3 → ac+；GND → d4 → ac−（回流的兩顆）",
+    "wires": [
+     4,
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "輸出接 470µF 電容 + 與 1kΩ 負載，另一端都接 GND",
+    "wires": [
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "輸出也接 G18",
+    "wires": [
+     11
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(18), atten=ADC.ATTN_11DB); lo, hi, n = 9, 0, 0\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3; n += 1\n    if n > 20: lo = min(lo, v); hi = max(hi, v)     # 等電容充飽再統計\n    print('輸出 %.2f V（最低 %.2f 最高 %.2f，紋波 %.2f）' % (v, lo if n > 20 else v, hi, max(0, hi - lo) if n > 20 else 0)); lab.sleep(0.05)\n",
+  "expect": "探針 r1:1 幾乎是一條直線（紋波小），拿掉電容就變成一個個拱形。",
+  "try": [
+   "把 470u 換 10u 看紋波變大",
+   "把負載 1k 換 100，電容放電變快"
+  ],
+  "verify": {
+   "console": "輸出"
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "an_opamp_amp",
+  "title": "運放放大 ×11",
+  "level": "專題",
+  "summary": "非反相放大：Rf=10k、Rg=1k → 增益 11。可變電阻分壓出 0～0.3 V 小訊號，放大後 ADC 讀到 0～3.3 V。",
+  "breadboard": {
+   "x": 250,
+   "y": 261
+  },
+  "parts": {
+   "u1": {
+    "type": "lm358",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 300,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 440,
+    "y": 10,
+    "rot": 0,
+    "attrs": {
+     "value": "100k"
+    }
+   },
+   "rf": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rg": {
+    "type": "resistor",
+    "x": 440,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "u1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "bb:top-12",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "bb:top-6",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "u1:IN1+",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:IN1+",
+    "b": "board:G17",
+    "color": "#0aa"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "rf:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "rf:2",
+    "b": "u1:IN1-",
+    "color": "#2a7"
+   },
+   {
+    "a": "u1:IN1-",
+    "b": "rg:1",
+    "color": "#e90"
+   },
+   {
+    "a": "rg:2",
+    "b": "bb:top-21",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "board:G18",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12
+    ]
+   },
+   {
+    "text": "LM358 VCC→5V、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "可變電阻 SIG → 100kΩ → IN1+（運放輸入阻抗高，這裡只是示意小訊號）",
+    "wires": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "OUT1 → 10kΩ → IN1−；IN1− → 1kΩ → GND（負回授）",
+    "wires": [
+     7,
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "IN1+ 接 G17、OUT1 接 G18，程式算增益",
+    "wires": [
+     6,
+     11
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nvin = ADC(Pin(17), atten=ADC.ATTN_11DB); vout = ADC(Pin(18), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    a = vin.read() / 4095 * 3.3; b = vout.read() / 4095 * 3.3\n    print('輸入 %.2f V → 輸出 %.2f V，增益 %.1f' % (a, b, b / a if a > 0.02 else 0)); lab.sleep(0.2)\n",
+  "expect": "轉可變電阻，輸出是輸入的約 11 倍，到 3.3 V 左右就飽和（ADC 上限）。",
+  "try": [
+   "把 Rf 換 100k 看增益 101 多快飽和",
+   "改成反相放大"
+  ],
+  "verify": {
+   "adc": {
+    "17": 400
+   },
+   "console": "增益"
+  },
+  "board": "tqt_pro",
+  "boardName": "T-QT Pro"
+ },
+ {
+  "id": "an_half_adder",
+  "title": "半加器",
+  "level": "專題",
+  "summary": "XOR 給「和」、AND 給「進位」：兩顆按鍵輸入 1 位元，兩顆 LED 顯示 和／進位，程式印出 A+B。",
+  "breadboard": {
+   "x": 385,
+   "y": 341
+  },
+  "parts": {
+   "g1": {
+    "type": "gate",
+    "x": 480,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "kind": "XOR"
+    }
+   },
+   "g2": {
+    "type": "gate",
+    "x": 480,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "kind": "AND"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 290,
+    "y": 30,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn2": {
+    "type": "pushbutton",
+    "x": 290,
+    "y": 130,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 290,
+    "y": 250,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 290,
+    "y": 300,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 620,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 720,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 620,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led2": {
+    "type": "led",
+    "x": 720,
+    "y": 190,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "g1:VCC",
+    "b": "bb:top+9",
+    "color": "#d33"
+   },
+   {
+    "a": "g1:GND",
+    "b": "bb:top-12",
+    "color": "#222"
+   },
+   {
+    "a": "g2:VCC",
+    "b": "bb:top+8",
+    "color": "#d33"
+   },
+   {
+    "a": "g2:GND",
+    "b": "bb:top-13",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+2",
+    "b": "btn1:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "g1:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "g2:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "bb:top-2",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+3",
+    "b": "btn2:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn2:2.l",
+    "b": "g1:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "g2:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "rb:1",
+    "color": "#0aa"
+   },
+   {
+    "a": "rb:2",
+    "b": "bb:top-3",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "g2:Y",
+    "b": "r2:1",
+    "color": "#93c"
+   },
+   {
+    "a": "r2:2",
+    "b": "led2:A",
+    "color": "#93c"
+   },
+   {
+    "a": "led2:C",
+    "b": "bb:top-24",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "board:G16",
+    "color": "#2a7"
+   },
+   {
+    "a": "g2:Y",
+    "b": "board:G48",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     22,
+     23
+    ]
+   },
+   {
+    "text": "兩個閘的 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "按鍵 1 → A（同時接 XOR 與 AND 的 A），10kΩ 下拉",
+    "wires": [
+     4,
+     5,
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "text": "按鍵 2 → B（同時接兩個閘的 B），10kΩ 下拉",
+    "wires": [
+     9,
+     10,
+     11,
+     12,
+     13
+    ]
+   },
+   {
+    "text": "XOR Y → 220Ω → 綠 LED（和）；AND Y → 220Ω → 紅 LED（進位）",
+    "wires": [
+     14,
+     15,
+     16,
+     17,
+     18,
+     19
+    ]
+   },
+   {
+    "text": "兩個 Y 也接 G16／G48 讓程式印結果",
+    "wires": [
+     20,
+     21
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ns = Pin(16, Pin.IN); c = Pin(48, Pin.IN); prev = None\nwhile lab.running():\n    v = (c.value(), s.value())\n    if v != prev: print('和 =', v[1], '進位 =', v[0], '→ A + B =', v[0] * 2 + v[1]); prev = v\n    lab.sleep(0.05)\n",
+  "expect": "按一顆：綠亮（1+0=1）；按兩顆：紅亮綠滅（1+1=10 二進位）。",
+  "try": [
+   "加第三顆按鍵做全加器（要再兩個閘）",
+   "把 LED 換成 OLED 顯示算式"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    },
+    "btn2": {
+     "pressed": true
+    }
+   },
+   "console": "A \\+ B = 2"
   },
   "board": "tqt_pro",
   "boardName": "T-QT Pro"
@@ -2509,7 +3736,10 @@
   "title": "電容充放電",
   "level": "入門",
   "summary": "滑動開關撥到充電，電容電壓沿曲線慢慢升到 3.3 V；撥到放電慢慢掉回 0。示波器探針看曲線，程式用 ADC 把電壓印出來。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 240,
+   "y": 280
+  },
   "parts": {
    "sw1": {
     "type": "slide-switch",
@@ -2563,7 +3793,7 @@
    },
    {
     "a": "sw1:3",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
@@ -2578,7 +3808,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-17",
     "color": "#222"
    },
    {
@@ -2598,11 +3828,22 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND",
+    "b": "bb:top-16",
     "color": "#222"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     9
+    ]
+   },
    {
     "text": "滑動開關腳 1 接 3V3、腳 3 接 GND、中間腳 2 → 1kΩ",
     "wires": [
@@ -2655,11 +3896,234 @@
   "boardName": "XIAO ESP32S3"
  },
  {
+  "id": "an_gate@xiao_esp32s3",
+  "title": "邏輯閘真值表",
+  "level": "入門",
+  "summary": "兩顆按鍵當輸入 A、B，74HC AND 閘輸出 Y 點 LED；點閘換成 OR／XOR／NAND 看真值表怎麼變。",
+  "breadboard": {
+   "x": 340,
+   "y": 281
+  },
+  "parts": {
+   "g1": {
+    "type": "gate",
+    "x": 420,
+    "y": 100,
+    "rot": 0,
+    "attrs": {
+     "kind": "AND"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 30,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn2": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 540,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 620,
+    "y": 180,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "g1:VCC",
+    "b": "bb:top+7",
+    "color": "#d33"
+   },
+   {
+    "a": "g1:GND",
+    "b": "bb:top-11",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+2",
+    "b": "btn1:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "g1:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "bb:top-2",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+3",
+    "b": "btn2:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn2:2.l",
+    "b": "g1:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "rb:1",
+    "color": "#0aa"
+   },
+   {
+    "a": "rb:2",
+    "b": "bb:top-3",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "board:D2",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
+   {
+    "text": "閘 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "3V3 → 按鍵 1 → A，A 經 10kΩ 下拉到 GND（沒按＝0）",
+    "wires": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "3V3 → 按鍵 2 → B，B 經 10kΩ 下拉",
+    "wires": [
+     6,
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "Y → 220Ω → LED → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "Y 也接 D2；執行後按按鍵、點閘換種類",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ny = Pin(3, Pin.IN); prev = None\nprint('按鍵 1＝A、按鍵 2＝B；點閘可換 AND/OR/XOR/NAND')\nwhile lab.running():\n    v = y.value()\n    if v != prev: print('Y =', v); prev = v\n    lab.sleep(0.05)\n",
+  "expect": "AND：兩顆都按 LED 才亮；換 OR 任一顆就亮；XOR 只按一顆亮。",
+  "try": [
+   "用兩個閘做 A AND NOT B",
+   "把真值表抄在紙上再對照"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    },
+    "btn2": {
+     "pressed": true
+    }
+   },
+   "console": "Y = 1"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
   "id": "xi_bar@xiao_esp32s3",
   "title": "五燈電量條",
   "level": "進階",
   "summary": "轉可變電阻，LED 長條一格一格亮。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 265,
+   "y": 291
+  },
   "parts": {
    "pot1": {
     "type": "potentiometer",
@@ -2729,7 +4193,7 @@
    },
    {
     "a": "pot1:GND",
-    "b": "board:GND",
+    "b": "bb:top-5",
     "color": "#222"
    },
    {
@@ -2789,31 +4253,42 @@
    },
    {
     "a": "bar1:C1",
-    "b": "board:GND",
+    "b": "bb:top-20",
     "color": "#222"
    },
    {
     "a": "bar1:C2",
-    "b": "board:GND",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
     "a": "bar1:C3",
-    "b": "board:GND",
+    "b": "bb:top-21",
     "color": "#222"
    },
    {
     "a": "bar1:C4",
-    "b": "board:GND",
+    "b": "bb:top-18",
     "color": "#222"
    },
    {
     "a": "bar1:C5",
-    "b": "board:GND",
+    "b": "bb:top-22",
     "color": "#222"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     18
+    ]
+   },
    {
     "text": "可變電阻 VCC→3V3、GND→GND、SIG→D0",
     "wires": [
@@ -3070,7 +4545,10 @@
   "title": "節拍器",
   "level": "進階",
   "summary": "旋鈕調 BPM，蜂鳴器打拍、OLED 擺針。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 270,
+   "y": 314
+  },
   "parts": {
    "oled1": {
     "type": "ssd1306",
@@ -3106,12 +4584,12 @@
   "wires": [
    {
     "a": "oled1:3V3",
-    "b": "board:3V3",
+    "b": "bb:top+9",
     "color": "#d33"
    },
    {
     "a": "oled1:GND",
-    "b": "board:GND",
+    "b": "bb:top-11",
     "color": "#222"
    },
    {
@@ -3126,12 +4604,12 @@
    },
    {
     "a": "pot1:VCC",
-    "b": "board:3V3",
+    "b": "bb:top+21",
     "color": "#d33"
    },
    {
     "a": "pot1:GND",
-    "b": "board:GND",
+    "b": "bb:top-20",
     "color": "#222"
    },
    {
@@ -3151,11 +4629,28 @@
    },
    {
     "a": "bz1:2",
-    "b": "board:GND",
+    "b": "bb:top-14",
     "color": "#222"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     10,
+     11
+    ]
+   },
    {
     "text": "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
     "wires": [
@@ -3475,7 +4970,10 @@
   "title": "心跳波形",
   "level": "進階",
   "summary": "可變電阻當脈搏感測，OLED 畫心電圖波形捲動，蜂鳴器跟著跳。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 270,
+   "y": 314
+  },
   "parts": {
    "oled1": {
     "type": "ssd1306",
@@ -3511,12 +5009,12 @@
   "wires": [
    {
     "a": "oled1:3V3",
-    "b": "board:3V3",
+    "b": "bb:top+9",
     "color": "#d33"
    },
    {
     "a": "oled1:GND",
-    "b": "board:GND",
+    "b": "bb:top-11",
     "color": "#222"
    },
    {
@@ -3531,12 +5029,12 @@
    },
    {
     "a": "pot1:VCC",
-    "b": "board:3V3",
+    "b": "bb:top+21",
     "color": "#d33"
    },
    {
     "a": "pot1:GND",
-    "b": "board:GND",
+    "b": "bb:top-20",
     "color": "#222"
    },
    {
@@ -3556,11 +5054,28 @@
    },
    {
     "a": "bz1:2",
-    "b": "board:GND",
+    "b": "bb:top-14",
     "color": "#222"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     10,
+     11
+    ]
+   },
    {
     "text": "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
     "wires": [
@@ -3755,7 +5270,10 @@
   "title": "555 閃燈",
   "level": "進階",
   "summary": "NE555 無穩態：R1=1kΩ、R2=47kΩ、C=10µF，約 1.5 Hz 閃；完全不用程式也會閃，程式只是數脈衝。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 300
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -3812,22 +5330,22 @@
   },
   "wires": [
    {
-    "a": "board:5V",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:5V",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#d33"
    },
@@ -3858,7 +5376,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -3873,16 +5391,33 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND",
+    "b": "bb:top-15",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:D2",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、5V → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
    {
     "text": "555 的 VCC 與 RESET 接 5V，GND 接 GND",
     "wires": [
@@ -3940,7 +5475,10 @@
   "title": "555 蜂鳴器",
   "level": "進階",
   "summary": "同一顆 555，換小電容就變成音頻：R1=1k、R2=4.7k、C=1µF ≈ 140 Hz，蜂鳴器直接響，不需要程式。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 324
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -3995,22 +5533,22 @@
   },
   "wires": [
    {
-    "a": "board:5V",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:5V",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#d33"
    },
@@ -4041,7 +5579,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -4056,16 +5594,33 @@
    },
    {
     "a": "bz1:2",
-    "b": "board:GND",
+    "b": "bb:top-16",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:D2",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、5V → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
    {
     "text": "555 VCC、RESET 接 5V，GND 接 GND",
     "wires": [
@@ -4118,7 +5673,10 @@
   "title": "555 延時燈",
   "level": "進階",
   "summary": "單穩態：按一下按鍵，LED 亮 1.1×R×C 秒自動熄（R=100k、C=10µF ≈ 1.1 秒），像樓梯間的定時燈。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 330
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -4182,22 +5740,22 @@
   },
   "wires": [
    {
-    "a": "board:5V",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:5V",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+15",
     "b": "rp:1",
     "color": "#d33"
    },
@@ -4213,11 +5771,11 @@
    },
    {
     "a": "btn1:2.l",
-    "b": "board:GND",
+    "b": "bb:top-3",
     "color": "#222"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#e90"
    },
@@ -4238,7 +5796,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -4253,16 +5811,33 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND",
+    "b": "bb:top-15",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:D2",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、5V → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     16,
+     17
+    ]
+   },
    {
     "text": "555 VCC、RESET 接 5V，GND 接 GND",
     "wires": [
@@ -4323,11 +5898,292 @@
   "boardName": "XIAO ESP32S3"
  },
  {
+  "id": "an_halfwave@xiao_esp32s3",
+  "title": "半波整流",
+  "level": "進階",
+  "summary": "交流電源（3 Vpk、5 Hz）經一顆二極體只讓正半週通過；示波器探針比較 ac:+ 和 d1:K，程式用 ADC 把負載電壓印出來。",
+  "breadboard": null,
+  "parts": {
+   "ac1": {
+    "type": "acsource",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "vpk": "3",
+     "freq": "5"
+    }
+   },
+   "d1": {
+    "type": "diode",
+    "x": 400,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 420,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ac1:+",
+    "b": "d1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "ac1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "d1:K",
+    "b": "board:D0",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "交流電源 + → 二極體 A；二極體 K → 1kΩ → GND；交流電源 − 接 GND",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "二極體 K 也接 D0 讓程式讀電壓",
+    "wires": [
+     4
+    ]
+   },
+   {
+    "text": "執行後到示波器分頁按探針 ac1:+ 與 d1:K",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(1), atten=ADC.ATTN_11DB); vmax = 0\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3; vmax = max(vmax, v)\n    print('負載 %.2f V（峰值 %.2f，約 = 3 − 0.7 的順向壓降）' % (v, vmax)); lab.sleep(0.05)\n",
+  "expect": "示波器：ac1:+ 是完整弦波、d1:K 只剩正半週，而且峰值少了約 0.7 V。",
+  "try": [
+   "把二極體反接，看變成只剩負半週（ADC 讀不到負電壓）",
+   "加一顆 100µF 電容並聯負載，看波形變平"
+  ],
+  "verify": {
+   "console": "負載"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "an_opamp_cmp@xiao_esp32s3",
+  "title": "運放比較器",
+  "level": "進階",
+  "summary": "LM358 比較光敏電壓與可變電阻設定的門檻：亮度高於門檻 LED 亮；旋鈕可調靈敏度。",
+  "breadboard": {
+   "x": 270,
+   "y": 290
+  },
+  "parts": {
+   "u1": {
+    "type": "lm358",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 300,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 480,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "u1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "bb:top-10",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:VCC",
+    "b": "bb:top+16",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "bb:top-16",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "u1:IN1+",
+    "color": "#dc2"
+   },
+   {
+    "a": "pot1:VCC",
+    "b": "bb:top+21",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "bb:top-20",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "u1:IN1-",
+    "color": "#0aa"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-14",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "board:D2",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12,
+     13
+    ]
+   },
+   {
+    "text": "LM358 VCC→5V、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "光敏模組 AO → IN1+；可變電阻 SIG → IN1−（兩個模組都接 3V3／GND）",
+    "wires": [
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "OUT1 → 220Ω → LED → GND",
+    "wires": [
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "OUT1 也接 D2 讓程式看結果",
+    "wires": [
+     11
+    ]
+   },
+   {
+    "text": "執行後拖光敏與可變電阻，找出門檻",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\nout = Pin(3, Pin.IN); prev = None\nwhile lab.running():\n    v = out.value()\n    if v != prev: print('比較器輸出', '高：光線 > 門檻，LED 亮' if v else '低：光線 < 門檻，LED 滅'); prev = v\n    lab.sleep(0.1)\n",
+  "expect": "光敏拖亮 LED 亮、拖暗熄；轉可變電阻改門檻。",
+  "try": [
+   "IN+ 與 IN− 對調，變成暗才亮的夜燈",
+   "加 100k 從 OUT 回到 IN+ 做遲滯（史密特）"
+  ],
+  "verify": {
+   "ui": {
+    "ldr1": {
+     "light": 0.95
+    }
+   },
+   "console": "比較器輸出"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
   "id": "xi_weather_station@xiao_esp32s3",
   "title": "小型氣象站",
   "level": "專題",
   "summary": "DHT22＋光敏→OLED 顯示數據，NeoPixel 燈條顏色代表舒適度。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 270,
+   "y": 352
+  },
   "parts": {
    "oled1": {
     "type": "ssd1306",
@@ -4361,12 +6217,12 @@
   "wires": [
    {
     "a": "oled1:3V3",
-    "b": "board:3V3",
+    "b": "bb:top+9",
     "color": "#d33"
    },
    {
     "a": "oled1:GND",
-    "b": "board:GND",
+    "b": "bb:top-11",
     "color": "#222"
    },
    {
@@ -4381,12 +6237,12 @@
    },
    {
     "a": "dht1:VCC",
-    "b": "board:3V3",
+    "b": "bb:top+19",
     "color": "#d33"
    },
    {
     "a": "dht1:GND",
-    "b": "board:GND",
+    "b": "bb:top-21",
     "color": "#222"
    },
    {
@@ -4396,12 +6252,12 @@
    },
    {
     "a": "ldr1:VCC",
-    "b": "board:3V3",
+    "b": "bb:top+16",
     "color": "#d33"
    },
    {
     "a": "ldr1:GND",
-    "b": "board:GND",
+    "b": "bb:top-16",
     "color": "#222"
    },
    {
@@ -4416,16 +6272,33 @@
    },
    {
     "a": "np1:GND",
-    "b": "board:GND",
+    "b": "bb:top-10",
     "color": "#222"
    },
    {
     "a": "np1:DIN",
     "b": "board:D2",
     "color": "#2a7"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     13,
+     14
+    ]
+   },
    {
     "text": "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
     "wires": [
@@ -4585,6 +6458,661 @@
   ],
   "verify": {
    "console": "導通"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "an_bridge@xiao_esp32s3",
+  "title": "橋式整流＋濾波",
+  "level": "專題",
+  "summary": "四顆二極體做全波整流，再用電容濾成近似直流；探針看 r1:1 從脈動變平滑。",
+  "breadboard": {
+   "x": 310,
+   "y": 290
+  },
+  "parts": {
+   "ac1": {
+    "type": "acsource",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "vpk": "3",
+     "freq": "5"
+    }
+   },
+   "d1": {
+    "type": "diode",
+    "x": 400,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d2": {
+    "type": "diode",
+    "x": 400,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d3": {
+    "type": "diode",
+    "x": 400,
+    "y": 120,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d4": {
+    "type": "diode",
+    "x": 400,
+    "y": 160,
+    "rot": 0,
+    "attrs": {}
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 500,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "470u"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 560,
+    "y": 110,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ac1:+",
+    "b": "d1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "ac1:-",
+    "b": "d2:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d2:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bb:top-7",
+    "b": "d3:A",
+    "color": "#222"
+   },
+   {
+    "a": "d3:K",
+    "b": "ac1:+",
+    "color": "#d33"
+   },
+   {
+    "a": "bb:top-6",
+    "b": "d4:A",
+    "color": "#222"
+   },
+   {
+    "a": "d4:K",
+    "b": "ac1:-",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:1",
+    "b": "c1:+",
+    "color": "#93c"
+   },
+   {
+    "a": "c1:-",
+    "b": "bb:top-18",
+    "color": "#222"
+   },
+   {
+    "a": "r1:2",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "r1:1",
+    "b": "board:D0",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12
+    ]
+   },
+   {
+    "text": "ac+ → d1 → 輸出；ac− → d2 → 輸出（正半週與負半週各走一顆）",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "GND → d3 → ac+；GND → d4 → ac−（回流的兩顆）",
+    "wires": [
+     4,
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "輸出接 470µF 電容 + 與 1kΩ 負載，另一端都接 GND",
+    "wires": [
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "輸出也接 D0",
+    "wires": [
+     11
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(1), atten=ADC.ATTN_11DB); lo, hi, n = 9, 0, 0\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3; n += 1\n    if n > 20: lo = min(lo, v); hi = max(hi, v)     # 等電容充飽再統計\n    print('輸出 %.2f V（最低 %.2f 最高 %.2f，紋波 %.2f）' % (v, lo if n > 20 else v, hi, max(0, hi - lo) if n > 20 else 0)); lab.sleep(0.05)\n",
+  "expect": "探針 r1:1 幾乎是一條直線（紋波小），拿掉電容就變成一個個拱形。",
+  "try": [
+   "把 470u 換 10u 看紋波變大",
+   "把負載 1k 換 100，電容放電變快"
+  ],
+  "verify": {
+   "console": "輸出"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "an_opamp_amp@xiao_esp32s3",
+  "title": "運放放大 ×11",
+  "level": "專題",
+  "summary": "非反相放大：Rf=10k、Rg=1k → 增益 11。可變電阻分壓出 0～0.3 V 小訊號，放大後 ADC 讀到 0～3.3 V。",
+  "breadboard": {
+   "x": 250,
+   "y": 261
+  },
+  "parts": {
+   "u1": {
+    "type": "lm358",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 300,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 440,
+    "y": 10,
+    "rot": 0,
+    "attrs": {
+     "value": "100k"
+    }
+   },
+   "rf": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rg": {
+    "type": "resistor",
+    "x": 440,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "u1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "bb:top-12",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "bb:top-6",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "u1:IN1+",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:IN1+",
+    "b": "board:D1",
+    "color": "#0aa"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "rf:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "rf:2",
+    "b": "u1:IN1-",
+    "color": "#2a7"
+   },
+   {
+    "a": "u1:IN1-",
+    "b": "rg:1",
+    "color": "#e90"
+   },
+   {
+    "a": "rg:2",
+    "b": "bb:top-21",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "board:D0",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12
+    ]
+   },
+   {
+    "text": "LM358 VCC→5V、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "可變電阻 SIG → 100kΩ → IN1+（運放輸入阻抗高，這裡只是示意小訊號）",
+    "wires": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "OUT1 → 10kΩ → IN1−；IN1− → 1kΩ → GND（負回授）",
+    "wires": [
+     7,
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "IN1+ 接 D1、OUT1 接 D0，程式算增益",
+    "wires": [
+     6,
+     11
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nvin = ADC(Pin(2), atten=ADC.ATTN_11DB); vout = ADC(Pin(1), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    a = vin.read() / 4095 * 3.3; b = vout.read() / 4095 * 3.3\n    print('輸入 %.2f V → 輸出 %.2f V，增益 %.1f' % (a, b, b / a if a > 0.02 else 0)); lab.sleep(0.2)\n",
+  "expect": "轉可變電阻，輸出是輸入的約 11 倍，到 3.3 V 左右就飽和（ADC 上限）。",
+  "try": [
+   "把 Rf 換 100k 看增益 101 多快飽和",
+   "改成反相放大"
+  ],
+  "verify": {
+   "adc": {
+    "2": 400
+   },
+   "console": "增益"
+  },
+  "board": "xiao_esp32s3",
+  "boardName": "XIAO ESP32S3"
+ },
+ {
+  "id": "an_half_adder@xiao_esp32s3",
+  "title": "半加器",
+  "level": "專題",
+  "summary": "XOR 給「和」、AND 給「進位」：兩顆按鍵輸入 1 位元，兩顆 LED 顯示 和／進位，程式印出 A+B。",
+  "breadboard": {
+   "x": 385,
+   "y": 341
+  },
+  "parts": {
+   "g1": {
+    "type": "gate",
+    "x": 480,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "kind": "XOR"
+    }
+   },
+   "g2": {
+    "type": "gate",
+    "x": 480,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "kind": "AND"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 290,
+    "y": 30,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn2": {
+    "type": "pushbutton",
+    "x": 290,
+    "y": 130,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 290,
+    "y": 250,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 290,
+    "y": 300,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 620,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 720,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 620,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led2": {
+    "type": "led",
+    "x": 720,
+    "y": 190,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "g1:VCC",
+    "b": "bb:top+9",
+    "color": "#d33"
+   },
+   {
+    "a": "g1:GND",
+    "b": "bb:top-12",
+    "color": "#222"
+   },
+   {
+    "a": "g2:VCC",
+    "b": "bb:top+8",
+    "color": "#d33"
+   },
+   {
+    "a": "g2:GND",
+    "b": "bb:top-13",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+2",
+    "b": "btn1:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "g1:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "g2:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "bb:top-2",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+3",
+    "b": "btn2:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn2:2.l",
+    "b": "g1:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "g2:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "rb:1",
+    "color": "#0aa"
+   },
+   {
+    "a": "rb:2",
+    "b": "bb:top-3",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "g2:Y",
+    "b": "r2:1",
+    "color": "#93c"
+   },
+   {
+    "a": "r2:2",
+    "b": "led2:A",
+    "color": "#93c"
+   },
+   {
+    "a": "led2:C",
+    "b": "bb:top-24",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "board:D2",
+    "color": "#2a7"
+   },
+   {
+    "a": "g2:Y",
+    "b": "board:D3",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     22,
+     23
+    ]
+   },
+   {
+    "text": "兩個閘的 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "按鍵 1 → A（同時接 XOR 與 AND 的 A），10kΩ 下拉",
+    "wires": [
+     4,
+     5,
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "text": "按鍵 2 → B（同時接兩個閘的 B），10kΩ 下拉",
+    "wires": [
+     9,
+     10,
+     11,
+     12,
+     13
+    ]
+   },
+   {
+    "text": "XOR Y → 220Ω → 綠 LED（和）；AND Y → 220Ω → 紅 LED（進位）",
+    "wires": [
+     14,
+     15,
+     16,
+     17,
+     18,
+     19
+    ]
+   },
+   {
+    "text": "兩個 Y 也接 D2／D3 讓程式印結果",
+    "wires": [
+     20,
+     21
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ns = Pin(3, Pin.IN); c = Pin(4, Pin.IN); prev = None\nwhile lab.running():\n    v = (c.value(), s.value())\n    if v != prev: print('和 =', v[1], '進位 =', v[0], '→ A + B =', v[0] * 2 + v[1]); prev = v\n    lab.sleep(0.05)\n",
+  "expect": "按一顆：綠亮（1+0=1）；按兩顆：紅亮綠滅（1+1=10 二進位）。",
+  "try": [
+   "加第三顆按鍵做全加器（要再兩個閘）",
+   "把 LED 換成 OLED 顯示算式"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    },
+    "btn2": {
+     "pressed": true
+    }
+   },
+   "console": "A \\+ B = 2"
   },
   "board": "xiao_esp32s3",
   "boardName": "XIAO ESP32S3"
@@ -5036,7 +7564,10 @@
   "title": "電容充放電",
   "level": "入門",
   "summary": "滑動開關撥到充電，電容電壓沿曲線慢慢升到 3.3 V；撥到放電慢慢掉回 0。示波器探針看曲線，程式用 ADC 把電壓印出來。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 240,
+   "y": 280
+  },
   "parts": {
    "sw1": {
     "type": "slide-switch",
@@ -5090,7 +7621,7 @@
    },
    {
     "a": "sw1:3",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
@@ -5105,7 +7636,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-17",
     "color": "#222"
    },
    {
@@ -5125,11 +7656,22 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND",
+    "b": "bb:top-16",
     "color": "#222"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     9
+    ]
+   },
    {
     "text": "滑動開關腳 1 接 3V3、腳 3 接 GND、中間腳 2 → 1kΩ",
     "wires": [
@@ -5177,6 +7719,226 @@
     }
    },
    "console": "電容"
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "an_gate@tdisplay_s3",
+  "title": "邏輯閘真值表",
+  "level": "入門",
+  "summary": "兩顆按鍵當輸入 A、B，74HC AND 閘輸出 Y 點 LED；點閘換成 OR／XOR／NAND 看真值表怎麼變。",
+  "breadboard": {
+   "x": 340,
+   "y": 281
+  },
+  "parts": {
+   "g1": {
+    "type": "gate",
+    "x": 420,
+    "y": 100,
+    "rot": 0,
+    "attrs": {
+     "kind": "AND"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 30,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn2": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 540,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 620,
+    "y": 180,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "g1:VCC",
+    "b": "bb:top+7",
+    "color": "#d33"
+   },
+   {
+    "a": "g1:GND",
+    "b": "bb:top-11",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+2",
+    "b": "btn1:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "g1:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "bb:top-2",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+3",
+    "b": "btn2:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn2:2.l",
+    "b": "g1:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "rb:1",
+    "color": "#0aa"
+   },
+   {
+    "a": "rb:2",
+    "b": "bb:top-3",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "board:G16",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
+   {
+    "text": "閘 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "3V3 → 按鍵 1 → A，A 經 10kΩ 下拉到 GND（沒按＝0）",
+    "wires": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "3V3 → 按鍵 2 → B，B 經 10kΩ 下拉",
+    "wires": [
+     6,
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "Y → 220Ω → LED → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "Y 也接 G16；執行後按按鍵、點閘換種類",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ny = Pin(16, Pin.IN); prev = None\nprint('按鍵 1＝A、按鍵 2＝B；點閘可換 AND/OR/XOR/NAND')\nwhile lab.running():\n    v = y.value()\n    if v != prev: print('Y =', v); prev = v\n    lab.sleep(0.05)\n",
+  "expect": "AND：兩顆都按 LED 才亮；換 OR 任一顆就亮；XOR 只按一顆亮。",
+  "try": [
+   "用兩個閘做 A AND NOT B",
+   "把真值表抄在紙上再對照"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    },
+    "btn2": {
+     "pressed": true
+    }
+   },
+   "console": "Y = 1"
   },
   "board": "tdisplay_s3",
   "boardName": "T-Display S3"
@@ -5663,7 +8425,10 @@
   "title": "555 閃燈",
   "level": "進階",
   "summary": "NE555 無穩態：R1=1kΩ、R2=47kΩ、C=10µF，約 1.5 Hz 閃；完全不用程式也會閃，程式只是數脈衝。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 300
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -5720,22 +8485,22 @@
   },
   "wires": [
    {
-    "a": "board:5V",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:5V",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#d33"
    },
@@ -5766,7 +8531,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -5781,16 +8546,33 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND",
+    "b": "bb:top-15",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:G16",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、5V → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
    {
     "text": "555 的 VCC 與 RESET 接 5V，GND 接 GND",
     "wires": [
@@ -5848,7 +8630,10 @@
   "title": "555 蜂鳴器",
   "level": "進階",
   "summary": "同一顆 555，換小電容就變成音頻：R1=1k、R2=4.7k、C=1µF ≈ 140 Hz，蜂鳴器直接響，不需要程式。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 324
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -5903,22 +8688,22 @@
   },
   "wires": [
    {
-    "a": "board:5V",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:5V",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#d33"
    },
@@ -5949,7 +8734,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -5964,16 +8749,33 @@
    },
    {
     "a": "bz1:2",
-    "b": "board:GND",
+    "b": "bb:top-16",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:G16",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、5V → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
    {
     "text": "555 VCC、RESET 接 5V，GND 接 GND",
     "wires": [
@@ -6026,7 +8828,10 @@
   "title": "555 延時燈",
   "level": "進階",
   "summary": "單穩態：按一下按鍵，LED 亮 1.1×R×C 秒自動熄（R=100k、C=10µF ≈ 1.1 秒），像樓梯間的定時燈。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 330
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -6090,22 +8895,22 @@
   },
   "wires": [
    {
-    "a": "board:5V",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:5V",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+15",
     "b": "rp:1",
     "color": "#d33"
    },
@@ -6121,11 +8926,11 @@
    },
    {
     "a": "btn1:2.l",
-    "b": "board:GND",
+    "b": "bb:top-3",
     "color": "#222"
    },
    {
-    "a": "board:5V",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#e90"
    },
@@ -6146,7 +8951,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -6161,16 +8966,33 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND",
+    "b": "bb:top-15",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:G16",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、5V → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     16,
+     17
+    ]
+   },
    {
     "text": "555 VCC、RESET 接 5V，GND 接 GND",
     "wires": [
@@ -6226,6 +9048,284 @@
     }
    },
    "console": "亮了"
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "an_halfwave@tdisplay_s3",
+  "title": "半波整流",
+  "level": "進階",
+  "summary": "交流電源（3 Vpk、5 Hz）經一顆二極體只讓正半週通過；示波器探針比較 ac:+ 和 d1:K，程式用 ADC 把負載電壓印出來。",
+  "breadboard": null,
+  "parts": {
+   "ac1": {
+    "type": "acsource",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "vpk": "3",
+     "freq": "5"
+    }
+   },
+   "d1": {
+    "type": "diode",
+    "x": 400,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 420,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ac1:+",
+    "b": "d1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "ac1:-",
+    "b": "board:GND",
+    "color": "#222"
+   },
+   {
+    "a": "d1:K",
+    "b": "board:G1",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "交流電源 + → 二極體 A；二極體 K → 1kΩ → GND；交流電源 − 接 GND",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "二極體 K 也接 G1 讓程式讀電壓",
+    "wires": [
+     4
+    ]
+   },
+   {
+    "text": "執行後到示波器分頁按探針 ac1:+ 與 d1:K",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(1), atten=ADC.ATTN_11DB); vmax = 0\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3; vmax = max(vmax, v)\n    print('負載 %.2f V（峰值 %.2f，約 = 3 − 0.7 的順向壓降）' % (v, vmax)); lab.sleep(0.05)\n",
+  "expect": "示波器：ac1:+ 是完整弦波、d1:K 只剩正半週，而且峰值少了約 0.7 V。",
+  "try": [
+   "把二極體反接，看變成只剩負半週（ADC 讀不到負電壓）",
+   "加一顆 100µF 電容並聯負載，看波形變平"
+  ],
+  "verify": {
+   "console": "負載"
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "an_opamp_cmp@tdisplay_s3",
+  "title": "運放比較器",
+  "level": "進階",
+  "summary": "LM358 比較光敏電壓與可變電阻設定的門檻：亮度高於門檻 LED 亮；旋鈕可調靈敏度。",
+  "breadboard": {
+   "x": 270,
+   "y": 290
+  },
+  "parts": {
+   "u1": {
+    "type": "lm358",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 300,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 480,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "u1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "bb:top-10",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:VCC",
+    "b": "bb:top+16",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "bb:top-16",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "u1:IN1+",
+    "color": "#dc2"
+   },
+   {
+    "a": "pot1:VCC",
+    "b": "bb:top+21",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "bb:top-20",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "u1:IN1-",
+    "color": "#0aa"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-14",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "board:G16",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12,
+     13
+    ]
+   },
+   {
+    "text": "LM358 VCC→5V、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "光敏模組 AO → IN1+；可變電阻 SIG → IN1−（兩個模組都接 3V3／GND）",
+    "wires": [
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "OUT1 → 220Ω → LED → GND",
+    "wires": [
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "OUT1 也接 G16 讓程式看結果",
+    "wires": [
+     11
+    ]
+   },
+   {
+    "text": "執行後拖光敏與可變電阻，找出門檻",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\nout = Pin(16, Pin.IN); prev = None\nwhile lab.running():\n    v = out.value()\n    if v != prev: print('比較器輸出', '高：光線 > 門檻，LED 亮' if v else '低：光線 < 門檻，LED 滅'); prev = v\n    lab.sleep(0.1)\n",
+  "expect": "光敏拖亮 LED 亮、拖暗熄；轉可變電阻改門檻。",
+  "try": [
+   "IN+ 與 IN− 對調，變成暗才亮的夜燈",
+   "加 100k 從 OUT 回到 IN+ 做遲滯（史密特）"
+  ],
+  "verify": {
+   "ui": {
+    "ldr1": {
+     "light": 0.95
+    }
+   },
+   "console": "比較器輸出"
   },
   "board": "tdisplay_s3",
   "boardName": "T-Display S3"
@@ -6498,6 +9598,661 @@
   "boardName": "T-Display S3"
  },
  {
+  "id": "an_bridge@tdisplay_s3",
+  "title": "橋式整流＋濾波",
+  "level": "專題",
+  "summary": "四顆二極體做全波整流，再用電容濾成近似直流；探針看 r1:1 從脈動變平滑。",
+  "breadboard": {
+   "x": 310,
+   "y": 290
+  },
+  "parts": {
+   "ac1": {
+    "type": "acsource",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "vpk": "3",
+     "freq": "5"
+    }
+   },
+   "d1": {
+    "type": "diode",
+    "x": 400,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d2": {
+    "type": "diode",
+    "x": 400,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d3": {
+    "type": "diode",
+    "x": 400,
+    "y": 120,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d4": {
+    "type": "diode",
+    "x": 400,
+    "y": 160,
+    "rot": 0,
+    "attrs": {}
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 500,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "470u"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 560,
+    "y": 110,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ac1:+",
+    "b": "d1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "ac1:-",
+    "b": "d2:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d2:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bb:top-7",
+    "b": "d3:A",
+    "color": "#222"
+   },
+   {
+    "a": "d3:K",
+    "b": "ac1:+",
+    "color": "#d33"
+   },
+   {
+    "a": "bb:top-6",
+    "b": "d4:A",
+    "color": "#222"
+   },
+   {
+    "a": "d4:K",
+    "b": "ac1:-",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:1",
+    "b": "c1:+",
+    "color": "#93c"
+   },
+   {
+    "a": "c1:-",
+    "b": "bb:top-18",
+    "color": "#222"
+   },
+   {
+    "a": "r1:2",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "r1:1",
+    "b": "board:G1",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12
+    ]
+   },
+   {
+    "text": "ac+ → d1 → 輸出；ac− → d2 → 輸出（正半週與負半週各走一顆）",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "GND → d3 → ac+；GND → d4 → ac−（回流的兩顆）",
+    "wires": [
+     4,
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "輸出接 470µF 電容 + 與 1kΩ 負載，另一端都接 GND",
+    "wires": [
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "輸出也接 G1",
+    "wires": [
+     11
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(1), atten=ADC.ATTN_11DB); lo, hi, n = 9, 0, 0\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3; n += 1\n    if n > 20: lo = min(lo, v); hi = max(hi, v)     # 等電容充飽再統計\n    print('輸出 %.2f V（最低 %.2f 最高 %.2f，紋波 %.2f）' % (v, lo if n > 20 else v, hi, max(0, hi - lo) if n > 20 else 0)); lab.sleep(0.05)\n",
+  "expect": "探針 r1:1 幾乎是一條直線（紋波小），拿掉電容就變成一個個拱形。",
+  "try": [
+   "把 470u 換 10u 看紋波變大",
+   "把負載 1k 換 100，電容放電變快"
+  ],
+  "verify": {
+   "console": "輸出"
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "an_opamp_amp@tdisplay_s3",
+  "title": "運放放大 ×11",
+  "level": "專題",
+  "summary": "非反相放大：Rf=10k、Rg=1k → 增益 11。可變電阻分壓出 0～0.3 V 小訊號，放大後 ADC 讀到 0～3.3 V。",
+  "breadboard": {
+   "x": 250,
+   "y": 261
+  },
+  "parts": {
+   "u1": {
+    "type": "lm358",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 300,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 440,
+    "y": 10,
+    "rot": 0,
+    "attrs": {
+     "value": "100k"
+    }
+   },
+   "rf": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rg": {
+    "type": "resistor",
+    "x": 440,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "u1:VCC",
+    "b": "board:5V",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "bb:top-12",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "bb:top-6",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "u1:IN1+",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:IN1+",
+    "b": "board:G2",
+    "color": "#0aa"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "rf:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "rf:2",
+    "b": "u1:IN1-",
+    "color": "#2a7"
+   },
+   {
+    "a": "u1:IN1-",
+    "b": "rg:1",
+    "color": "#e90"
+   },
+   {
+    "a": "rg:2",
+    "b": "bb:top-21",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "board:G1",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12
+    ]
+   },
+   {
+    "text": "LM358 VCC→5V、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "可變電阻 SIG → 100kΩ → IN1+（運放輸入阻抗高，這裡只是示意小訊號）",
+    "wires": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "OUT1 → 10kΩ → IN1−；IN1− → 1kΩ → GND（負回授）",
+    "wires": [
+     7,
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "IN1+ 接 G2、OUT1 接 G1，程式算增益",
+    "wires": [
+     6,
+     11
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nvin = ADC(Pin(2), atten=ADC.ATTN_11DB); vout = ADC(Pin(1), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    a = vin.read() / 4095 * 3.3; b = vout.read() / 4095 * 3.3\n    print('輸入 %.2f V → 輸出 %.2f V，增益 %.1f' % (a, b, b / a if a > 0.02 else 0)); lab.sleep(0.2)\n",
+  "expect": "轉可變電阻，輸出是輸入的約 11 倍，到 3.3 V 左右就飽和（ADC 上限）。",
+  "try": [
+   "把 Rf 換 100k 看增益 101 多快飽和",
+   "改成反相放大"
+  ],
+  "verify": {
+   "adc": {
+    "2": 400
+   },
+   "console": "增益"
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
+  "id": "an_half_adder@tdisplay_s3",
+  "title": "半加器",
+  "level": "專題",
+  "summary": "XOR 給「和」、AND 給「進位」：兩顆按鍵輸入 1 位元，兩顆 LED 顯示 和／進位，程式印出 A+B。",
+  "breadboard": {
+   "x": 385,
+   "y": 341
+  },
+  "parts": {
+   "g1": {
+    "type": "gate",
+    "x": 480,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "kind": "XOR"
+    }
+   },
+   "g2": {
+    "type": "gate",
+    "x": 480,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "kind": "AND"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 290,
+    "y": 30,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn2": {
+    "type": "pushbutton",
+    "x": 290,
+    "y": 130,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 290,
+    "y": 250,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 290,
+    "y": 300,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 620,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 720,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 620,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led2": {
+    "type": "led",
+    "x": 720,
+    "y": 190,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "g1:VCC",
+    "b": "bb:top+9",
+    "color": "#d33"
+   },
+   {
+    "a": "g1:GND",
+    "b": "bb:top-12",
+    "color": "#222"
+   },
+   {
+    "a": "g2:VCC",
+    "b": "bb:top+8",
+    "color": "#d33"
+   },
+   {
+    "a": "g2:GND",
+    "b": "bb:top-13",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+2",
+    "b": "btn1:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "g1:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "g2:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "bb:top-2",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+3",
+    "b": "btn2:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn2:2.l",
+    "b": "g1:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "g2:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "rb:1",
+    "color": "#0aa"
+   },
+   {
+    "a": "rb:2",
+    "b": "bb:top-3",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "g2:Y",
+    "b": "r2:1",
+    "color": "#93c"
+   },
+   {
+    "a": "r2:2",
+    "b": "led2:A",
+    "color": "#93c"
+   },
+   {
+    "a": "led2:C",
+    "b": "bb:top-24",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "board:G16",
+    "color": "#2a7"
+   },
+   {
+    "a": "g2:Y",
+    "b": "board:G17",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     22,
+     23
+    ]
+   },
+   {
+    "text": "兩個閘的 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "按鍵 1 → A（同時接 XOR 與 AND 的 A），10kΩ 下拉",
+    "wires": [
+     4,
+     5,
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "text": "按鍵 2 → B（同時接兩個閘的 B），10kΩ 下拉",
+    "wires": [
+     9,
+     10,
+     11,
+     12,
+     13
+    ]
+   },
+   {
+    "text": "XOR Y → 220Ω → 綠 LED（和）；AND Y → 220Ω → 紅 LED（進位）",
+    "wires": [
+     14,
+     15,
+     16,
+     17,
+     18,
+     19
+    ]
+   },
+   {
+    "text": "兩個 Y 也接 G16／G17 讓程式印結果",
+    "wires": [
+     20,
+     21
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ns = Pin(16, Pin.IN); c = Pin(17, Pin.IN); prev = None\nwhile lab.running():\n    v = (c.value(), s.value())\n    if v != prev: print('和 =', v[1], '進位 =', v[0], '→ A + B =', v[0] * 2 + v[1]); prev = v\n    lab.sleep(0.05)\n",
+  "expect": "按一顆：綠亮（1+0=1）；按兩顆：紅亮綠滅（1+1=10 二進位）。",
+  "try": [
+   "加第三顆按鍵做全加器（要再兩個閘）",
+   "把 LED 換成 OLED 顯示算式"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    },
+    "btn2": {
+     "pressed": true
+    }
+   },
+   "console": "A \\+ B = 2"
+  },
+  "board": "tdisplay_s3",
+  "boardName": "T-Display S3"
+ },
+ {
   "id": "dk_onboard_led@devkit",
   "title": "板上藍燈閃爍",
   "level": "入門",
@@ -6754,7 +10509,10 @@
   "title": "紅綠燈",
   "level": "入門",
   "summary": "紅→綠→黃輪替；按行人鈕會提早變紅並讓行人綠燈亮。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 355
+  },
   "parts": {
    "r1": {
     "type": "resistor",
@@ -6831,7 +10589,7 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND.1",
+    "b": "bb:top-15",
     "color": "#222"
    },
    {
@@ -6846,7 +10604,7 @@
    },
    {
     "a": "led2:C",
-    "b": "board:GND.1",
+    "b": "bb:top-16",
     "color": "#222"
    },
    {
@@ -6861,7 +10619,7 @@
    },
    {
     "a": "led3:C",
-    "b": "board:GND.1",
+    "b": "bb:top-14",
     "color": "#222"
    },
    {
@@ -6871,11 +10629,22 @@
    },
    {
     "a": "btn1:2.l",
-    "b": "board:GND.1",
+    "b": "bb:top-5",
     "color": "#222"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     11
+    ]
+   },
    {
     "text": "D12 → 220Ω → 紅 LED → GND",
     "wires": [
@@ -7179,7 +10948,10 @@
   "title": "水塔水位計",
   "level": "入門",
   "summary": "可變電阻模擬水位，LED 長條一格一格亮，滿水位閃爍提醒。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 290,
+   "y": 311
+  },
   "parts": {
    "pot1": {
     "type": "potentiometer",
@@ -7190,14 +10962,14 @@
    },
    "bar1": {
     "type": "led-bar-graph",
-    "x": 470,
+    "x": 520,
     "y": 150,
     "rot": 0,
     "attrs": {}
    },
    "r1": {
     "type": "resistor",
-    "x": 380,
+    "x": 400,
     "y": 150,
     "rot": 0,
     "attrs": {
@@ -7206,8 +10978,8 @@
    },
    "r2": {
     "type": "resistor",
-    "x": 380,
-    "y": 175,
+    "x": 400,
+    "y": 180,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -7215,8 +10987,8 @@
    },
    "r3": {
     "type": "resistor",
-    "x": 380,
-    "y": 200,
+    "x": 400,
+    "y": 210,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -7224,8 +10996,8 @@
    },
    "r4": {
     "type": "resistor",
-    "x": 380,
-    "y": 225,
+    "x": 400,
+    "y": 240,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -7233,8 +11005,8 @@
    },
    "r5": {
     "type": "resistor",
-    "x": 380,
-    "y": 250,
+    "x": 400,
+    "y": 270,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -7249,7 +11021,7 @@
    },
    {
     "a": "pot1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-2",
     "color": "#222"
    },
    {
@@ -7258,7 +11030,7 @@
     "color": "#dc2"
    },
    {
-    "a": "board:D12",
+    "a": "board:D23",
     "b": "r1:1",
     "color": "#e90"
    },
@@ -7268,7 +11040,7 @@
     "color": "#e90"
    },
    {
-    "a": "board:D13",
+    "a": "board:D22",
     "b": "r2:1",
     "color": "#e90"
    },
@@ -7278,7 +11050,7 @@
     "color": "#e90"
    },
    {
-    "a": "board:D14",
+    "a": "board:D19",
     "b": "r3:1",
     "color": "#e90"
    },
@@ -7288,7 +11060,7 @@
     "color": "#e90"
    },
    {
-    "a": "board:D27",
+    "a": "board:D21",
     "b": "r4:1",
     "color": "#e90"
    },
@@ -7298,7 +11070,7 @@
     "color": "#e90"
    },
    {
-    "a": "board:D26",
+    "a": "board:D4",
     "b": "r5:1",
     "color": "#e90"
    },
@@ -7309,31 +11081,42 @@
    },
    {
     "a": "bar1:C1",
-    "b": "board:GND.1",
+    "b": "bb:top-22",
     "color": "#222"
    },
    {
     "a": "bar1:C2",
-    "b": "board:GND.1",
+    "b": "bb:top-21",
     "color": "#222"
    },
    {
     "a": "bar1:C3",
-    "b": "board:GND.1",
+    "b": "bb:top-23",
     "color": "#222"
    },
    {
     "a": "bar1:C4",
-    "b": "board:GND.1",
+    "b": "bb:top-24",
     "color": "#222"
    },
    {
     "a": "bar1:C5",
-    "b": "board:GND.1",
+    "b": "bb:top-20",
     "color": "#222"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     18
+    ]
+   },
    {
     "text": "可變電阻 VCC→3V3、GND→GND、SIG→D34",
     "wires": [
@@ -7343,7 +11126,7 @@
     ]
    },
    {
-    "text": "D12/D13/D14/D27/D26 各經 220Ω 接長條 A1～A5",
+    "text": "D23/D22/D19/D21/D4 各經 220Ω 接長條 A1～A5",
     "wires": [
      3,
      4,
@@ -7372,7 +11155,7 @@
     "wires": []
    }
   ],
-  "code": "import lab\nfrom machine import Pin, ADC\npot = ADC(Pin(34), atten=ADC.ATTN_11DB); bars = [Pin(p, Pin.OUT) for p in (12, 13, 14, 27, 26)]; blink = 0\nwhile lab.running():\n    v = pot.read(); n = v * 6 // 4096\n    for i, p in enumerate(bars): p.value(1 if i < n else 0)\n    if n >= 5: blink ^= 1; bars[4].value(blink); print('滿水位！')\n    print('水位', v * 100 // 4095, '%，亮', min(n, 5), '格'); lab.send(level=v)\n    lab.sleep(0.25)\n",
+  "code": "import lab\nfrom machine import Pin, ADC\npot = ADC(Pin(34), atten=ADC.ATTN_11DB); bars = [Pin(p, Pin.OUT) for p in (23, 22, 19, 21, 4)]; blink = 0\nwhile lab.running():\n    v = pot.read(); n = v * 6 // 4096\n    for i, p in enumerate(bars): p.value(1 if i < n else 0)\n    if n >= 5: blink ^= 1; bars[4].value(blink); print('滿水位！')\n    print('水位', v * 100 // 4095, '%，亮', min(n, 5), '格'); lab.send(level=v)\n    lab.sleep(0.25)\n",
   "expect": "旋鈕越高亮越多格，到頂第五格閃爍。",
   "try": [
    "低於 1 格時蜂鳴器警報",
@@ -7392,7 +11175,10 @@
   "title": "電容充放電",
   "level": "入門",
   "summary": "滑動開關撥到充電，電容電壓沿曲線慢慢升到 3.3 V；撥到放電慢慢掉回 0。示波器探針看曲線，程式用 ADC 把電壓印出來。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 240,
+   "y": 280
+  },
   "parts": {
    "sw1": {
     "type": "slide-switch",
@@ -7446,7 +11232,7 @@
    },
    {
     "a": "sw1:3",
-    "b": "board:GND.1",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
@@ -7461,7 +11247,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND.1",
+    "b": "bb:top-17",
     "color": "#222"
    },
    {
@@ -7481,11 +11267,22 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND.1",
+    "b": "bb:top-16",
     "color": "#222"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     9
+    ]
+   },
    {
     "text": "滑動開關腳 1 接 3V3、腳 3 接 GND、中間腳 2 → 1kΩ",
     "wires": [
@@ -7533,6 +11330,226 @@
     }
    },
    "console": "電容"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "an_gate@devkit",
+  "title": "邏輯閘真值表",
+  "level": "入門",
+  "summary": "兩顆按鍵當輸入 A、B，74HC AND 閘輸出 Y 點 LED；點閘換成 OR／XOR／NAND 看真值表怎麼變。",
+  "breadboard": {
+   "x": 340,
+   "y": 281
+  },
+  "parts": {
+   "g1": {
+    "type": "gate",
+    "x": 420,
+    "y": 100,
+    "rot": 0,
+    "attrs": {
+     "kind": "AND"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 30,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn2": {
+    "type": "pushbutton",
+    "x": 300,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 300,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 300,
+    "y": 240,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 540,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 620,
+    "y": 180,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "g1:VCC",
+    "b": "bb:top+7",
+    "color": "#d33"
+   },
+   {
+    "a": "g1:GND",
+    "b": "bb:top-11",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+2",
+    "b": "btn1:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "g1:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "bb:top-2",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+3",
+    "b": "btn2:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn2:2.l",
+    "b": "g1:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "rb:1",
+    "color": "#0aa"
+   },
+   {
+    "a": "rb:2",
+    "b": "bb:top-3",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "board:D4",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
+   {
+    "text": "閘 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "3V3 → 按鍵 1 → A，A 經 10kΩ 下拉到 GND（沒按＝0）",
+    "wires": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "3V3 → 按鍵 2 → B，B 經 10kΩ 下拉",
+    "wires": [
+     6,
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "text": "Y → 220Ω → LED → GND",
+    "wires": [
+     10,
+     11,
+     12
+    ]
+   },
+   {
+    "text": "Y 也接 D4；執行後按按鍵、點閘換種類",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ny = Pin(4, Pin.IN); prev = None\nprint('按鍵 1＝A、按鍵 2＝B；點閘可換 AND/OR/XOR/NAND')\nwhile lab.running():\n    v = y.value()\n    if v != prev: print('Y =', v); prev = v\n    lab.sleep(0.05)\n",
+  "expect": "AND：兩顆都按 LED 才亮；換 OR 任一顆就亮；XOR 只按一顆亮。",
+  "try": [
+   "用兩個閘做 A AND NOT B",
+   "把真值表抄在紙上再對照"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    },
+    "btn2": {
+     "pressed": true
+    }
+   },
+   "console": "Y = 1"
   },
   "board": "devkit",
   "boardName": "ESP32 DevKit"
@@ -7914,7 +11931,10 @@
   "title": "停車感測器",
   "level": "進階",
   "summary": "超音波越近，LED 長條亮越多格、蜂鳴器嗶越快，像倒車雷達。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 290,
+   "y": 424
+  },
   "parts": {
    "us1": {
     "type": "hc-sr04",
@@ -7925,14 +11945,14 @@
    },
    "bar1": {
     "type": "led-bar-graph",
-    "x": 470,
+    "x": 520,
     "y": 150,
     "rot": 0,
     "attrs": {}
    },
    "r1": {
     "type": "resistor",
-    "x": 380,
+    "x": 400,
     "y": 150,
     "rot": 0,
     "attrs": {
@@ -7941,8 +11961,8 @@
    },
    "r2": {
     "type": "resistor",
-    "x": 380,
-    "y": 175,
+    "x": 400,
+    "y": 180,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -7950,8 +11970,8 @@
    },
    "r3": {
     "type": "resistor",
-    "x": 380,
-    "y": 200,
+    "x": 400,
+    "y": 210,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -7959,8 +11979,8 @@
    },
    "r4": {
     "type": "resistor",
-    "x": 380,
-    "y": 225,
+    "x": 400,
+    "y": 240,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -7968,8 +11988,8 @@
    },
    "r5": {
     "type": "resistor",
-    "x": 380,
-    "y": 250,
+    "x": 400,
+    "y": 270,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -7978,7 +11998,7 @@
    "r6": {
     "type": "resistor",
     "x": 330,
-    "y": 300,
+    "y": 330,
     "rot": 0,
     "attrs": {
      "value": "220"
@@ -7987,7 +12007,7 @@
    "bz1": {
     "type": "buzzer",
     "x": 430,
-    "y": 290,
+    "y": 310,
     "rot": 0,
     "attrs": {}
    }
@@ -8000,7 +12020,7 @@
    },
    {
     "a": "us1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-9",
     "color": "#222"
    },
    {
@@ -8014,7 +12034,7 @@
     "color": "#2a7"
    },
    {
-    "a": "board:D12",
+    "a": "board:D23",
     "b": "r1:1",
     "color": "#e90"
    },
@@ -8024,7 +12044,7 @@
     "color": "#e90"
    },
    {
-    "a": "board:D13",
+    "a": "board:D22",
     "b": "r2:1",
     "color": "#e90"
    },
@@ -8034,7 +12054,7 @@
     "color": "#e90"
    },
    {
-    "a": "board:D14",
+    "a": "board:D19",
     "b": "r3:1",
     "color": "#e90"
    },
@@ -8044,7 +12064,7 @@
     "color": "#e90"
    },
    {
-    "a": "board:D27",
+    "a": "board:D21",
     "b": "r4:1",
     "color": "#e90"
    },
@@ -8054,7 +12074,7 @@
     "color": "#e90"
    },
    {
-    "a": "board:D26",
+    "a": "board:D4",
     "b": "r5:1",
     "color": "#e90"
    },
@@ -8065,31 +12085,31 @@
    },
    {
     "a": "bar1:C1",
-    "b": "board:GND.1",
+    "b": "bb:top-22",
     "color": "#222"
    },
    {
     "a": "bar1:C2",
-    "b": "board:GND.1",
+    "b": "bb:top-21",
     "color": "#222"
    },
    {
     "a": "bar1:C3",
-    "b": "board:GND.1",
+    "b": "bb:top-23",
     "color": "#222"
    },
    {
     "a": "bar1:C4",
-    "b": "board:GND.1",
+    "b": "bb:top-24",
     "color": "#222"
    },
    {
     "a": "bar1:C5",
-    "b": "board:GND.1",
+    "b": "bb:top-20",
     "color": "#222"
    },
    {
-    "a": "board:D4",
+    "a": "board:D15",
     "b": "r6:1",
     "color": "#93c"
    },
@@ -8100,11 +12120,22 @@
    },
    {
     "a": "bz1:2",
-    "b": "board:GND.1",
+    "b": "bb:top-15",
     "color": "#222"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     22
+    ]
+   },
    {
     "text": "HC-SR04 VCC→VIN、GND→GND、TRIG→D5、ECHO→D18",
     "wires": [
@@ -8115,7 +12146,7 @@
     ]
    },
    {
-    "text": "D12/D13/D14/D27/D26 各經 220Ω 接 LED 長條 A1～A5",
+    "text": "D23/D22/D19/D21/D4 各經 220Ω 接 LED 長條 A1～A5",
     "wires": [
      4,
      5,
@@ -8140,7 +12171,7 @@
     ]
    },
    {
-    "text": "D4 → 220Ω → 蜂鳴器 → GND",
+    "text": "D15 → 220Ω → 蜂鳴器 → GND",
     "wires": [
      19,
      20,
@@ -8152,7 +12183,7 @@
     "wires": []
    }
   ],
-  "code": "import lab\nfrom machine import Pin, PWM, time_pulse_us\ntrig = Pin(5, Pin.OUT); echo = Pin(18, Pin.IN); bz = PWM(Pin(4), freq=1500); bz.duty_u16(0)\nbars = [Pin(p, Pin.OUT) for p in (12, 13, 14, 27, 26)]\nwhile lab.running():\n    trig.value(1); trig.value(0); us = time_pulse_us(echo, 1, 30000); cm = us / 58 if us > 0 else 200\n    n = max(0, min(5, int((100 - cm) / 20) + 1)) if cm < 100 else 0\n    for i, p in enumerate(bars): p.value(1 if i < n else 0)\n    print('距離 %.0f cm，亮 %d 格' % (cm, n)); lab.send(cm=round(cm, 1))\n    if n >= 3: bz.duty_u16(20000); lab.sleep(0.05); bz.duty_u16(0); lab.sleep(0.6 - n * 0.1)\n    else: lab.sleep(0.3)\n",
+  "code": "import lab\nfrom machine import Pin, PWM, time_pulse_us\ntrig = Pin(5, Pin.OUT); echo = Pin(18, Pin.IN); bz = PWM(Pin(15), freq=1500); bz.duty_u16(0)\nbars = [Pin(p, Pin.OUT) for p in (23, 22, 19, 21, 4)]\nwhile lab.running():\n    trig.value(1); trig.value(0); us = time_pulse_us(echo, 1, 30000); cm = us / 58 if us > 0 else 200\n    n = max(0, min(5, int((100 - cm) / 20) + 1)) if cm < 100 else 0\n    for i, p in enumerate(bars): p.value(1 if i < n else 0)\n    print('距離 %.0f cm，亮 %d 格' % (cm, n)); lab.send(cm=round(cm, 1))\n    if n >= 3: bz.duty_u16(20000); lab.sleep(0.05); bz.duty_u16(0); lab.sleep(0.6 - n * 0.1)\n    else: lab.sleep(0.3)\n",
   "expect": "100 cm 內開始亮格，越近越多格；60 cm 內蜂鳴器開始嗶，越近越急。",
   "try": [
    "改成 10 格",
@@ -8169,7 +12200,10 @@
   "title": "人體感應燈",
   "level": "進階",
   "summary": "PIR 偵測到人就讓繼電器導通、點亮燈（示範用 LED 當大燈），沒人 5 秒後關。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 300,
+   "y": 270
+  },
   "parts": {
    "pir1": {
     "type": "pir",
@@ -8207,12 +12241,12 @@
   "wires": [
    {
     "a": "pir1:VCC",
-    "b": "board:VIN",
+    "b": "bb:top+2",
     "color": "#d33"
    },
    {
     "a": "pir1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-4",
     "color": "#222"
    },
    {
@@ -8222,12 +12256,12 @@
    },
    {
     "a": "relay1:VCC",
-    "b": "board:VIN",
+    "b": "bb:top+3",
     "color": "#d33"
    },
    {
     "a": "relay1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-2",
     "color": "#222"
    },
    {
@@ -8237,7 +12271,7 @@
    },
    {
     "a": "relay1:COM",
-    "b": "board:VIN",
+    "b": "bb:top+7",
     "color": "#d33"
    },
    {
@@ -8252,11 +12286,28 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND.1",
+    "b": "bb:top-21",
     "color": "#222"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:VIN",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、VIN → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     10,
+     11
+    ]
+   },
    {
     "text": "PIR VCC→VIN、GND→GND、OUT→D5",
     "wires": [
@@ -8313,8 +12364,8 @@
    },
    "btn1": {
     "type": "pushbutton",
-    "x": 330,
-    "y": 250,
+    "x": 520,
+    "y": 120,
     "rot": 0,
     "attrs": {}
    }
@@ -8384,7 +12435,10 @@
   "title": "鐵路平交道",
   "level": "進階",
   "summary": "按鍵模擬火車壓到軌道：兩顆紅燈交替閃、蜂鳴器噹噹響 5 秒。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 365
+  },
   "parts": {
    "r1": {
     "type": "resistor",
@@ -8459,7 +12513,7 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND.1",
+    "b": "bb:top-15",
     "color": "#222"
    },
    {
@@ -8474,7 +12528,7 @@
    },
    {
     "a": "led2:C",
-    "b": "board:GND.1",
+    "b": "bb:top-16",
     "color": "#222"
    },
    {
@@ -8489,7 +12543,7 @@
    },
    {
     "a": "bz1:2",
-    "b": "board:GND.1",
+    "b": "bb:top-17",
     "color": "#222"
    },
    {
@@ -8499,11 +12553,22 @@
    },
    {
     "a": "btn1:2.l",
-    "b": "board:GND.1",
+    "b": "bb:top-5",
     "color": "#222"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     11
+    ]
+   },
    {
     "text": "D12、D13 各 → 220Ω → 紅 LED → GND",
     "wires": [
@@ -8694,7 +12759,10 @@
   "title": "555 閃燈",
   "level": "進階",
   "summary": "NE555 無穩態：R1=1kΩ、R2=47kΩ、C=10µF，約 1.5 Hz 閃；完全不用程式也會閃，程式只是數脈衝。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 300
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -8751,22 +12819,22 @@
   },
   "wires": [
    {
-    "a": "board:VIN",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:VIN",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:VIN",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#d33"
    },
@@ -8797,7 +12865,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND.1",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -8812,16 +12880,33 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND.1",
+    "b": "bb:top-15",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:D4",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:VIN",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、VIN → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
    {
     "text": "555 的 VCC 與 RESET 接 VIN，GND 接 GND",
     "wires": [
@@ -8879,7 +12964,10 @@
   "title": "555 蜂鳴器",
   "level": "進階",
   "summary": "同一顆 555，換小電容就變成音頻：R1=1k、R2=4.7k、C=1µF ≈ 140 Hz，蜂鳴器直接響，不需要程式。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 324
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -8934,22 +13022,22 @@
   },
   "wires": [
    {
-    "a": "board:VIN",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:VIN",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:VIN",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#d33"
    },
@@ -8980,7 +13068,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND.1",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -8995,16 +13083,33 @@
    },
    {
     "a": "bz1:2",
-    "b": "board:GND.1",
+    "b": "bb:top-16",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:D4",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:VIN",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、VIN → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     14,
+     15
+    ]
+   },
    {
     "text": "555 VCC、RESET 接 VIN，GND 接 GND",
     "wires": [
@@ -9057,7 +13162,10 @@
   "title": "555 延時燈",
   "level": "進階",
   "summary": "單穩態：按一下按鍵，LED 亮 1.1×R×C 秒自動熄（R=100k、C=10µF ≈ 1.1 秒），像樓梯間的定時燈。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 260,
+   "y": 330
+  },
   "parts": {
    "u1": {
     "type": "ne555",
@@ -9121,22 +13229,22 @@
   },
   "wires": [
    {
-    "a": "board:VIN",
+    "a": "bb:top+6",
     "b": "u1:VCC",
     "color": "#d33"
    },
    {
     "a": "u1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
     "a": "u1:RESET",
-    "b": "board:VIN",
+    "b": "bb:top+11",
     "color": "#d33"
    },
    {
-    "a": "board:VIN",
+    "a": "bb:top+15",
     "b": "rp:1",
     "color": "#d33"
    },
@@ -9152,11 +13260,11 @@
    },
    {
     "a": "btn1:2.l",
-    "b": "board:GND.1",
+    "b": "bb:top-3",
     "color": "#222"
    },
    {
-    "a": "board:VIN",
+    "a": "bb:top+3",
     "b": "r1:1",
     "color": "#e90"
    },
@@ -9177,7 +13285,7 @@
    },
    {
     "a": "c1:-",
-    "b": "board:GND.1",
+    "b": "bb:top-19",
     "color": "#222"
    },
    {
@@ -9192,16 +13300,33 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND.1",
+    "b": "bb:top-15",
     "color": "#222"
    },
    {
     "a": "u1:OUT",
     "b": "board:D4",
     "color": "#0aa"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:VIN",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、VIN → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     16,
+     17
+    ]
+   },
    {
     "text": "555 VCC、RESET 接 VIN，GND 接 GND",
     "wires": [
@@ -9262,11 +13387,292 @@
   "boardName": "ESP32 DevKit"
  },
  {
+  "id": "an_halfwave@devkit",
+  "title": "半波整流",
+  "level": "進階",
+  "summary": "交流電源（3 Vpk、5 Hz）經一顆二極體只讓正半週通過；示波器探針比較 ac:+ 和 d1:K，程式用 ADC 把負載電壓印出來。",
+  "breadboard": null,
+  "parts": {
+   "ac1": {
+    "type": "acsource",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "vpk": "3",
+     "freq": "5"
+    }
+   },
+   "d1": {
+    "type": "diode",
+    "x": 400,
+    "y": 60,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 420,
+    "y": 150,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ac1:+",
+    "b": "d1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "r1:2",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "ac1:-",
+    "b": "board:GND.1",
+    "color": "#222"
+   },
+   {
+    "a": "d1:K",
+    "b": "board:D34",
+    "color": "#dc2"
+   }
+  ],
+  "steps": [
+   {
+    "text": "交流電源 + → 二極體 A；二極體 K → 1kΩ → GND；交流電源 − 接 GND",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "二極體 K 也接 D34 讓程式讀電壓",
+    "wires": [
+     4
+    ]
+   },
+   {
+    "text": "執行後到示波器分頁按探針 ac1:+ 與 d1:K",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(34), atten=ADC.ATTN_11DB); vmax = 0\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3; vmax = max(vmax, v)\n    print('負載 %.2f V（峰值 %.2f，約 = 3 − 0.7 的順向壓降）' % (v, vmax)); lab.sleep(0.05)\n",
+  "expect": "示波器：ac1:+ 是完整弦波、d1:K 只剩正半週，而且峰值少了約 0.7 V。",
+  "try": [
+   "把二極體反接，看變成只剩負半週（ADC 讀不到負電壓）",
+   "加一顆 100µF 電容並聯負載，看波形變平"
+  ],
+  "verify": {
+   "console": "負載"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "an_opamp_cmp@devkit",
+  "title": "運放比較器",
+  "level": "進階",
+  "summary": "LM358 比較光敏電壓與可變電阻設定的門檻：亮度高於門檻 LED 亮；旋鈕可調靈敏度。",
+  "breadboard": {
+   "x": 270,
+   "y": 290
+  },
+  "parts": {
+   "u1": {
+    "type": "lm358",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 300,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 480,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 420,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "u1:VCC",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "bb:top-10",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:VCC",
+    "b": "bb:top+16",
+    "color": "#d33"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "bb:top-16",
+    "color": "#222"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "u1:IN1+",
+    "color": "#dc2"
+   },
+   {
+    "a": "pot1:VCC",
+    "b": "bb:top+21",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "bb:top-20",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "u1:IN1-",
+    "color": "#0aa"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-14",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "board:D4",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12,
+     13
+    ]
+   },
+   {
+    "text": "LM358 VCC→VIN、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "光敏模組 AO → IN1+；可變電阻 SIG → IN1−（兩個模組都接 3V3／GND）",
+    "wires": [
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "OUT1 → 220Ω → LED → GND",
+    "wires": [
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "OUT1 也接 D4 讓程式看結果",
+    "wires": [
+     11
+    ]
+   },
+   {
+    "text": "執行後拖光敏與可變電阻，找出門檻",
+    "wires": []
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\nout = Pin(4, Pin.IN); prev = None\nwhile lab.running():\n    v = out.value()\n    if v != prev: print('比較器輸出', '高：光線 > 門檻，LED 亮' if v else '低：光線 < 門檻，LED 滅'); prev = v\n    lab.sleep(0.1)\n",
+  "expect": "光敏拖亮 LED 亮、拖暗熄；轉可變電阻改門檻。",
+  "try": [
+   "IN+ 與 IN− 對調，變成暗才亮的夜燈",
+   "加 100k 從 OUT 回到 IN+ 做遲滯（史密特）"
+  ],
+  "verify": {
+   "ui": {
+    "ldr1": {
+     "light": 0.95
+    }
+   },
+   "console": "比較器輸出"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
   "id": "dk_gimbal@devkit",
   "title": "搖桿雲台",
   "level": "專題",
   "summary": "搖桿左右控水平伺服、上下控垂直伺服。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 270,
+   "y": 329
+  },
   "parts": {
    "joy1": {
     "type": "joystick",
@@ -9298,7 +13704,7 @@
    },
    {
     "a": "joy1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-8",
     "color": "#222"
    },
    {
@@ -9313,12 +13719,12 @@
    },
    {
     "a": "servo1:V+",
-    "b": "board:VIN",
+    "b": "bb:top+17",
     "color": "#d33"
    },
    {
     "a": "servo1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-17",
     "color": "#222"
    },
    {
@@ -9328,21 +13734,38 @@
    },
    {
     "a": "servo2:V+",
-    "b": "board:VIN",
+    "b": "bb:top+18",
     "color": "#d33"
    },
    {
     "a": "servo2:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-18",
     "color": "#222"
    },
    {
     "a": "servo2:PWM",
     "b": "board:D18",
     "color": "#93c"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:VIN",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、VIN → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     10,
+     11
+    ]
+   },
    {
     "text": "搖桿 VCC→3V3、GND→GND、HORZ→D34、VERT→D35",
     "wires": [
@@ -9388,7 +13811,10 @@
   "title": "智慧家庭面板",
   "level": "專題",
   "summary": "兩顆按鍵開關「電燈」（繼電器）與顯示模式，LCD 顯示溫濕度與電器狀態。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 360,
+   "y": 416
+  },
   "parts": {
    "btn1": {
     "type": "pushbutton",
@@ -9431,15 +13857,15 @@
    },
    "dht1": {
     "type": "dht22",
-    "x": 320,
-    "y": 230,
+    "x": 660,
+    "y": 100,
     "rot": 0,
     "attrs": {}
    },
    "lcd1": {
     "type": "lcd1602",
-    "x": 300,
-    "y": 330,
+    "x": 520,
+    "y": 250,
     "rot": 0,
     "attrs": {}
    }
@@ -9452,7 +13878,7 @@
    },
    {
     "a": "btn1:2.l",
-    "b": "board:GND.1",
+    "b": "bb:top-2",
     "color": "#222"
    },
    {
@@ -9462,17 +13888,17 @@
    },
    {
     "a": "btn2:2.l",
-    "b": "board:GND.1",
+    "b": "bb:top-3",
     "color": "#222"
    },
    {
     "a": "relay1:VCC",
-    "b": "board:VIN",
+    "b": "bb:top+2",
     "color": "#d33"
    },
    {
     "a": "relay1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-4",
     "color": "#222"
    },
    {
@@ -9482,7 +13908,7 @@
    },
    {
     "a": "relay1:COM",
-    "b": "board:VIN",
+    "b": "bb:top+3",
     "color": "#d33"
    },
    {
@@ -9497,7 +13923,7 @@
    },
    {
     "a": "led1:C",
-    "b": "board:GND.1",
+    "b": "bb:top-16",
     "color": "#222"
    },
    {
@@ -9507,7 +13933,7 @@
    },
    {
     "a": "dht1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-25",
     "color": "#222"
    },
    {
@@ -9517,12 +13943,12 @@
    },
    {
     "a": "lcd1:VCC",
-    "b": "board:VIN",
+    "b": "bb:top+13",
     "color": "#d33"
    },
    {
     "a": "lcd1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-13",
     "color": "#222"
    },
    {
@@ -9534,9 +13960,26 @@
     "a": "lcd1:SCL",
     "b": "board:D22",
     "color": "#2a7"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:VIN",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、VIN → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     18,
+     19
+    ]
+   },
    {
     "text": "按鍵 1 接 D12、按鍵 2 接 D13（另一側都接 GND）",
     "wires": [
@@ -9591,7 +14034,10 @@
   "title": "電子骰子＋排行榜",
   "level": "專題",
   "summary": "按鍵擲骰，OLED 顯示點數與最近五次排行，蜂鳴器叮一聲。",
-  "breadboard": null,
+  "breadboard": {
+   "x": 245,
+   "y": 354
+  },
   "parts": {
    "btn1": {
     "type": "pushbutton",
@@ -9632,7 +14078,7 @@
    },
    {
     "a": "btn1:2.l",
-    "b": "board:GND.1",
+    "b": "bb:top-6",
     "color": "#222"
    },
    {
@@ -9642,7 +14088,7 @@
    },
    {
     "a": "oled1:GND",
-    "b": "board:GND.1",
+    "b": "bb:top-13",
     "color": "#222"
    },
    {
@@ -9667,11 +14113,22 @@
    },
    {
     "a": "bz1:2",
-    "b": "board:GND.1",
+    "b": "bb:top-19",
     "color": "#222"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
    }
   ],
   "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     9
+    ]
+   },
    {
     "text": "按鍵接 D5 與 GND",
     "wires": [
@@ -9820,6 +14277,661 @@
   ],
   "verify": {
    "console": "導通"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "an_bridge@devkit",
+  "title": "橋式整流＋濾波",
+  "level": "專題",
+  "summary": "四顆二極體做全波整流，再用電容濾成近似直流；探針看 r1:1 從脈動變平滑。",
+  "breadboard": {
+   "x": 310,
+   "y": 290
+  },
+  "parts": {
+   "ac1": {
+    "type": "acsource",
+    "x": 300,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "vpk": "3",
+     "freq": "5"
+    }
+   },
+   "d1": {
+    "type": "diode",
+    "x": 400,
+    "y": 40,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d2": {
+    "type": "diode",
+    "x": 400,
+    "y": 80,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d3": {
+    "type": "diode",
+    "x": 400,
+    "y": 120,
+    "rot": 0,
+    "attrs": {}
+   },
+   "d4": {
+    "type": "diode",
+    "x": 400,
+    "y": 160,
+    "rot": 0,
+    "attrs": {}
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 500,
+    "y": 200,
+    "rot": 0,
+    "attrs": {
+     "value": "470u"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 560,
+    "y": 110,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "ac1:+",
+    "b": "d1:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d1:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "ac1:-",
+    "b": "d2:A",
+    "color": "#d33"
+   },
+   {
+    "a": "d2:K",
+    "b": "r1:1",
+    "color": "#e90"
+   },
+   {
+    "a": "bb:top-7",
+    "b": "d3:A",
+    "color": "#222"
+   },
+   {
+    "a": "d3:K",
+    "b": "ac1:+",
+    "color": "#d33"
+   },
+   {
+    "a": "bb:top-6",
+    "b": "d4:A",
+    "color": "#222"
+   },
+   {
+    "a": "d4:K",
+    "b": "ac1:-",
+    "color": "#d33"
+   },
+   {
+    "a": "r1:1",
+    "b": "c1:+",
+    "color": "#93c"
+   },
+   {
+    "a": "c1:-",
+    "b": "bb:top-18",
+    "color": "#222"
+   },
+   {
+    "a": "r1:2",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "r1:1",
+    "b": "board:D34",
+    "color": "#dc2"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12
+    ]
+   },
+   {
+    "text": "ac+ → d1 → 輸出；ac− → d2 → 輸出（正半週與負半週各走一顆）",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "GND → d3 → ac+；GND → d4 → ac−（回流的兩顆）",
+    "wires": [
+     4,
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "text": "輸出接 470µF 電容 + 與 1kΩ 負載，另一端都接 GND",
+    "wires": [
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "輸出也接 D34",
+    "wires": [
+     11
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nadc = ADC(Pin(34), atten=ADC.ATTN_11DB); lo, hi, n = 9, 0, 0\nwhile lab.running():\n    v = adc.read() / 4095 * 3.3; n += 1\n    if n > 20: lo = min(lo, v); hi = max(hi, v)     # 等電容充飽再統計\n    print('輸出 %.2f V（最低 %.2f 最高 %.2f，紋波 %.2f）' % (v, lo if n > 20 else v, hi, max(0, hi - lo) if n > 20 else 0)); lab.sleep(0.05)\n",
+  "expect": "探針 r1:1 幾乎是一條直線（紋波小），拿掉電容就變成一個個拱形。",
+  "try": [
+   "把 470u 換 10u 看紋波變大",
+   "把負載 1k 換 100，電容放電變快"
+  ],
+  "verify": {
+   "console": "輸出"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "an_opamp_amp@devkit",
+  "title": "運放放大 ×11",
+  "level": "專題",
+  "summary": "非反相放大：Rf=10k、Rg=1k → 增益 11。可變電阻分壓出 0～0.3 V 小訊號，放大後 ADC 讀到 0～3.3 V。",
+  "breadboard": {
+   "x": 250,
+   "y": 261
+  },
+  "parts": {
+   "u1": {
+    "type": "lm358",
+    "x": 320,
+    "y": 110,
+    "rot": 0,
+    "attrs": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 300,
+    "y": 10,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 440,
+    "y": 10,
+    "rot": 0,
+    "attrs": {
+     "value": "100k"
+    }
+   },
+   "rf": {
+    "type": "resistor",
+    "x": 300,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rg": {
+    "type": "resistor",
+    "x": 440,
+    "y": 220,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "u1:VCC",
+    "b": "board:VIN",
+    "color": "#d33"
+   },
+   {
+    "a": "u1:GND",
+    "b": "bb:top-12",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:VCC",
+    "b": "board:3V3",
+    "color": "#d33"
+   },
+   {
+    "a": "pot1:GND",
+    "b": "bb:top-6",
+    "color": "#222"
+   },
+   {
+    "a": "pot1:SIG",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "u1:IN1+",
+    "color": "#dc2"
+   },
+   {
+    "a": "u1:IN1+",
+    "b": "board:D35",
+    "color": "#0aa"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "rf:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "rf:2",
+    "b": "u1:IN1-",
+    "color": "#2a7"
+   },
+   {
+    "a": "u1:IN1-",
+    "b": "rg:1",
+    "color": "#e90"
+   },
+   {
+    "a": "rg:2",
+    "b": "bb:top-21",
+    "color": "#222"
+   },
+   {
+    "a": "u1:OUT1",
+    "b": "board:D34",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     12
+    ]
+   },
+   {
+    "text": "LM358 VCC→VIN、GND→GND",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "text": "可變電阻 SIG → 100kΩ → IN1+（運放輸入阻抗高，這裡只是示意小訊號）",
+    "wires": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "text": "OUT1 → 10kΩ → IN1−；IN1− → 1kΩ → GND（負回授）",
+    "wires": [
+     7,
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "text": "IN1+ 接 D35、OUT1 接 D34，程式算增益",
+    "wires": [
+     6,
+     11
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin, ADC\nvin = ADC(Pin(35), atten=ADC.ATTN_11DB); vout = ADC(Pin(34), atten=ADC.ATTN_11DB)\nwhile lab.running():\n    a = vin.read() / 4095 * 3.3; b = vout.read() / 4095 * 3.3\n    print('輸入 %.2f V → 輸出 %.2f V，增益 %.1f' % (a, b, b / a if a > 0.02 else 0)); lab.sleep(0.2)\n",
+  "expect": "轉可變電阻，輸出是輸入的約 11 倍，到 3.3 V 左右就飽和（ADC 上限）。",
+  "try": [
+   "把 Rf 換 100k 看增益 101 多快飽和",
+   "改成反相放大"
+  ],
+  "verify": {
+   "adc": {
+    "35": 400
+   },
+   "console": "增益"
+  },
+  "board": "devkit",
+  "boardName": "ESP32 DevKit"
+ },
+ {
+  "id": "an_half_adder@devkit",
+  "title": "半加器",
+  "level": "專題",
+  "summary": "XOR 給「和」、AND 給「進位」：兩顆按鍵輸入 1 位元，兩顆 LED 顯示 和／進位，程式印出 A+B。",
+  "breadboard": {
+   "x": 385,
+   "y": 341
+  },
+  "parts": {
+   "g1": {
+    "type": "gate",
+    "x": 480,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "kind": "XOR"
+    }
+   },
+   "g2": {
+    "type": "gate",
+    "x": 480,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "kind": "AND"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 290,
+    "y": 30,
+    "rot": 0,
+    "attrs": {}
+   },
+   "btn2": {
+    "type": "pushbutton",
+    "x": 290,
+    "y": 130,
+    "rot": 0,
+    "attrs": {}
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 290,
+    "y": 250,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 290,
+    "y": 300,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 620,
+    "y": 60,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 720,
+    "y": 40,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 620,
+    "y": 210,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    }
+   },
+   "led2": {
+    "type": "led",
+    "x": 720,
+    "y": 190,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "g1:VCC",
+    "b": "bb:top+9",
+    "color": "#d33"
+   },
+   {
+    "a": "g1:GND",
+    "b": "bb:top-12",
+    "color": "#222"
+   },
+   {
+    "a": "g2:VCC",
+    "b": "bb:top+8",
+    "color": "#d33"
+   },
+   {
+    "a": "g2:GND",
+    "b": "bb:top-13",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+2",
+    "b": "btn1:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn1:2.l",
+    "b": "g1:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "g2:A",
+    "color": "#dc2"
+   },
+   {
+    "a": "g1:A",
+    "b": "ra:1",
+    "color": "#dc2"
+   },
+   {
+    "a": "ra:2",
+    "b": "bb:top-2",
+    "color": "#222"
+   },
+   {
+    "a": "bb:top+3",
+    "b": "btn2:1.l",
+    "color": "#d33"
+   },
+   {
+    "a": "btn2:2.l",
+    "b": "g1:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "g2:B",
+    "color": "#0aa"
+   },
+   {
+    "a": "g1:B",
+    "b": "rb:1",
+    "color": "#0aa"
+   },
+   {
+    "a": "rb:2",
+    "b": "bb:top-3",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "r1:1",
+    "color": "#2a7"
+   },
+   {
+    "a": "r1:2",
+    "b": "led1:A",
+    "color": "#2a7"
+   },
+   {
+    "a": "led1:C",
+    "b": "bb:top-25",
+    "color": "#222"
+   },
+   {
+    "a": "g2:Y",
+    "b": "r2:1",
+    "color": "#93c"
+   },
+   {
+    "a": "r2:2",
+    "b": "led2:A",
+    "color": "#93c"
+   },
+   {
+    "a": "led2:C",
+    "b": "bb:top-24",
+    "color": "#222"
+   },
+   {
+    "a": "g1:Y",
+    "b": "board:D4",
+    "color": "#2a7"
+   },
+   {
+    "a": "g2:Y",
+    "b": "board:D5",
+    "color": "#93c"
+   },
+   {
+    "a": "board:GND.1",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   }
+  ],
+  "steps": [
+   {
+    "text": "先接麵包板電源軌：板子 GND → 麵包板「−」軌、3V3 → 「＋」軌（整列相通，之後各元件的地線與電源線就近接軌）",
+    "wires": [
+     22,
+     23
+    ]
+   },
+   {
+    "text": "兩個閘的 VCC→3V3、GND→GND",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "text": "按鍵 1 → A（同時接 XOR 與 AND 的 A），10kΩ 下拉",
+    "wires": [
+     4,
+     5,
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "text": "按鍵 2 → B（同時接兩個閘的 B），10kΩ 下拉",
+    "wires": [
+     9,
+     10,
+     11,
+     12,
+     13
+    ]
+   },
+   {
+    "text": "XOR Y → 220Ω → 綠 LED（和）；AND Y → 220Ω → 紅 LED（進位）",
+    "wires": [
+     14,
+     15,
+     16,
+     17,
+     18,
+     19
+    ]
+   },
+   {
+    "text": "兩個 Y 也接 D4／D5 讓程式印結果",
+    "wires": [
+     20,
+     21
+    ]
+   }
+  ],
+  "code": "import lab\nfrom machine import Pin\ns = Pin(4, Pin.IN); c = Pin(5, Pin.IN); prev = None\nwhile lab.running():\n    v = (c.value(), s.value())\n    if v != prev: print('和 =', v[1], '進位 =', v[0], '→ A + B =', v[0] * 2 + v[1]); prev = v\n    lab.sleep(0.05)\n",
+  "expect": "按一顆：綠亮（1+0=1）；按兩顆：紅亮綠滅（1+1=10 二進位）。",
+  "try": [
+   "加第三顆按鍵做全加器（要再兩個閘）",
+   "把 LED 換成 OLED 顯示算式"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    },
+    "btn2": {
+     "pressed": true
+    }
+   },
+   "console": "A \\+ B = 2"
   },
   "board": "devkit",
   "boardName": "ESP32 DevKit"

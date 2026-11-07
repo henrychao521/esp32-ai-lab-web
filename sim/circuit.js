@@ -33,6 +33,9 @@ export const PARTS = {
   diode: { pins: ["A", "K"], label: "二極體", attrs: { model: "1N4007" } },
   npn: { pins: ["E", "B", "C"], label: "NPN 電晶體", attrs: { model: "2N2222" } },
   ne555: { pins: ["GND", "TRIG", "OUT", "RESET", "CTRL", "THR", "DIS", "VCC"], label: "555 計時器", attrs: {} },
+  acsource: { pins: ["+", "-"], label: "交流電源", attrs: { vpk: "5", freq: "50" } },
+  lm358: { pins: ["OUT1", "IN1-", "IN1+", "GND", "IN2+", "IN2-", "OUT2", "VCC"], label: "LM358 運算放大器", attrs: {} },
+  gate: { pins: ["A", "B", "Y", "VCC", "GND"], label: "邏輯閘", attrs: { kind: "AND" } },
   "led-bar-graph": { pins: ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10"], label: "LED 長條", attrs: { color: "red" } },
   "rgb-led": { pins: ["R", "COM", "G", "B"], label: "RGB LED", attrs: {} },
   ssd1306: { pins: ["DATA", "CLK", "DC", "RST", "CS", "3V3", "VIN", "GND"], label: "OLED SSD1306", attrs: {}, i2c: 0x3C },
@@ -82,7 +85,8 @@ export function buildNets(circuit, extraLinks = []) {
 export function parseC(v) { const s = String(v ?? "100u").toLowerCase().replace(/f|µ/g, (m) => (m === "µ" ? "u" : "")); const m = /^([\d.]+)\s*([pnum]?)$/.exec(s.trim()); if (!m) return 100e-6; return parseFloat(m[1]) * ({ p: 1e-12, n: 1e-9, u: 1e-6, m: 1e-3, "": 1 })[m[2]]; }
 const DIODES = { "1N4007": { Is: 7e-9, n: 1.8 }, "1N4148": { Is: 2.5e-9, n: 1.75 }, "1N5819": { Is: 3e-6, n: 1.1 } };
 const NPNS = { "2N2222": { Is: 1e-14, bf: 200, br: 3 }, "2N3904": { Is: 1e-14, bf: 150, br: 3 }, "8050": { Is: 1e-14, bf: 120, br: 3 } };
-export const DYNAMIC_TYPES = new Set(["capacitor", "ne555"]);   // 需要時間步進的元件
+export const DYNAMIC_TYPES = new Set(["capacitor", "ne555", "acsource"]);   // 需要時間步進的元件
+export const GATE_FN = { AND: (a, b) => a && b, OR: (a, b) => a || b, NOT: (a) => !a, NAND: (a, b) => !(a && b), NOR: (a, b) => !(a || b), XOR: (a, b) => a !== b };
 function parseR(v) { const s = String(v ?? "220").toLowerCase().replace(/ω|ohm|s/g, ""); const m = /^([\d.]+)\s*([km]?)$/.exec(s); if (!m) return 220; return Number(m[1]) * (m[2] === "k" ? 1e3 : m[2] === "m" ? 1e6 : 1); }
 
 /** 主解法。回傳每個網路電壓與每個元件狀態；LED／電源短路／腳位過流以迭代與事後檢查判定。 */
@@ -182,8 +186,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       case "pir": addR(a("VCC"), a("GND"), 2000); { const pv = V0(a("VCC")) - V0(a("GND")); addV(a("OUT"), -1, u.motion && pv > 2.5 ? 3.3 : 0, 100, "mod:" + id); } break;
       case "relay": {
         addR(a("VCC"), a("GND"), 70); addR(a("IN"), -1, 1e5);
-        const powered = V0(a("VCC")) - V0(a("GND")) > 2.5, energized = powered && (V0(a("IN")) - V0(a("GND")) > 1.5);
-        addR(a("COM"), energized ? a("NO") : a("NC"), 0.1); break;   // 常閉／常開由 IN 決定（用上一輪電壓，差一個 tick）
+        nonlin.push({ type: "relay", vcc: a("VCC"), gnd: a("GND"), in: a("IN"), com: a("COM"), no: a("NO"), nc: a("NC"), part: id }); break;   // 常閉／常開在迭代裡決定
       }
       case "stepper": addR(a("A+"), a("A-"), 30); addR(a("B+"), a("B-"), 30); break;
       case "capacitor": {   // 後向尤拉伴隨模型：g=C/dt 並聯「上一步電壓」源；直流時開路
@@ -193,6 +196,20 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       }
       case "diode": { const m = DIODES[p.attrs?.model] || DIODES["1N4007"]; nonlin.push({ type: "diode", a: a("A"), b: a("K"), Is: m.Is, n: m.n, part: id }); break; }
       case "npn": { const m = NPNS[p.attrs?.model] || NPNS["2N2222"]; nonlin.push({ type: "npn", c: a("C"), b: a("B"), e: a("E"), Is: m.Is, bf: m.bf, br: m.br, part: id }); break; }
+      case "acsource": {   // 弦波電壓源：v = Vpk·sin(2πft)，內阻 1Ω；dt=0（直流）時當 0 V
+        const vpk = parseFloat(p.attrs?.vpk ?? 5) || 5, f = parseFloat(p.attrs?.freq ?? 50) || 50, t = (dyn && dyn.t) || 0;
+        addV(a("+"), a("-"), dt > 0 ? vpk * Math.sin(2 * Math.PI * f * t) : 0, 1, "ac:" + id); nextState[id] = { t }; break;
+      }
+      case "lm358": {   // 雙運放：VCC／GND 供電，OUT = clamp(A·(IN+ − IN−))，在迭代裡以鬆弛收斂（可做比較器也可做負回授放大）
+        addR(a("VCC"), a("GND"), 5000);
+        for (const k of ["1", "2"]) { addR(a("IN" + k + "+"), -1, 1e7); addR(a("IN" + k + "-"), -1, 1e7); nonlin.push({ type: "opamp", p: a("IN" + k + "+"), n: a("IN" + k + "-"), o: a("OUT" + k), vcc: a("VCC"), gnd: a("GND"), part: id, ch: k }); }
+        break;
+      }
+      case "gate": {   // 邏輯閘（74HC 系列行為模型）：輸入門檻 Vcc/2，輸出推挽 50Ω；在同一次求解的迭代裡判斷（按鍵一按馬上反應）
+        const kind = p.attrs?.kind || "AND"; const fn = GATE_FN[kind] || GATE_FN.AND;
+        addR(a("VCC"), a("GND"), 20000); addR(a("A"), a("GND"), 1e6); addR(a("B"), a("GND"), 1e6);
+        nonlin.push({ type: "gate", a: a("A"), b: a("B"), yn: a("Y"), vcc: a("VCC"), gnd: a("GND"), fn, part: id }); break;
+      }
       case "ne555": {   // 行為模型：比較器＋RS 正反器（用上一步電壓判斷），OUT 推挽、DIS 放電開關
         const vcc = V0(a("VCC")) - V0(a("GND")), gnd = V0(a("GND"));
         const floating = (pin) => (N.nets[N.find(id + ":" + pin)] || []).every((m) => m.startsWith(id + ":") || m.startsWith("bb:"));
@@ -215,7 +232,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
   }
 
   // 逐次線性化：LED 先全開路；解；電壓超過 Vf 的改成「Vf 源＋10Ω」；重解直到穩定
-  const ledOn = new Map();
+  const ledOn = new Map(); const opPrev = new Map();
   let nodeV = new Float64Array(n);
   for (let iter = 0; iter < 25; iter++) {
     const E = elems.slice();
@@ -229,6 +246,20 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     const Vn = (nd) => (nd === undefined || nd < 0 ? 0 : nodeV[nd]);
     const dio = (va, vb, Is, nn) => { const vd = Math.min(VLIM, va - vb); const ex = Math.exp(vd / (nn * Vt)); const g = Is * ex / (nn * Vt) + 1e-9; const i = Is * (ex - 1); return { g, v: vd - i / g }; };
     for (const q of nonlin) {
+      if (q.type === "gate") {
+        const vcc = Vn(q.vcc) - Vn(q.gnd), hi = (nd) => Vn(nd) - Vn(q.gnd) > vcc / 2;
+        const y = vcc > 2 ? !!q.fn(hi(q.a), hi(q.b)) : false; q.y = y;
+        E.push({ type: "V", a: q.yn, b: q.gnd, v: y ? vcc - 0.1 : 0, g: 1 / 50, tag: "gate:" + q.part }); continue;
+      }
+      if (q.type === "relay") {
+        const powered = Vn(q.vcc) - Vn(q.gnd) > 2.5, en = powered && (Vn(q.in) - Vn(q.gnd) > 1.5); q.en = en;
+        E.push({ type: "R", a: q.com, b: en ? q.no : q.nc, g: 10 }); continue;
+      }
+      if (q.type === "opamp") {   // 理想運放＋輸出夾在 0.05～Vcc−1.5；鬆弛 0.4 讓負回授收斂
+        const vcc = Vn(q.vcc) - Vn(q.gnd), target = Math.max(0.05, Math.min(Math.max(0.1, vcc - 1.5), 1e4 * (Vn(q.p) - Vn(q.n)) + (vcc - 1.5) / 2 * 0));
+        const prev = opPrev.get(q.part + q.ch); const vo = prev === undefined ? target : prev + 0.4 * (target - prev); opPrev.set(q.part + q.ch, vo);
+        E.push({ type: "V", a: q.o, b: q.gnd, v: vo, g: 1 / 50, tag: "op:" + q.part }); continue;
+      }
       if (q.type === "diode") { const d = dio(Vn(q.a), Vn(q.b), q.Is, q.n); E.push({ type: "V", a: q.a, b: q.b, v: d.v, g: d.g, tag: "dio:" + q.part }); }
       else {   // Ebers–Moll 傳輸模型：IF（B→E）、IR（B→C）、集極電流 IF−IR
         const vbe = Math.min(VLIM, Vn(q.b) - Vn(q.e)), vbc = Math.min(VLIM, Vn(q.b) - Vn(q.c));
@@ -348,6 +379,9 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       case "diode": { const vd = vp("A") - vp("K"); st.on = vd > 0.5; st.vd = vd; break; }
       case "npn": { const vbe = vp("B") - vp("E"), vce = vp("C") - vp("E"); st.on = vbe > 0.6; st.sat = st.on && vce < 0.3; st.vbe = vbe; st.vce = vce; break; }
       case "ne555": st.q = !!(nextState[id] && nextState[id].q); st.out = vp("OUT") - vp("GND"); st.powered = vp("VCC") - vp("GND") > 2.5; break;
+      case "acsource": st.v = vp("+") - vp("-"); break;
+      case "lm358": st.powered = vp("VCC") - vp("GND") > 2.5; st.out1 = vp("OUT1") - vp("GND"); st.out2 = vp("OUT2") - vp("GND"); break;
+      case "gate": { const q = nonlin.find((x) => x.type === "gate" && x.part === id); st.y = !!(q && q.y); st.powered = vp("VCC") - vp("GND") > 2.5; break; }
     }
     if (st.powered === false && ["ssd1306", "lcd1602", "hc-sr04", "dht22", "neopixel-strip", "pir", "relay", "joystick"].includes(p.type)) {
       const hasAnyWire = PARTS[p.type].pins.some((pin) => (N.nets[N.find(id + ":" + pin)] || []).some((m) => !m.startsWith(id + ":") && !m.startsWith("bb:")));

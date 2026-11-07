@@ -49,19 +49,23 @@ export function createSimulator(opts) {
   // ---------- 腳位 ----------
   function rot(x, y, w, h, deg) { if (!deg) return [x, y]; const cx = w / 2, cy = h / 2, a = deg * Math.PI / 180, dx = x - cx, dy = y - cy; return [cx + dx * Math.cos(a) - dy * Math.sin(a), cy + dx * Math.sin(a) + dy * Math.cos(a)]; }
   const splitRef = (ref) => { const i = ref.indexOf(":"); return [ref.slice(0, i), ref.slice(i + 1)]; };
-  function pinPos(ref) {
+  function pinPos(ref, near) {
     const [id, pin] = splitRef(ref);
-    if (id === "board") return boardPinPos(pin);
+    if (id === "board") return boardPinPos(pin, near);
     if (id === "bb") { const h = BREADBOARD.holes.find((x) => x.id === pin); return h && doc.breadboard ? [doc.breadboard.x + h.x, doc.breadboard.y + h.y] : null; }
     const p = doc.parts[id]; if (!p) return null;
     const c = CATALOG[p.type], t = PIN_TABLE[p.type][pin]; if (!t) return null;
     const [x, y] = rot(t[0], t[1], c.w, c.h, p.rot || 0); return [p.x + x, p.y + y];
   }
-  function boardPinPos(name) {
-    const bp = doc.boardPos;
-    if (doc.board === "devkit") { const e = DEVKIT_PINS.find((q) => q[0] === name); return e ? [bp.x + e[1], bp.y + e[2]] : null; }
-    const e = BOARD_ART[doc.board].pins.find((q) => q[0] === name); return e ? [bp.x + e[1], bp.y + e[2]] : null;
+  function boardPinPos(name, near) {
+    const bp = doc.boardPos; const list = (doc.board === "devkit" ? DEVKIT_PINS : BOARD_ART[doc.board].pins).filter((q) => q[0] === name);
+    if (!list.length) return null; let e = list[0];
+    const d = (q) => Math.hypot(bp.x + q[1] - near[0], bp.y + q[2] - near[1]);
+    if (near && list.length > 1) e = list.reduce((b, q) => (d(q) < d(b) ? q : b), list[0]);   // 同名腳位（T-Display 兩排都有 GND／3V3）挑離線另一端最近的那個
+    return [bp.x + e[1], bp.y + e[2]];
   }
+  /** 一條線的兩端座標；板子同名腳位會挑離對方最近的 */
+  function wireEnds(w) { const a0 = pinPos(w.a); const b = pinPos(w.b, a0); const a = pinPos(w.a, b); return [a, b]; }
   function boardRefOf(name) {
     if (doc.board === "devkit") { const m = DEVKIT_PINMAP[name]; return m === null || m === undefined ? null : "board:" + m; }
     const e = BOARD_ART[doc.board].pins.find((q) => q[0] === name); return e ? "board:" + e[3] : null;
@@ -122,7 +126,8 @@ export function createSimulator(opts) {
       el.style.left = p.x + "px"; el.style.top = p.y + "px"; el.style.transform = `rotate(${p.rot || 0}deg)`;
       el.style.width = CATALOG[p.type].w + "px"; el.style.height = CATALOG[p.type].h + "px";
       el.classList.toggle("selected", selection.has(id));
-      const w = el.firstChild; for (const [k, v] of Object.entries(p.attrs || {})) if (w.getAttribute(k) !== String(v)) w.setAttribute(k, v);
+      // 元件圖的屬性＝目錄預設值 ＋ 這個元件自己的；少了預設（例如步進馬達 size=17）元件會畫成別的尺寸，腳位就對不上接線
+      const w = el.firstChild; for (const [k, v] of Object.entries({ ...(CATALOG[p.type].attrs || {}), ...(p.attrs || {}) })) if (w.getAttribute(k) !== String(v)) w.setAttribute(k, v);
       el.querySelector(".sim-label").textContent = p.label || (id + (p.attrs?.value ? " " + p.attrs.value + "Ω" : ""));
     }
     renderPins(); renderWires(); applyState(); onStatus({ bounds: bounds() });
@@ -158,7 +163,7 @@ export function createSimulator(opts) {
     }
   }
   function wirePath(w) {
-    const a = pinPos(w.a), b = pinPos(w.b); if (!a || !b) return null;
+    const [a, b] = wireEnds(w); if (!a || !b) return null;
     const pts = [a, ...(w.pts || []), b];
     // 沒有轉折點：自動整線開著就畫直線（整線器算出來是直的），關著才畫微彎的曲線
     if (pts.length === 2 && !autoWire) { const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, bend = Math.min(40, L * 0.25); return `M${a[0]},${a[1]} Q${(a[0] + b[0]) / 2 - dy / L * bend},${(a[1] + b[1]) / 2 + dx / L * bend} ${b[0]},${b[1]}`; }
@@ -178,7 +183,7 @@ export function createSimulator(opts) {
       if (sel) for (const [k, pt] of (w.pts || []).entries()) { const h = document.createElementNS(SVGNS, "circle"); h.setAttribute("cx", pt[0]); h.setAttribute("cy", pt[1]); h.setAttribute("r", 5); h.setAttribute("class", "wp"); h.dataset.wire = i; h.dataset.pt = k; wireLayer.appendChild(h); }
     });
   }
-  function midpoint(w) { const a = pinPos(w.a), b = pinPos(w.b); const pts = [a, ...(w.pts || []), b]; const m = pts[Math.floor((pts.length - 1) / 2)], n = pts[Math.ceil((pts.length - 1) / 2)]; return [(m[0] + n[0]) / 2, (m[1] + n[1]) / 2]; }
+  function midpoint(w) { const [a, b] = wireEnds(w); const pts = [a, ...(w.pts || []), b]; const m = pts[Math.floor((pts.length - 1) / 2)], n = pts[Math.ceil((pts.length - 1) / 2)]; return [(m[0] + n[0]) / 2, (m[1] + n[1]) / 2]; }
   function netOf(ref) { if (!lastResult) return null; const [id, pin] = splitRef(ref); const r = id === "board" ? boardRefOf(pin) : ref; return r ? lastResult.nets.find(r) : null; }
   function highlightStrip(holeId) {
     hiLayer.innerHTML = "";
@@ -219,7 +224,7 @@ export function createSimulator(opts) {
   // ---------- 暫態時間步進（電容、555）：有這類元件時每一幀走好幾個 dt，探針記錄節點電壓給示波器 ----------
   let dynState = {}, dynLoop = null, simT = 0, dynLastReal = 0, dynLag = 0; const PROBE_MAX = 4000, FRAME_BUDGET_MS = 10;
   // 步長：只有電容（RC）用 1 ms 就很準；有 555 用 0.2 ms（音頻 555 追不上即時就放慢，不會卡住畫面）
-  const dtFor = () => (Object.values(doc.parts).some((p) => p.type === "ne555") ? 2e-4 : 1e-3);
+  const dtFor = () => { let dt = 1e-3; for (const p of Object.values(doc.parts)) { if (p.type === "ne555") dt = Math.min(dt, 2e-4); if (p.type === "acsource") dt = Math.min(dt, 1 / ((parseFloat(p.attrs?.freq) || 50) * 50)); } return Math.max(2e-5, dt); };
   let netsCache = null, netsKey = "";
   const probes = [];            // 節點參考（例如 "c1:+"、"board:4"）
   const probeData = {};         // ref → [[t, v], ...]
@@ -228,7 +233,7 @@ export function createSimulator(opts) {
     const c = circuitForSolver(), links = breadboardLinks();
     const key = JSON.stringify(c.wires) + "|" + Object.keys(c.parts).join() + "|" + JSON.stringify(links);
     if (key !== netsKey) { netsKey = key; netsCache = null; }
-    const r = solve(c, { ...io(), prevV: lastResult ? lastResult.nodeV : {}, dyn: { dt, state: dynState }, nets: netsCache }, links);
+    const r = solve(c, { ...io(), prevV: lastResult ? lastResult.nodeV : {}, dyn: { dt, state: dynState, t: simT }, nets: netsCache }, links);
     netsCache = r.nets;
     if (r.dynState) dynState = r.dynState;
     return r;
@@ -255,11 +260,17 @@ export function createSimulator(opts) {
   }
   function ensureDynLoop() { if (hasDyn() && !dynLoop && !dynBusy) { dynLastReal = 0; dynLoop = requestAnimationFrame(dynFrame); } }
   function resetDynamic() { dynState = {}; simT = 0; dynLastReal = 0; for (const k of Object.keys(probeData)) probeData[k] = []; }
+  let inTick = false;
   function tick() {
-    // 有暫態元件時不能用 dt=0 的直流解（電容會變開路、555 誤判），改走一小步
-    const dt = hasDyn() ? dtFor() : 0;
-    const r = solveStep(dt); if (dt) simT += dt; ensureDynLoop();
-    return commit(r);
+    // 引擎事件（腳位變化）會呼叫 tick，而 commit 又會 setPin 觸發事件：防重入，否則暫態電路會無限遞迴
+    if (inTick) return lastResult;
+    inTick = true;
+    try {
+      // 有暫態元件時不能用 dt=0 的直流解（電容會變開路、555 誤判），改走一小步
+      const dt = hasDyn() ? dtFor() : 0;
+      const r = solveStep(dt); if (dt) simT += dt; ensureDynLoop();
+      return commit(r);
+    } finally { inTick = false; }
   }
   function commit(r) {
     const structure = Object.keys(doc.parts).join() + "|" + doc.wires.map((w) => w.a + w.b).join() + "|" + JSON.stringify(Object.values(doc.parts).map((p) => p.snaps));
@@ -300,6 +311,9 @@ export function createSimulator(opts) {
         case "diode": el.setAttribute("on", s.on ? "true" : "false"); el.setAttribute("model", p.attrs?.model || "1N4007"); break;
         case "npn": el.setAttribute("on", s.on ? "true" : "false"); el.setAttribute("model", p.attrs?.model || "2N2222"); break;
         case "ne555": el.setAttribute("out", s.q ? "true" : "false"); break;
+        case "acsource": el.setAttribute("voltage", (s.v ?? 0).toFixed(2)); el.setAttribute("vpk", p.attrs?.vpk || "5"); el.setAttribute("freq", p.attrs?.freq || "50"); break;
+        case "lm358": el.setAttribute("out1", (s.out1 ?? 0).toFixed(2)); el.setAttribute("out2", (s.out2 ?? 0).toFixed(2)); break;
+        case "gate": el.setAttribute("kind", p.attrs?.kind || "AND"); el.setAttribute("y", s.y ? "true" : "false"); break;
       }
     }
     const boardEl = partsLayer.querySelector(".sim-board"); if (!boardEl || !engine) return;
@@ -427,7 +441,7 @@ export function createSimulator(opts) {
   const pinchDist = () => { const v = [...pointers.values()]; return Math.hypot(v[0][0] - v[1][0], v[0][1] - v[1][1]) || 1; };
   const pinchCenter = () => { const v = [...pointers.values()]; return [(v[0][0] + v[1][0]) / 2, (v[0][1] + v[1][1]) / 2]; };
   function nearestPin(wx, wy, tol) { let best = null, bd = tol; for (const ref of allPinRefs()) { const p = pinPos(ref); if (!p) continue; const d = Math.hypot(p[0] - wx, p[1] - wy); if (d < bd) { bd = d; best = ref; } } return best; }
-  function nearestSegment(w, x, y) { const pts = [pinPos(w.a), ...(w.pts || []), pinPos(w.b)]; let best = 0, bd = 1e9; for (let i = 0; i < pts.length - 1; i++) { const d = distSeg(x, y, pts[i], pts[i + 1]); if (d < bd) { bd = d; best = i; } } return best; }
+  function nearestSegment(w, x, y) { const [ea, eb] = wireEnds(w); const pts = [ea, ...(w.pts || []), eb]; let best = 0, bd = 1e9; for (let i = 0; i < pts.length - 1; i++) { const d = distSeg(x, y, pts[i], pts[i + 1]); if (d < bd) { bd = d; best = i; } } return best; }
   function distSeg(x, y, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1; const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)); return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); }
   let lastHover = null;
   function hover(target) {
@@ -467,14 +481,14 @@ export function createSimulator(opts) {
   function restore(s) { resetDynamic(); const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] }); }
   // ---------- 自動整線（router.js）：直角、避開元件、並行線錯開 ----------
   let autoWire = (() => { try { return localStorage.getItem("sim.autowire") !== "0"; } catch { return true; } })();
-  function obstacles() { return bounds().items.map((it) => ({ x: it.x, y: it.y, w: it.w, h: it.h })); }
+  function obstacles() { return bounds().items.map((it) => ({ x: it.x, y: it.y, w: it.w, h: it.h, soft: it.id === "board" || it.id === "bb" })); }   // soft＝板子／麵包板：腳位在本體裡面，線可以穿；元件本體則要繞
   /** 重走指定的線（沒給＝全部）；回傳整了幾條 */
   function routeWires(indices) {
     const obs = obstacles(); const idx = indices || doc.wires.map((w, i) => i);
-    const list = idx.map((i) => ({ i, a: pinPos(doc.wires[i].a), b: pinPos(doc.wires[i].b) })).filter((x) => x.a && x.b);
+    const list = idx.map((i) => { const [a, b] = wireEnds(doc.wires[i]); return { i, a, b }; }).filter((x) => x.a && x.b);
     // 其他沒重走的線先佔格子，新線避開它們
     const used = new Set();
-    for (let i = 0; i < doc.wires.length; i++) if (!idx.includes(i)) for (const p of [pinPos(doc.wires[i].a), ...(doc.wires[i].pts || []), pinPos(doc.wires[i].b)].filter(Boolean)) used.add(Math.round(p[0] / 10) + "," + Math.round(p[1] / 10));
+    for (let i = 0; i < doc.wires.length; i++) if (!idx.includes(i)) for (const p of [wireEnds(doc.wires[i])[0], ...(doc.wires[i].pts || []), wireEnds(doc.wires[i])[1]].filter(Boolean)) used.add(Math.round(p[0] / 10) + "," + Math.round(p[1] / 10));
     let n = 0;
     for (const x of list.sort((p, q) => (Math.abs(q.a[0] - q.b[0]) + Math.abs(q.a[1] - q.b[1])) - (Math.abs(p.a[0] - p.b[0]) + Math.abs(p.a[1] - p.b[1])))) { const pts = routeWire({ a: x.a, b: x.b, obstacles: obs, used }); if (pts) { doc.wires[x.i].pts = pts; n++; } }
     return n;
@@ -568,10 +582,14 @@ export function createSimulator(opts) {
     focusPart(id) { if (id === "board") { api.panTo(doc.boardPos.x + 60, doc.boardPos.y + 60); select("board"); return; } const p = doc.parts[id]; if (!p) return; api.panTo(p.x + CATALOG[p.type].w / 2, p.y + CATALOG[p.type].h / 2); select(id); },
     /** 匯出 PNG：把麵包板、板子、Wokwi 元素（shadow DOM 裡的 SVG）、線路組成一張 SVG 再畫到 canvas */
     async exportPNG(scale = 2) {
-      const b = bounds(); const pad = 20, W = b.maxX - b.minX + pad * 2, H = b.maxY - b.minY + pad * 2;
+      const b = bounds();
+      for (const w of doc.wires) for (const p of [wireEnds(w)[0], ...(w.pts || []), wireEnds(w)[1]]) if (p) { b.minX = Math.min(b.minX, p[0]); b.minY = Math.min(b.minY, p[1]); b.maxX = Math.max(b.maxX, p[0]); b.maxY = Math.max(b.maxY, p[1]); }   // 走線也算進範圍，不然繞出去的線會被裁掉
+      const pad = 20, W = b.maxX - b.minX + pad * 2, H = b.maxY - b.minY + pad * 2;
       let s = `<svg xmlns="${SVGNS}" width="${W * scale}" height="${H * scale}" viewBox="${b.minX - pad} ${b.minY - pad} ${W} ${H}"><rect x="${b.minX - pad}" y="${b.minY - pad}" width="${W}" height="${H}" fill="#f4f4f5"/>`;
       if (doc.breadboard) s += `<g transform="translate(${doc.breadboard.x},${doc.breadboard.y})">${BREADBOARD.svg}</g>`;
-      const inner = (el) => { if (!el) return ""; const sr = el.shadowRoot; const svgEl = el.tagName && el.tagName.toLowerCase() === "svg" ? el : (sr ? sr.querySelector("svg") : el.querySelector("svg")); return svgEl ? svgEl.outerHTML.replace(/<style[\s\S]*?<\/style>/g, "") : ""; };
+      const inner = (el) => { if (!el) return ""; const sr = el.shadowRoot; const area = (s) => { const vb = (s.getAttribute("viewBox") || "").split(/[\s,]+/).map(Number); return vb.length === 4 ? vb[2] * vb[3] : (parseFloat(s.getAttribute("width")) || 0) * (parseFloat(s.getAttribute("height")) || 0); };
+        const pick = (root) => Array.from(root.querySelectorAll("svg")).sort((p, q) => area(q) - area(p))[0];   // 取最大的那個 svg（wokwi-buzzer 第一個是藏起來的小音符）
+        const svgEl = el.tagName && el.tagName.toLowerCase() === "svg" ? el : pick(sr || el); return svgEl ? svgEl.outerHTML.replace(/<style[\s\S]*?<\/style>/g, "") : ""; };
       const boardEl = partsLayer.querySelector(".sim-board"); if (boardEl) s += `<g transform="translate(${doc.boardPos.x},${doc.boardPos.y})">${inner(boardEl.firstChild)}</g>`;
       for (const [id, p] of Object.entries(doc.parts)) { const c = CATALOG[p.type]; s += `<g transform="translate(${p.x},${p.y}) rotate(${p.rot || 0} ${c.w / 2} ${c.h / 2})">${inner(partEls[id].firstChild)}</g>`; }
       for (const w of doc.wires) { const d = wirePath(w); if (d) s += `<path d="${d}" fill="none" stroke="${w.color}" stroke-width="3" stroke-linecap="round"/>`; }

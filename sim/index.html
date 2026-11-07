@@ -354,7 +354,7 @@ const CATS = [
   ["板子", ["__board", "__examples"]], ["基本", ["resistor", "led", "rgb-led", "led-bar-graph", "__bb"]], ["輸入", ["pushbutton", "slide-switch", "potentiometer", "photoresistor-sensor"]],
   ["輸出", ["buzzer", "servo"]], ["顯示", ["ssd1306", "lcd1602"]], ["感測", ["hc-sr04", "dht22", "pir"]],
   ["致動", ["relay", "stepper", "neopixel-strip"]], ["通訊／控制", ["joystick"]],
-  ["類比／IC", ["capacitor", "diode", "npn", "ne555"]],
+  ["類比／IC", ["capacitor", "diode", "npn", "ne555", "acsource", "lm358", "gate"]],
 ];
 let EXAMPLES = [];   // examples.json 載入後填入；元件庫的範例卡和「更多→範例電路」共用
 const nm = (t) => { const s = document.createElement("span"); s.className = "nm"; s.textContent = t; return s; };
@@ -868,7 +868,7 @@ function scopeAttach() {
 }
 function scopeProbesUI() {
   const el = $("scope-probes"); if (!el) return; el.innerHTML = "";
-  const refs = []; for (const [id, p] of Object.entries(sim.doc.parts)) { if (p.type === "capacitor") refs.push(id + ":+"); if (p.type === "ne555") { refs.push(id + ":OUT"); refs.push(id + ":THR"); } if (p.type === "npn") refs.push(id + ":C"); if (p.type === "diode") refs.push(id + ":K"); }
+  const refs = []; for (const [id, p] of Object.entries(sim.doc.parts)) { if (p.type === "capacitor") refs.push(id + ":+"); if (p.type === "ne555") { refs.push(id + ":OUT"); refs.push(id + ":THR"); } if (p.type === "npn") refs.push(id + ":C"); if (p.type === "diode") refs.push(id + ":K"); if (p.type === "acsource") refs.push(id + ":+"); if (p.type === "lm358") refs.push(id + ":OUT1"); if (p.type === "gate") refs.push(id + ":Y"); }
   if (!refs.length) return;
   const sp = document.createElement("span"); sp.className = "muted"; sp.textContent = "　探針（電壓）："; el.appendChild(sp);
   for (const ref of refs) { const b = document.createElement("button"); b.className = "icon" + (sim.probes.includes(ref) ? " on" : ""); b.textContent = ref; b.addEventListener("click", () => { if (sim.probes.includes(ref)) sim.removeProbe(ref); else sim.addProbe(ref); scopeProbesUI(); }); el.appendChild(b); }

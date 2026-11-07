@@ -30,6 +30,9 @@ const FOOT = {
   diode: { pins: [["A", 0, 0], ["K", 3, 0]], body: [0.8, -0.4, 1.4, 0.8], tall: 0 },
   npn: { pins: [["E", 0, 0], ["B", 1, 0], ["C", 2, 0]], body: [-0.5, -1.6, 3, 2], tall: 1 },
   ne555: { pins: [["GND", 0, 0], ["TRIG", 1, 0], ["OUT", 2, 0], ["RESET", 3, 0], ["CTRL", 3, 3], ["THR", 2, 3], ["DIS", 1, 3], ["VCC", 0, 3]], body: [-0.5, 0.5, 4, 2], tall: 1 },
+  acsource: { pins: [["+", 0, 0], ["-", 1, 0]], body: [-0.5, -1.6, 2, 2], tall: 2, header: true },
+  lm358: { pins: [["OUT1", 0, 0], ["IN1-", 1, 0], ["IN1+", 2, 0], ["GND", 3, 0], ["IN2+", 3, 3], ["IN2-", 2, 3], ["OUT2", 1, 3], ["VCC", 0, 3]], body: [-0.5, 0.5, 4, 2], tall: 1 },
+  gate: { pins: [["A", 0, 0], ["B", 1, 0], ["Y", 2, 0], ["VCC", 0, 2], ["GND", 2, 2]], body: [-0.5, 0.4, 3, 1.2], tall: 1 },
   stepper: { pins: [["A-", 0, 0], ["A+", 1, 0], ["B+", 2, 0], ["B-", 3, 0]], body: [-0.5, -0.6, 4, 1.2], tall: 1, header: true },
   joystick: { pins: [["VCC", 0, 0], ["VERT", 1, 0], ["HORZ", 2, 0], ["SEL", 3, 0], ["GND", 4, 0]], body: [-0.5, -3.2, 5, 3.6], tall: 3, header: true },
 };

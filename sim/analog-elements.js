@@ -74,7 +74,58 @@ class SimNE555 extends HTMLElement {   // 90×60 DIP-8：下緣 1～4（GND TRIG
     </svg>`;
   }
 }
+class SimACSource extends HTMLElement {   // 60×70，腳在下緣：+ (20,70)、− (40,70)
+  static get observedAttributes() { return ["voltage", "vpk", "freq"]; }
+  constructor() { super(); this.attachShadow({ mode: "open" }); this.render(); }
+  attributeChangedCallback() { this.render(); }
+  get pinInfo() { return [{ name: "+", x: 20, y: 70 }, { name: "-", x: 40, y: 70 }]; }
+  render() {
+    const v = Number(this.getAttribute("voltage") || 0), vpk = this.getAttribute("vpk") || "5", f = this.getAttribute("freq") || "50";
+    this.shadowRoot.innerHTML = `<svg ${SVGH} width="60" height="70" viewBox="0 0 60 70">
+      <rect x="2" y="2" width="56" height="52" rx="6" fill="#2b2b2b" stroke="#111"/>
+      <circle cx="30" cy="24" r="15" fill="#111" stroke="#888"/><path d="M19 24 q5.5 -10 11 0 t11 0" fill="none" stroke="#3f3" stroke-width="2"/>
+      <text x="30" y="48" fill="#ddd" font-size="6.5" text-anchor="middle" font-family="sans-serif">${vpk} Vpk ${f} Hz</text>
+      <rect x="44" y="${24 - Math.max(-12, Math.min(12, v * 2.4))}" width="4" height="${Math.abs(Math.max(-12, Math.min(12, v * 2.4)))}" fill="#ffd54a" opacity=".8"/>
+      <line x1="20" y1="54" x2="20" y2="62" stroke="#888" stroke-width="2"/><line x1="40" y1="54" x2="40" y2="62" stroke="#888" stroke-width="2"/>
+      ${PIN(20, 70, "+")}${PIN(40, 70, "−")}</svg>`;
+  }
+}
+class SimLM358 extends HTMLElement {   // 90×60 DIP-8：下緣 OUT1 IN1- IN1+ GND（15/35/55/75），上緣 VCC OUT2 IN2- IN2+（15/35/55/75）
+  static get observedAttributes() { return ["out1", "out2"]; }
+  constructor() { super(); this.attachShadow({ mode: "open" }); this.render(); }
+  attributeChangedCallback() { this.render(); }
+  get pinInfo() { return [{ name: "OUT1", x: 15, y: 60 }, { name: "IN1-", x: 35, y: 60 }, { name: "IN1+", x: 55, y: 60 }, { name: "GND", x: 75, y: 60 }, { name: "IN2+", x: 75, y: 0 }, { name: "IN2-", x: 55, y: 0 }, { name: "OUT2", x: 35, y: 0 }, { name: "VCC", x: 15, y: 0 }]; }
+  render() {
+    const top = [["VCC", 15], ["OUT2", 35], ["IN2-", 55], ["IN2+", 75]], bot = [["OUT1", 15], ["IN1-", 35], ["IN1+", 55], ["GND", 75]];
+    this.shadowRoot.innerHTML = `<svg ${SVGH} width="90" height="60" viewBox="0 0 90 60">
+      <rect x="4" y="12" width="82" height="36" rx="2" fill="#2a2a2a" stroke="#000"/><rect x="4" y="27" width="4" height="6" fill="#555"/><circle cx="12" cy="42" r="2.5" fill="#111" stroke="#555"/>
+      <text x="45" y="27" fill="#ddd" font-size="8" text-anchor="middle" font-family="sans-serif">LM358N</text><text x="45" y="37" fill="#888" font-size="5.5" text-anchor="middle" font-family="sans-serif">DUAL OP-AMP</text>
+      ${top.map(([n, x]) => `<rect x="${x - 2.5}" y="0" width="5" height="12" fill="#c9a227" stroke="#7a6418" stroke-width=".6"/><text x="${x}" y="18" fill="#bbb" font-size="4.2" text-anchor="middle" font-family="sans-serif">${n}</text>`).join("")}
+      ${bot.map(([n, x]) => `<rect x="${x - 2.5}" y="48" width="5" height="12" fill="#c9a227" stroke="#7a6418" stroke-width=".6"/><text x="${x}" y="46" fill="#bbb" font-size="4.2" text-anchor="middle" font-family="sans-serif">${n}</text>`).join("")}
+    </svg>`;
+  }
+}
+class SimGate extends HTMLElement {   // 70×50：下緣 A(12) B(26) Y(58)，上緣 VCC(12) GND(58)
+  static get observedAttributes() { return ["kind", "y"]; }
+  constructor() { super(); this.attachShadow({ mode: "open" }); this.render(); }
+  attributeChangedCallback() { this.render(); }
+  get pinInfo() { return [{ name: "A", x: 12, y: 50 }, { name: "B", x: 26, y: 50 }, { name: "Y", x: 58, y: 50 }, { name: "VCC", x: 12, y: 0 }, { name: "GND", x: 58, y: 0 }]; }
+  render() {
+    const kind = this.getAttribute("kind") || "AND", on = this.getAttribute("y") === "true";
+    const body = kind === "OR" || kind === "NOR" ? `<path d="M22 14 q10 11 0 22 q14 0 22 -11 q-8 -11 -22 -11 z" fill="#eee" stroke="#333"/>` : kind === "XOR" ? `<path d="M22 14 q10 11 0 22 q14 0 22 -11 q-8 -11 -22 -11 z" fill="#eee" stroke="#333"/><path d="M18 14 q10 11 0 22" fill="none" stroke="#333"/>` : kind === "NOT" ? `<path d="M22 14 L44 25 L22 36 z" fill="#eee" stroke="#333"/>` : `<path d="M22 14 h12 a11 11 0 0 1 0 22 h-12 z" fill="#eee" stroke="#333"/>`;
+    const bubble = /^(NAND|NOR|NOT)$/.test(kind) ? `<circle cx="47" cy="25" r="2.5" fill="#eee" stroke="#333"/>` : "";
+    this.shadowRoot.innerHTML = `<svg ${SVGH} width="70" height="50" viewBox="0 0 70 50">
+      <rect x="2" y="8" width="66" height="34" rx="3" fill="#2a2a2a" stroke="#000"/>${body}${bubble}
+      <text x="35" y="8" fill="#bbb" font-size="5" text-anchor="middle" font-family="sans-serif">74HC ${kind}</text>
+      <circle cx="62" cy="14" r="2.5" fill="${on ? "#3f3" : "#243"}"/>
+      <rect x="9.5" y="0" width="5" height="8" fill="#c9a227"/><rect x="55.5" y="0" width="5" height="8" fill="#c9a227"/>
+      ${PIN(12, 50, "A")}${PIN(26, 50, "B")}${PIN(58, 50, "Y")}</svg>`;
+  }
+}
 if (typeof customElements !== "undefined") {
+  if (!customElements.get("sim-acsource")) customElements.define("sim-acsource", SimACSource);
+  if (!customElements.get("sim-lm358")) customElements.define("sim-lm358", SimLM358);
+  if (!customElements.get("sim-gate")) customElements.define("sim-gate", SimGate);
   if (!customElements.get("sim-capacitor")) customElements.define("sim-capacitor", SimCapacitor);
   if (!customElements.get("sim-diode")) customElements.define("sim-diode", SimDiode);
   if (!customElements.get("sim-npn")) customElements.define("sim-npn", SimNPN);

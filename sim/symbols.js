@@ -54,6 +54,9 @@ export const SYMBOLS = {
   capacitor: () => twoPin("+", "-", 24, (x) => `<line x1="${x}" y1="15" x2="${x + 9}" y2="15" class="sch-pin"/><line x1="${x + 9}" y1="5" x2="${x + 9}" y2="25" class="sch-body" stroke-width="2"/><path d="M${x + 15},5 a10,10 0 0 0 0,20" class="sch-body" fill="none" stroke-width="2"/><line x1="${x + 15}" y1="15" x2="${x + 24}" y2="15" class="sch-pin"/><text x="${x + 2}" y="6" font-size="7" class="sch-txt">+</text>`),
   diode: () => twoPin("A", "K", 30, (x, st) => `<line x1="${x}" y1="15" x2="${x + 8}" y2="15" class="sch-pin"/><polygon points="${x + 8},6 ${x + 8},24 ${x + 22},15" class="sch-body"${st.on ? ' fill="#fbbf24"' : ""}/><line x1="${x + 22}" y1="6" x2="${x + 22}" y2="24" class="sch-body" stroke-width="2"/><line x1="${x + 22}" y1="15" x2="${x + 30}" y2="15" class="sch-pin"/>`),
   npn: () => blockSymbol({ title: "NPN", left: ["B"], right: ["C", "E"], minW: 50 }),
+  acsource: () => twoPin("+", "-", 30, (x) => `<circle cx="${x + 15}" cy="15" r="12" class="sch-body"/><path d="M${x + 7},15 q4,-8 8,0 t8,0" fill="none" class="sch-body" stroke-width="1.5"/><line x1="${x}" y1="15" x2="${x + 3}" y2="15" class="sch-pin"/><line x1="${x + 27}" y1="15" x2="${x + 30}" y2="15" class="sch-pin"/>`),
+  lm358: () => blockSymbol({ title: "LM358", left: ["IN1+", "IN1-", "IN2+", "IN2-"], right: ["VCC", "OUT1", "OUT2", "GND"], minW: 80 }),
+  gate: () => blockSymbol({ title: "74HC", left: ["A", "B"], right: ["Y", "VCC", "GND"], minW: 60 }),
   ne555: () => blockSymbol({ title: "NE555", left: ["TRIG", "THR", "DIS", "CTRL"], right: ["VCC", "OUT", "RESET", "GND"], minW: 80 }),
   // LED：二極體＋兩支小箭頭；亮時三角形填色
   led: () => twoPin("A", "C", 36, (x, st) => {

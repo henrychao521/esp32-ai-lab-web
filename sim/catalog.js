@@ -28,6 +28,9 @@ export const CATALOG = {
   diode: { tag: "sim-diode", w: 60, h: 22, label: "二極體", attrs: { model: "1N4007" }, cat: "類比", attrOptions: { model: ["1N4007", "1N4148", "1N5819"] } },
   npn: { tag: "sim-npn", w: 44, h: 50, label: "NPN 電晶體", attrs: { model: "2N2222" }, cat: "類比", attrOptions: { model: ["2N2222", "2N3904", "8050"] } },
   ne555: { tag: "sim-ne555", w: 90, h: 60, label: "555 計時器", attrs: {}, cat: "類比" },
+  acsource: { tag: "sim-acsource", w: 60, h: 70, label: "交流電源", attrs: { vpk: "5", freq: "50" }, cat: "類比", attrOptions: { vpk: ["1", "2", "5", "9", "12"], freq: ["1", "5", "50", "60", "200", "1000"] } },
+  lm358: { tag: "sim-lm358", w: 90, h: 60, label: "LM358 運算放大器", attrs: {}, cat: "類比" },
+  gate: { tag: "sim-gate", w: 70, h: 50, label: "邏輯閘（74HC）", attrs: { kind: "AND" }, cat: "類比", attrOptions: { kind: ["AND", "OR", "NOT", "NAND", "NOR", "XOR"] } },
 };
 for (const k of Object.keys(CATALOG)) CATALOG[k].pins = PARTS[k].pins;
 
@@ -56,6 +59,9 @@ Object.assign(PIN_TABLE, {
   diode: { A: [0, 11], K: [60, 11] },
   npn: { E: [10, 50], B: [22, 50], C: [34, 50] },
   ne555: { GND: [15, 60], TRIG: [35, 60], OUT: [55, 60], RESET: [75, 60], CTRL: [75, 0], THR: [55, 0], DIS: [35, 0], VCC: [15, 0] },
+  acsource: { "+": [20, 70], "-": [40, 70] },
+  lm358: { OUT1: [15, 60], "IN1-": [35, 60], "IN1+": [55, 60], GND: [75, 60], "IN2+": [75, 0], "IN2-": [55, 0], OUT2: [35, 0], VCC: [15, 0] },
+  gate: { A: [12, 50], B: [26, 50], Y: [58, 50], VCC: [12, 0], GND: [58, 0] },
   stepper: { "A-": [66.8, 178.8], "A+": [66.8 + 2.54 * mm, 178.8], "B+": [66.8 + 5.08 * mm, 178.8], "B-": [66.8 + 7.62 * mm, 178.8] },
   joystick: { VCC: [33, 115.8], VERT: [42.6, 115.8], HORZ: [52.2, 115.8], SEL: [61.8, 115.8], GND: [71.4, 115.8] },
 });

@@ -25,6 +25,9 @@ export function routeWire({ a, b, obstacles, used = new Set(), grid = 10, margin
   const toPt = (c) => [(c[0] + minX) * grid, (c[1] + minY) * grid];
   const blocked = new Uint16Array(W * H);   // 0＝空，n＝第 n 個障礙（1 起算；含 margin 外圈）
   const body = new Uint8Array(W * H);       // 1＝在元件本體裡（不含 margin）：盡量不要穿
+  // 所有元件的外包框（再外擴 20 px）＝版面。版面外每格加價，線才會貼著元件走，不會跑到畫布外圍繞大圈
+  const hull = { x0: Math.min(...obstacles.map((o) => o.x)) - 20, y0: Math.min(...obstacles.map((o) => o.y)) - 20, x1: Math.max(...obstacles.map((o) => o.x + o.w)) + 20, y1: Math.max(...obstacles.map((o) => o.y + o.h)) + 20 };
+  const outside = (c) => { const x = (c[0] + minX) * grid, y = (c[1] + minY) * grid; return x < hull.x0 || x > hull.x1 || y < hull.y0 || y > hull.y1; };
   obstacles.forEach((o, oi) => {
     const c0 = Math.floor((o.x - margin) / grid) - minX, c1 = Math.ceil((o.x + o.w + margin) / grid) - minX;
     const r0 = Math.floor((o.y - margin) / grid) - minY, r1 = Math.ceil((o.y + o.h + margin) / grid) - minY;
@@ -63,7 +66,8 @@ export function routeWire({ a, b, obstacles, used = new Set(), grid = 10, margin
       let step = 1;
       if (cur.dir !== -1 && cur.dir !== d) step += 2;              // 轉彎
       if (used.has(key(nc))) step += 6;                             // 和別條線重疊：寧可多轉一次也要錯開
-      if (isBlocked) step += foreign(nc, ob) ? 5 : (inBody ? 8 : 1);   // 自己的 margin 便宜、自己的本體很貴（只在被包住時才穿）、借道鄰居 margin 加 5
+      if (isBlocked) step += foreign(nc, ob) ? 5 : (inBody ? (obstacles[ob - 1].soft ? 8 : 40) : 1);   // 自己的 margin 便宜；板子本體（腳位在裡面）加 8；元件本體（IC、模組）加 40＝幾乎一定繞外圍；借道鄰居 margin 加 5
+      if (!isBlocked && outside(nc)) step += 2;                       // 版面外：能貼著走就不要跑出去
       const gc = cur.gc + step, k = key(nc) + "|" + d;
       if (gc < (best.get(k) ?? 1e9)) { best.set(k, gc); came.set(k, key(cur.c) + "|" + cur.dir); open.push({ c: nc, dir: d, gc, f: gc + h(nc) }); }
     }
@@ -86,7 +90,16 @@ export function routeWire({ a, b, obstacles, used = new Set(), grid = 10, margin
     if (Math.abs(first[0] - a[0]) < grid) first[0] = a[0]; else if (Math.abs(first[1] - a[1]) < grid) first[1] = a[1];
     if (Math.abs(last[0] - b[0]) < grid) last[0] = b[0]; else if (Math.abs(last[1] - b[1]) < grid) last[1] = b[1];
   }
-  return corners;
+  // 腳位（例如麵包板 9.6 px 的孔）不在格點上時，對齊後可能剩下斜線：把每一段斜線補成 L 形，線永遠只有水平與垂直
+  const pl = [a, ...corners, b];
+  for (let i = 0; i < pl.length - 1; i++) {
+    const p = pl[i], q = pl[i + 1];
+    if (Math.abs(p[0] - q[0]) > 0.01 && Math.abs(p[1] - q[1]) > 0.01) {
+      const prev = i > 0 ? pl[i - 1] : null; const prevHoriz = prev ? Math.abs(prev[1] - p[1]) < 0.01 : Math.abs(p[0] - q[0]) < Math.abs(p[1] - q[1]);
+      pl.splice(i + 1, 0, prevHoriz ? [p[0], q[1]] : [q[0], p[1]]);   // 上一段是水平就先垂直再水平，反之亦然
+    }
+  }
+  return pl.slice(1, -1);
 }
 
 /** 整條電路：長線先走（它們最需要繞），把 used 一路傳下去讓線錯開。回傳 {index: pts}。 */
