@@ -34,7 +34,13 @@ export function mountPerfboard(sim, { viewport, toast = () => {} }) {
   }
   const schedule = () => { if (layer.hidden) return; clearTimeout(timer); timer = setTimeout(rebuild, 80); };
   function apply() { canvas.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.z})`; }
-  function fit() { if (!built) return; const r = viewport.getBoundingClientRect(); const z = Math.max(0.3, Math.min(3, Math.min((r.width - (r.width < 600 ? 100 : 60)) / built.w, (r.height - 110) / built.h))); view = { z, x: Math.max(10, (r.width - (r.width < 600 ? 60 : 0) - built.w * z) / 2), y: Math.max(52, (r.height - built.h * z) / 2) }; apply(); }
+  function fit() {
+    if (!built) return; const r = viewport.getBoundingClientRect();
+    // 上方要留給「麵包板｜簡圖｜萬用板」切換鈕與板型／旋轉那一排（手機版兩排各約 44px）
+    const top = (layer.querySelector(".pb-bar")?.getBoundingClientRect().bottom || r.top + 90) - r.top + 8;
+    const z = Math.max(0.3, Math.min(3, Math.min((r.width - (r.width < 600 ? 100 : 60)) / built.w, (r.height - top - 20) / built.h)));
+    view = { z, x: Math.max(10, (r.width - (r.width < 600 ? 60 : 0) - built.w * z) / 2), y: Math.max(top, (r.height - top - built.h * z) / 2 + top) }; apply();
+  }
   function show(v) { layer.hidden = v !== "pb"; if (v === "pb") rebuild(); }
   viewport.addEventListener("simview", (e) => show(e.detail));
   $("pb-size").addEventListener("change", function () { size = this.value; sim.doc.perfboard = { ...(sim.doc.perfboard || {}), size }; needFit = true; rebuild(); });

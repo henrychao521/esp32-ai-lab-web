@@ -222,7 +222,7 @@ dialog{position:relative}
   <button id="btn-fit" class="icon desk" title="縮放到全部">⤢</button>
   <button id="btn-examples" class="desk">範例</button>
   <button id="btn-save" class="desk" title="存到瀏覽器">儲存</button>
-  <button id="btn-export" class="desk" title="匯出 Wokwi diagram.json">匯出</button>
+  <button id="btn-export" class="desk" title="匯出 KiCad 簡圖、網路表、零件清單或 Wokwi">匯出</button>
   <button id="btn-png" class="desk" title="匯出 PNG">PNG</button>
   <button id="btn-import" class="desk">匯入</button>
   <button id="btn-share" class="desk" title="分享網址">分享</button>
@@ -576,14 +576,14 @@ $("push-go").addEventListener("click", async () => {
   const mq = window.matchMedia("(max-width: 900px)");
   const MORE = ["board", "engine", "power-ind", "speed", "firmware", "btn-wiremode", "wire-color", "btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-clear", "btn-teacher", "btn-help"];
   const home = {};   // id → { parent, next }：搬回桌機位置用
-  const LABEL = { board: "板子", engine: "執行引擎", "power-ind": "電源指示（LED 與模組總電流，估）", speed: "模擬速度", firmware: "要執行的程式", "wire-color": "線色", "btn-wiremode": "接線模式", "btn-del": "刪除所選", "btn-undo": "復原", "btn-redo": "重做", "btn-rotate": "旋轉", "btn-selall": "全選", "btn-align-l": "靠左對齊", "btn-align-t": "靠上對齊", "btn-grid": "格線吸附", "btn-fit": "縮放到全部", "btn-examples": "範例電路", "btn-save": "儲存到瀏覽器", "btn-export": "匯出 Wokwi", "btn-png": "匯出 PNG", "btn-import": "匯入", "btn-share": "分享網址", "btn-clear": "清空畫布", "btn-teacher": "老師模式", "btn-help": "說明與快捷鍵" };
+  const LABEL = { board: "板子", engine: "執行引擎", "power-ind": "電源指示（LED 與模組總電流，估）", speed: "模擬速度", firmware: "要執行的程式", "wire-color": "線色", "btn-wiremode": "接線模式", "btn-del": "刪除所選", "btn-undo": "復原", "btn-redo": "重做", "btn-rotate": "旋轉", "btn-selall": "全選", "btn-align-l": "靠左對齊", "btn-align-t": "靠上對齊", "btn-grid": "格線吸附", "btn-fit": "縮放到全部", "btn-examples": "範例電路", "btn-save": "儲存到瀏覽器", "btn-export": "匯出 KiCad／Wokwi", "btn-png": "匯出 PNG", "btn-import": "匯入", "btn-share": "分享網址", "btn-clear": "清空畫布", "btn-teacher": "老師模式", "btn-help": "說明與快捷鍵" };
   const ENGINE_LABELS = { "micropython-wasm": ["快速引擎", "快速"], "esp32sim": ["真韌體引擎（esp32sim）", "真韌體"] };
   const setEngineLabels = (short) => { for (const o of $("engine").options) if (ENGINE_LABELS[o.value]) o.textContent = ENGINE_LABELS[o.value][short ? 1 : 0]; };
   function toMobile() {
     setEngineLabels(false);
     const body = $("more-body"); if (body.children.length) return;
     const note = document.createElement("div"); note.className = "more-item wide"; note.id = "more-engine-note"; note.style.fontSize = "12px"; note.style.color = "var(--muted)"; note.textContent = $("engine-note").textContent; body.appendChild(note);
-    for (const id of MORE) { const el = $(id); if (!el) continue; home[id] = { parent: el.parentNode, next: el.nextSibling }; const w = document.createElement("div"); w.className = "more-item" + (el.tagName === "SELECT" || el.tagName === "SPAN" ? " wide" : ""); w.appendChild(el); const l = document.createElement("span"); l.className = "lbl"; l.textContent = LABEL[id] || el.title || ""; w.appendChild(l); body.appendChild(w); el.classList.remove("desk"); el.style.display = ""; if (id === "engine") body.appendChild(note); }
+    for (const id of MORE) { const el = $(id); if (!el) continue; home[id] = { parent: el.parentNode, next: el.nextSibling }; const w = document.createElement("div"); w.className = "more-item" + (el.tagName === "SELECT" || el.tagName === "SPAN" ? " wide" : ""); w.appendChild(el); const l = document.createElement("span"); l.className = "lbl"; l.textContent = LABEL[id] || el.title || ""; if (el.tagName === "BUTTON") l.addEventListener("click", () => el.click()); w.appendChild(l); body.appendChild(w); el.classList.remove("desk"); el.style.display = ""; if (id === "engine") body.appendChild(note); }
     $("firmware").closest(".more-item").style.display = $("firmware").dataset.avail === "1" ? "" : "none";
   }
   function toDesk() {
