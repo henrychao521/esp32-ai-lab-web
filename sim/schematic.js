@@ -5,6 +5,8 @@ import { PARTS } from "./circuit.js";
 import { BOARD_ART, DEVKIT_PINMAP } from "./catalog.js";
 import { symbolFor, boardSymbol, railSymbol, groundSymbol, SCH_CSS, STUB } from "./symbols.js";
 
+// 元件值標示：電容是 µF，其他（電阻）是 Ω
+const fmtValue = (p) => (p.type === "capacitor" ? String(p.attrs.value).replace(/u$/, "µ") + "F" : p.attrs.value + "Ω");
 const POWER = new Set(["3V3", "5V", "VIN"]);
 const COL_GAP = 90;      // 欄與欄之間（放幹線的走廊）
 const ROW_GAP = 34;      // 同欄元件上下間距
@@ -166,7 +168,7 @@ export function buildSchematic({ doc, nets, states = {}, showAllPins = false }) 
     const st = states[id] || {}; const p = parts[id];
     if (p.type === "led") st.color = ledColor(p.attrs?.color);
     body += place(s, id, pos[id], st);
-    const label = (p.label || id) + (p.attrs?.value ? " " + p.attrs.value + "Ω" : "");
+    const label = (p.label || id) + (p.attrs?.value ? " " + fmtValue(p) : "");
     body += `<text class="sch-label" x="${pos[id].x + s.w / 2}" y="${pos[id].y + s.h + 12}" text-anchor="middle" dominant-baseline="middle">${label.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>`;
   }
   // ---- 9. 外框與 SVG ----

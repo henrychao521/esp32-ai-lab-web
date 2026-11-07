@@ -4,6 +4,8 @@ import { PARTS } from "./circuit.js";
 import { DEVKIT_PINS, DEVKIT_PINMAP } from "./catalog.js";
 import { printedPinName } from "./schematic.js";
 
+// 元件值標示：電容是 µF，其他（電阻）是 Ω
+const fmtValue = (p) => (p.type === "capacitor" ? String(p.attrs.value).replace(/u$/, "µ") + "F" : p.attrs.value + "Ω");
 export const BOARD_SIZES = { "5x7": { cols: 18, rows: 24, label: "5×7 cm（18×24 孔）" }, "7x9": { cols: 24, rows: 30, label: "7×9 cm（24×30 孔）" } };
 export const PITCH = 12;   // 畫圖用：一個孔 12 px
 
@@ -204,7 +206,7 @@ function renderFront({ C, R, occ, place, parts, bf, jumpers, netOf, feet }) {
     const [bx, by, bw, bh] = foot.body;
     s += `<g class="pb-part" data-id="${esc(id)}"><rect class="pb-body" x="${X(p.c + bx) - 0}" y="${Y(p.r + by)}" width="${bw * PITCH}" height="${bh * PITCH}" rx="3"/>`;
     for (const [name, dc, dr] of foot.pins) { const x = X(p.c + dc), y = Y(p.r + dr); s += `<rect class="pb-pin" x="${x - 3}" y="${y - 3}" width="6" height="6"/>`; if (name.length <= 1) s += `<text class="pb-txt" x="${x}" y="${y - 5}" text-anchor="middle">${esc(name)}</text>`; else s += `<text class="pb-txt" x="${x}" y="${y - 5}" text-anchor="start" transform="rotate(-90 ${x} ${y - 5})">${esc(name)}</text>`; }
-    const label = id === "board" ? bf.title : id + (parts[id].attrs?.value ? " " + parts[id].attrs.value + "Ω" : "");
+    const label = id === "board" ? bf.title : id + (parts[id].attrs?.value ? " " + fmtValue(parts[id]) : "");
     s += id === "board" ? `<text class="pb-title" x="${X(p.c + bx) + 3}" y="${Y(p.r + by) + 9}">${esc(label)}</text>` : `<text class="pb-title" x="${X(p.c + bx)}" y="${Y(p.r + by) - 2}">${esc(label)}</text>`;
     s += `</g>`;
   }

@@ -5,6 +5,9 @@ import { PARTS } from "./circuit.js";
 import { symbolFor, STUB } from "./symbols.js";
 import { buildSchematic, printedPinName } from "./schematic.js";
 
+// 元件值：電容 10u → 10uF（KiCad 慣用 ASCII），電阻加 Ω
+const fmtValue = (p) => (p.type === "capacitor" ? String(p.attrs.value) + "F" : p.attrs.value + "Ω");
+
 const MM = 2.54 / 20;                    // 簡圖 px → mm（符號腳距 20 px ＝ 2.54 mm）
 const g = (v) => Math.round(v / 1.27) * 1.27;   // 對齊 KiCad 1.27 mm 格點
 const f = (v) => Number(v.toFixed(2));
@@ -127,20 +130,20 @@ export function exportKiCad({ doc, nets, title = "esp32lab" }) {
     const L = symOf[id]; const sym = L.sym;
     const refFor = (pinName) => { // 符號腳名 → 這個元件在網路表裡的 ref（按鍵 1→1.l）
       const real = Object.entries(sym.alias || {}).find(([k, v]) => v === pinName); const pn = real ? real[0] : pinName; return id + ":" + pn; };
-    place(id, sym, "esp32lab:" + p.type, refOf[id], p.attrs?.value ? p.attrs.value + "Ω" : (PARTS[p.type]?.label || p.type), L.fp, { pinNum: L.pinNum, refFor });
+    place(id, sym, "esp32lab:" + p.type, refOf[id], p.attrs?.value ? fmtValue(p) : (PARTS[p.type]?.label || p.type), L.fp, { pinNum: L.pinNum, refFor });
   }
   const boardRefFor = (pinName) => usedBoard.find((r) => ((POWER.has(r.slice(6)) || r.slice(6) === "GND") ? r.slice(6) : printedPinName(board, r)) === pinName) || null;
   place("board", boardSym, "esp32lab:board_" + board, "A1", boardSym.title || board, BOARD_FP[board] || "", { pinNum: bl.pinNum, refFor: boardRefFor });
   const sch = `(kicad_sch (version 20231120) (generator "esp32lab") (generator_version "8.0")\n  (uuid ${q(rootUuid)})\n  (paper "A4")\n  (title_block (title ${q(title)}) (comment 1 "ESP32 AI 實驗室 電路模擬器匯出"))\n  (lib_symbols\n${libText.join("")}  )\n${labels}${body}  (sheet_instances (path "/" (page "1")))\n)\n`;
   // ---- 網路表（KiCad S-expression）----
-  const comps = Object.entries(parts).map(([id, p]) => `    (comp (ref ${q(refOf[id])}) (value ${q(p.attrs?.value ? p.attrs.value + "Ω" : PARTS[p.type]?.label || p.type)}) (footprint ${q(symOf[id].fp)}) (libsource (lib "esp32lab") (part ${q(p.type)})))`).concat([`    (comp (ref "A1") (value ${q(boardSym.title || board)}) (footprint ${q(BOARD_FP[board] || "")}) (libsource (lib "esp32lab") (part ${q("board_" + board)})))`]).join("\n");
+  const comps = Object.entries(parts).map(([id, p]) => `    (comp (ref ${q(refOf[id])}) (value ${q(p.attrs?.value ? fmtValue(p) : PARTS[p.type]?.label || p.type)}) (footprint ${q(symOf[id].fp)}) (libsource (lib "esp32lab") (part ${q(p.type)})))`).concat([`    (comp (ref "A1") (value ${q(boardSym.title || board)}) (footprint ${q(BOARD_FP[board] || "")}) (libsource (lib "esp32lab") (part ${q("board_" + board)})))`]).join("\n");
   const netNodes = {}; const pinNumOf = (r) => { if (r.startsWith("board:")) { const name = (POWER.has(r.slice(6)) || r.slice(6) === "GND") ? r.slice(6) : printedPinName(board, r); return ["A1", bl.pinNum[name]]; } const [id, pn] = [r.split(":")[0], r.slice(r.indexOf(":") + 1)]; const L = symOf[id]; const key = (L.sym.alias && L.sym.alias[pn]) || pn; return [refOf[id], L.pinNum[key]]; };
   for (const [root, refs] of Object.entries(netRefs)) { const nodes = new Set(); for (const r of refs) { const [ref, num] = pinNumOf(r); if (num) nodes.add(ref + "|" + num); } netNodes[netName[root]] = [...nodes].map((s) => s.split("|")); }
   const netText = Object.entries(netNodes).map(([name, nodes], i) => `    (net (code ${q(String(i + 1))}) (name ${q(name)})\n${nodes.map(([ref, num]) => `      (node (ref ${q(ref)}) (pin ${q(num)}))`).join("\n")})`).join("\n");
   const net = `(export (version "E")\n  (design (source ${q(title + ".kicad_sch")}) (tool "esp32lab"))\n  (components\n${comps})\n  (nets\n${netText})\n)\n`;
   // ---- BOM CSV ----
   const rows = [["參考代號", "元件", "數值", "封裝", "模擬器 id"]];
-  for (const [id, p] of Object.entries(parts)) rows.push([refOf[id], PARTS[p.type]?.label || p.type, p.attrs?.value ? p.attrs.value + "Ω" : (p.attrs?.color || ""), symOf[id].fp, id]);
+  for (const [id, p] of Object.entries(parts)) rows.push([refOf[id], PARTS[p.type]?.label || p.type, p.attrs?.value ? fmtValue(p) : (p.attrs?.color || ""), symOf[id].fp, id]);
   rows.push(["A1", boardSym.title || board, "", BOARD_FP[board] || "", "board"]);
   const bom = "﻿" + rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(",")).join("\r\n");
   return { sch, net, bom, nets: netNodes, refs: refOf, netName };

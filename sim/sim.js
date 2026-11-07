@@ -129,7 +129,7 @@ export function createSimulator(opts) {
       el.classList.toggle("selected", selection.has(id));
       // 元件圖的屬性＝目錄預設值 ＋ 這個元件自己的；少了預設（例如步進馬達 size=17）元件會畫成別的尺寸，腳位就對不上接線
       const w = el.firstChild; for (const [k, v] of Object.entries({ ...(CATALOG[p.type].attrs || {}), ...(p.attrs || {}) })) if (w.getAttribute(k) !== String(v)) w.setAttribute(k, v);
-      el.querySelector(".sim-label").textContent = p.label || (id + (p.attrs?.value ? " " + p.attrs.value + "Ω" : ""));
+      el.querySelector(".sim-label").textContent = p.label || (id + (p.attrs?.value ? " " + (p.type === "capacitor" ? String(p.attrs.value).replace(/u$/, "µ") + "F" : p.attrs.value + "Ω") : ""));   // 電容標 µF，不是 Ω
     }
     renderPins(); renderWires(); applyState(); onStatus({ bounds: bounds() });
   }
