@@ -32,6 +32,8 @@ header b{margin-right:6px;font-size:15px}
 .pal .ex-note{margin:0 8px 4px;font-size:11px;color:var(--muted)}
 .pal .thumb{height:40px;width:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .pal .thumb>*{transform-origin:center;transform:scale(var(--s,.6))}
+.pal .item.ex.has-shot{height:auto;padding:4px 4px 6px}.pal .thumb.shot{height:auto}.pal .thumb.shot>*{transform:none}
+.ex-shot{display:block;width:100%;aspect-ratio:9/5;object-fit:cover;border-radius:6px;background:#f4f4f5;border:1px solid var(--line)}
 .sim-viewport{grid-area:canvas;position:relative;overflow:hidden;touch-action:none;background:linear-gradient(var(--line) 1px,transparent 1px) 0 0/24px 24px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/24px 24px,var(--bg);cursor:grab}
 .sim-world{position:absolute;left:0;top:0;transform-origin:0 0;width:0;height:0}
 .sim-parts{position:absolute;left:0;top:0}
@@ -149,8 +151,8 @@ html,body{touch-action:manipulation}
  header{flex-wrap:wrap;height:auto;padding:4px 8px;row-gap:4px;overflow:visible;white-space:normal;padding-top:calc(4px + env(safe-area-inset-top))}
  header>b,header .sep,#engine-load{display:none!important}
  header .brk{display:block;width:100%;height:0;order:5}
- #btn-pal{display:inline-block;order:1}#btn-del,#btn-undo,#btn-redo,#btn-rotate,#btn-precise{order:2;min-width:42px}#btn-more{display:inline-block!important;order:4;margin-left:auto}
- header #btn-del svg,header #btn-undo svg,header #btn-redo svg,header #btn-rotate svg,header #btn-precise svg{width:19px;height:19px}
+ #btn-pal{display:inline-block;order:1}#btn-del,#btn-undo,#btn-redo,#btn-rotate,#btn-precise{order:2;min-width:38px;padding:4px 5px}#btn-clearall{order:3;min-width:38px;padding:4px 5px}#btn-more{display:inline-block!important;order:4;margin-left:auto}
+ header #btn-del svg,header #btn-undo svg,header #btn-redo svg,header #btn-rotate svg,header #btn-precise svg,header #btn-clearall svg{width:19px;height:19px}
  #btn-run{order:6}#btn-pause{order:7}#btn-step{order:7}#btn-reset{order:8}header .status{order:9}#power-ind{order:9}#btn-push{order:10;margin-left:auto}
  header select,header button{min-height:34px}
  header .status{max-width:96px;overflow:hidden;white-space:nowrap}#status-text{overflow:hidden;text-overflow:ellipsis}
@@ -217,6 +219,7 @@ dialog{position:relative}
   <span class="sep"></span>
   <button id="btn-wiremode" class="icon" title="接線模式：執行中也只拉線不操作元件">⌁ 接線</button><button id="btn-route" class="icon" title="整理走線：全部線重走成直角、避開元件（新拉的線與拖過的元件會自動整）">⌐ 整線</button>
   <select id="wire-color" title="線色"><option value="0">紅線</option><option value="1">黑線</option><option value="2">綠線</option><option value="3">藍線</option><option value="4">橘線</option><option value="5">紫線</option><option value="6">灰線</option><option value="7">白線</option></select>
+  <button id="btn-clearall" class="icon" title="一鍵清空畫布（元件、接線、麵包板；程式保留，可按復原救回）" aria-label="清空畫布"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M4 4h16v16H4z" stroke-dasharray="3 2.4"/><path d="M9 9l6 6M15 9l-6 6"/></svg></button>
   <button id="btn-del" class="icon" title="刪除（Delete）" aria-label="刪除所選"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="vertical-align:-2px"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg></button>
   <button id="btn-undo" class="icon" title="復原（⌘Z）" aria-label="復原"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button><button id="btn-redo" class="icon" title="重做（⇧⌘Z）" aria-label="重做"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
   <button id="btn-precise" class="icon" title="精準選取：手指按住時游標在指尖左上方，放開就選到游標下的線或元件" aria-label="精準選取"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M4 3l7.5 17 2.5-7 7-2.5z"/></svg></button><button id="btn-rotate" class="icon" title="旋轉（R）" aria-label="旋轉"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M12 5H6a2 2 0 0 0-2 2v3"/><path d="m9 8 3-3-3-3"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg></button>
@@ -367,6 +370,8 @@ const CATS = [
   ["類比／IC", ["capacitor", "diode", "npn", "ne555", "acsource", "lm358", "gate"]],
 ];
 let EXAMPLES = [];   // examples.json 載入後填入；元件庫的範例卡和「更多→範例電路」共用
+let THUMBS = {};     // thumbs/index.json：{id: {file, hash}}；雜湊和範例的 layout 相符才用（版面改過、縮圖還沒重拍就不顯示錯的圖）
+function exShot(ex) { const t = THUMBS[ex.id]; if (!t || t.hash !== ex.layout) return null; const img = document.createElement("img"); img.className = "ex-shot"; img.loading = "lazy"; img.decoding = "async"; img.alt = ex.title + " 接線圖"; img.src = t.file; return img; }
 const nm = (t) => { const s = document.createElement("span"); s.className = "nm"; s.textContent = t; return s; };
 function buildPalette(filter = "") {
   const body = $("pal-body"); body.innerHTML = "";
@@ -404,7 +409,9 @@ function buildExampleCards(body, filter) {
     const th = document.createElement("div"); th.className = "thumb";
     // 縮圖：挑這個電路最有代表性的元件（不是電阻的那個），沒有就畫板子
     const key = Object.values(ex.parts).map((p) => p.type).find((t) => t !== "resistor" && CATALOG[t]) || Object.values(ex.parts).map((p) => p.type).find((t) => CATALOG[t]);
-    if (key) { const c = CATALOG[key]; const el = document.createElement(c.tag); for (const [k, v] of Object.entries(c.attrs)) el.setAttribute(k, v); th.style.setProperty("--s", Math.min(0.9, 60 / Math.max(c.w, 1), 40 / Math.max(c.h, 1)).toFixed(2)); th.appendChild(el); }
+    const shot = exShot(ex);
+    if (shot) { th.classList.add("shot"); th.appendChild(shot); d.classList.add("has-shot"); }   // 有接線圖縮圖就用（比單一元件圖示清楚）
+    else if (key) { const c = CATALOG[key]; const el = document.createElement(c.tag); for (const [k, v] of Object.entries(c.attrs)) el.setAttribute(k, v); th.style.setProperty("--s", Math.min(0.9, 60 / Math.max(c.w, 1), 40 / Math.max(c.h, 1)).toFixed(2)); th.appendChild(el); }
     else th.textContent = "▦";
     const lv = document.createElement("span"); lv.className = "lv"; lv.textContent = ex.level + " · " + Object.keys(ex.parts).length + " 元件";
     d.append(th, nm(ex.title), lv); grid.appendChild(d);
@@ -501,7 +508,10 @@ $("btn-align-l").addEventListener("click", () => sim.align("left")); $("btn-alig
 $("btn-grid").addEventListener("click", function() { sim.gridSnap = !sim.gridSnap; this.classList.toggle("on", sim.gridSnap); });
 $("btn-fit").addEventListener("click", () => sim.fit()); $("z-fit").addEventListener("click", () => sim.fit());
 $("z-in").addEventListener("click", () => sim.zoom(1.2)); $("z-out").addEventListener("click", () => sim.zoom(1 / 1.2));
-$("btn-clear").addEventListener("click", () => { if (confirm("清空畫布？")) sim.clear(); });
+// 清空：App 的 WKWebView 不顯示 confirm()（按了會沒反應），改成直接清空、提示可按復原救回
+function clearCanvas() { try { sim.stop(); } catch (_) {} sim.clear(); stepState = null; renderStep(); toast("已清空畫布（程式保留）。按「復原」可以救回來。"); }
+$("btn-clear").addEventListener("click", clearCanvas);
+$("btn-clearall").addEventListener("click", clearCanvas);
 $("btn-clear-console").addEventListener("click", () => { con.innerHTML = ""; });
 $("btn-save").addEventListener("click", () => { saveLocal(); toast("已存到這個瀏覽器"); });
 $("btn-export").addEventListener("click", () => { $("export-dlg").showModal(); });
@@ -751,8 +761,8 @@ function applyBoardUI(board) {
 }
 // ---------- 範例電路（sim/examples.json）＋步驟式接線提示 ----------
 let stepState = null;
-function renderExamples(board) { const g = $("examples-grid"); g.innerHTML = ""; for (const ex of EXAMPLES) { if (board && ex.board !== board) continue; const d = document.createElement("div"); d.className = "ex-card"; d.innerHTML = `<b></b><span class="lv"></span><span class="sm"></span>`; d.querySelector("b").textContent = ex.title; d.querySelector(".lv").textContent = (ex.boardName || ex.board) + " · " + ex.level + " · " + Object.keys(ex.parts).length + " 個元件 · " + ex.wires.length + " 條線"; d.querySelector(".sm").textContent = ex.summary; d.addEventListener("click", () => { loadExample(ex); $("examples-dlg").close(); }); g.appendChild(d); } }
-fetch("examples.json").then((r) => r.json()).then((arr) => { EXAMPLES = arr; renderExamples($("ex-board").value); buildPalette($("search").value.trim()); }).catch(() => {});
+function renderExamples(board) { const g = $("examples-grid"); g.innerHTML = ""; for (const ex of EXAMPLES) { if (board && ex.board !== board) continue; const d = document.createElement("div"); d.className = "ex-card"; d.innerHTML = `<b></b><span class="lv"></span><span class="sm"></span>`; const shot = exShot(ex); if (shot) d.prepend(shot); d.querySelector("b").textContent = ex.title; d.querySelector(".lv").textContent = (ex.boardName || ex.board) + " · " + ex.level + " · " + Object.keys(ex.parts).length + " 個元件 · " + ex.wires.length + " 條線"; d.querySelector(".sm").textContent = ex.summary; d.addEventListener("click", () => { loadExample(ex); $("examples-dlg").close(); }); g.appendChild(d); } }
+Promise.all([fetch("examples.json").then((r) => r.json()), fetch("thumbs/index.json").then((r) => r.json()).catch(() => ({}))]).then(([arr, th]) => { EXAMPLES = arr; THUMBS = th || {}; renderExamples($("ex-board").value); buildPalette($("search").value.trim()); }).catch(() => {});
 $("ex-board").addEventListener("change", function() { renderExamples(this.value); });
 // 開範例清單時預設只列目前板子的範例（四塊板子各有一套）
 $("btn-examples").addEventListener("click", () => { if (!EXAMPLES.length) { toast("範例清單載入中…"); return; } $("ex-board").value = sim.doc.board; renderExamples(sim.doc.board); $("examples-dlg").showModal(); });
