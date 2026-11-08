@@ -489,8 +489,15 @@ export function createSimulator(opts) {
   function restore(s) { resetDynamic(); const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] });  if (engine && engineForBoard(doc.board, lastEngineKind) !== engine.kind) { api._attaching = api.attach(doc.board, lastEngineKind).catch((e) => console.error("換板子重接引擎失敗", e)).finally(() => { api._attaching = null; }); } }
   // ---------- 自動整線（router.js）：直角、避開元件、並行線錯開 ----------
   let autoWire = (() => { try { return localStorage.getItem("sim.autowire") !== "0"; } catch { return true; } })();
-  function obstacles() { return bounds().items.map((it) => ({ x: it.x, y: it.y, w: it.w, h: it.h, soft: it.id === "board" || it.id === "bb" })); }   // soft＝板子／麵包板：腳位在本體裡面，線可以穿；元件本體則要繞
+  function obstacles() { return bounds().items.map((it) => ({ id: it.id, x: it.x, y: it.y, w: it.w, h: it.h, soft: it.id === "board" || it.id === "bb" })); }   // soft＝板子／麵包板：腳位在本體裡面，線可以穿；元件本體則要繞
   /** 重走指定的線（沒給＝全部）；回傳整了幾條 */
+  // 找不到乾淨路徑時退一步：走 L 形（兩種轉法挑壓過元件本體比較少的），至少不會是一條斜線橫過整片麵包板
+  function lPath(a, b, obs) {
+    if (Math.abs(a[0] - b[0]) < 1 || Math.abs(a[1] - b[1]) < 1) return [];
+    const hits = (p, q) => obs.filter((o) => !o.soft).reduce((n, o) => { const x0 = Math.min(p[0], q[0]), x1 = Math.max(p[0], q[0]), y0 = Math.min(p[1], q[1]), y1 = Math.max(p[1], q[1]); return n + (x1 > o.x + 2 && x0 < o.x + o.w - 2 && y1 > o.y + 2 && y0 < o.y + o.h - 2 ? 1 : 0); }, 0);
+    const c1 = [b[0], a[1]], c2 = [a[0], b[1]];
+    return [hits(a, c1) + hits(c1, b) <= hits(a, c2) + hits(c2, b) ? c1 : c2];
+  }
   function routeWires(indices) {
     const obs = obstacles(); const idx = indices || doc.wires.map((w, i) => i);
     const list = idx.map((i) => { const [a, b] = wireEnds(doc.wires[i]); return { i, a, b }; }).filter((x) => x.a && x.b);
@@ -498,7 +505,18 @@ export function createSimulator(opts) {
     const used = new Set();
     for (let i = 0; i < doc.wires.length; i++) if (!idx.includes(i)) for (const p of [wireEnds(doc.wires[i])[0], ...(doc.wires[i].pts || []), wireEnds(doc.wires[i])[1]].filter(Boolean)) used.add(Math.round(p[0] / 10) + "," + Math.round(p[1] / 10));
     let n = 0;
-    for (const x of list.sort((p, q) => (Math.abs(q.a[0] - q.b[0]) + Math.abs(q.a[1] - q.b[1])) - (Math.abs(p.a[0] - p.b[0]) + Math.abs(p.a[1] - p.b[1])))) { const pts = routeWire({ a: x.a, b: x.b, obstacles: obs, used }); if (pts) { doc.wires[x.i].pts = pts; n++; } }
+    // 從板子腳位出發的線先垂直離開板緣 14 px 再開始找路，才不會沿著排針走、看起來像接到旁邊好幾支腳
+    const brd = obs.find((o) => o.soft && o.id === "board");
+    const stub = (ref, p) => {
+      if (!brd || !ref.startsWith("board:")) return null;
+      const d = [[p[0] - brd.x, [brd.x - 14, p[1]]], [brd.x + brd.w - p[0], [brd.x + brd.w + 14, p[1]]], [p[1] - brd.y, [p[0], brd.y - 14]], [brd.y + brd.h - p[1], [p[0], brd.y + brd.h + 14]]];
+      return d.reduce((m, q) => (q[0] < m[0] ? q : m))[1];
+    };
+    for (const x of list.sort((p, q) => (Math.abs(q.a[0] - q.b[0]) + Math.abs(q.a[1] - q.b[1])) - (Math.abs(p.a[0] - p.b[0]) + Math.abs(p.a[1] - p.b[1])))) {
+      const w = doc.wires[x.i], sa = stub(w.a, x.a), sb = stub(w.b, x.b), a = sa || x.a, b = sb || x.b;
+      let pts = routeWire({ a, b, obstacles: obs, used, ownIds: sa || sb ? ["board"] : [] }); if (!pts) pts = lPath(a, b, obs);
+      if (pts) { doc.wires[x.i].pts = [...(sa ? [sa] : []), ...pts, ...(sb ? [sb] : [])]; n++; }
+    }
     return n;
   }
   function bounds() {
@@ -506,7 +524,7 @@ export function createSimulator(opts) {
     const bw = doc.board === "devkit" ? [106.6, 204.3] : [BOARD_ART[doc.board].w, BOARD_ART[doc.board].h]; add(doc.boardPos.x, doc.boardPos.y, bw[0], bw[1]);
     if (doc.breadboard) add(doc.breadboard.x, doc.breadboard.y, BREADBOARD.width, BREADBOARD.height);
     for (const p of Object.values(doc.parts)) add(p.x, p.y, CATALOG[p.type].w, CATALOG[p.type].h);
-    const items = Object.entries(doc.parts).map(([id, p]) => ({ id, x: p.x, y: p.y, w: CATALOG[p.type].w, h: CATALOG[p.type].h }));
+    const items = Object.entries(doc.parts).map(([id, p]) => { const c = CATALOG[p.type], r = ((p.rot || 0) % 180 + 180) % 180; return r === 90 ? { id, x: p.x + (c.w - c.h) / 2, y: p.y + (c.h - c.w) / 2, w: c.h, h: c.w } : { id, x: p.x, y: p.y, w: c.w, h: c.h }; });   // 轉 90° 的元件（直放的電阻）外框也要跟著轉
     items.push({ id: "board", x: doc.boardPos.x, y: doc.boardPos.y, w: bw[0], h: bw[1] }); if (doc.breadboard) items.push({ id: "bb", x: doc.breadboard.x, y: doc.breadboard.y, w: BREADBOARD.width, h: BREADBOARD.height });
     return { minX, minY, maxX, maxY, items };
   }

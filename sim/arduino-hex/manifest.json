@@ -1,0 +1,141 @@
+{
+ "_contract": {
+  "compile_s": 2.19,
+  "core": "arduino:avr",
+  "flash": 4308,
+  "hex_bytes": 12139,
+  "libs": [],
+  "ram": 224,
+  "sha256": "6fff353085bc4ee6e6120336a58b00f0ed6bb5f496067950cc7e7c3fb146bf52"
+ },
+ "uno_blink": {
+  "compile_s": 1.44,
+  "core": "arduino:avr",
+  "flash": 1966,
+  "hex_bytes": 5557,
+  "libs": [],
+  "ram": 200,
+  "sha256": "8e5f468d509c44bf0f6d3f37b22039675f6bd8085a9fa8888499b047b63c2b42"
+ },
+ "uno_breathing": {
+  "compile_s": 0.63,
+  "core": "arduino:avr",
+  "flash": 2170,
+  "hex_bytes": 6134,
+  "libs": [],
+  "ram": 200,
+  "sha256": "e3b7adff4105133dc0d8e94162ace8307fd102142dfd4ab8e4110ae401ad1f64"
+ },
+ "uno_button": {
+  "compile_s": 0.64,
+  "core": "arduino:avr",
+  "flash": 2370,
+  "hex_bytes": 6690,
+  "libs": [],
+  "ram": 207,
+  "sha256": "9907a3f1a6a4859e4052ca78b9975bcafe01e4b0e8d8b7c410d8818c9c9beb1c"
+ },
+ "uno_dice": {
+  "compile_s": 0.66,
+  "core": "arduino:avr",
+  "flash": 3040,
+  "hex_bytes": 8576,
+  "libs": [],
+  "ram": 218,
+  "sha256": "1de9f77bc4c4df5e6fc12dcfb9cf06dc364610c08553588f088db4f5ddf5ef67"
+ },
+ "uno_lcd_i2c": {
+  "compile_s": 0.91,
+  "core": "arduino:avr",
+  "flash": 5858,
+  "hex_bytes": 16500,
+  "libs": [
+   "Wire"
+  ],
+  "ram": 492,
+  "sha256": "83aaf44229fea14c6664adbc4c7f4bd55f7942445a083048e11019c1fce522b3"
+ },
+ "uno_nightlight": {
+  "compile_s": 0.65,
+  "core": "arduino:avr",
+  "flash": 2266,
+  "hex_bytes": 6404,
+  "libs": [],
+  "ram": 232,
+  "sha256": "0b0af7f1d573ea4bf01baca9a4bb47101fcfce73b9c398df551d5c1ace944b97"
+ },
+ "uno_pot_serial": {
+  "compile_s": 0.7,
+  "core": "arduino:avr",
+  "flash": 3502,
+  "hex_bytes": 9864,
+  "libs": [],
+  "ram": 244,
+  "sha256": "5274d98a049f8199942e928925eb6e284ad769c3fa8d5a8b158f5a980bb8f145"
+ },
+ "uno_reaction": {
+  "compile_s": 0.66,
+  "core": "arduino:avr",
+  "flash": 3248,
+  "hex_bytes": 9161,
+  "libs": [],
+  "ram": 328,
+  "sha256": "62ebbe9af629df9ead6296d2946d3d084422e1476f099601db99e8ec8ed2b55e"
+ },
+ "uno_rgb": {
+  "compile_s": 1.27,
+  "core": "arduino:avr",
+  "flash": 2370,
+  "hex_bytes": 6690,
+  "libs": [],
+  "ram": 216,
+  "sha256": "714ed7d3b2f40b79c77f5fb833c9e7b29169c93626983d5d3192a66aea7afa8c"
+ },
+ "uno_serial_led": {
+  "compile_s": 0.67,
+  "core": "arduino:avr",
+  "flash": 3818,
+  "hex_bytes": 10756,
+  "libs": [],
+  "ram": 283,
+  "sha256": "d9bf81d6c2fc6ce6b5d30c34c65c8dd0d436eb656c6a067ee1fb501432138a9e"
+ },
+ "uno_servo_sweep": {
+  "compile_s": 0.9,
+  "core": "arduino:avr",
+  "flash": 3290,
+  "hex_bytes": 9271,
+  "libs": [
+   "Servo"
+  ],
+  "ram": 237,
+  "sha256": "d5a2d6e11a055b0b8401119ccb96f8d1fe9e5e905a4889875ab5d4ba6d298e15"
+ },
+ "uno_tone_scale": {
+  "compile_s": 0.69,
+  "core": "arduino:avr",
+  "flash": 3578,
+  "hex_bytes": 10081,
+  "libs": [],
+  "ram": 273,
+  "sha256": "0f31b61e695c7f9c063dcd90461489c3bc95c06ce81e0f57bc1b3cbf018a5853"
+ },
+ "uno_traffic": {
+  "compile_s": 0.69,
+  "core": "arduino:avr",
+  "flash": 2150,
+  "hex_bytes": 6068,
+  "libs": [],
+  "ram": 208,
+  "sha256": "45de635f366cacb98e86c6e261c028f7139cab5304a15ceeae58d72ad2e32720"
+ },
+ "uno_ultrasonic": {
+  "compile_s": 0.67,
+  "core": "arduino:avr",
+  "flash": 3952,
+  "hex_bytes": 11141,
+  "libs": [],
+  "ram": 248,
+  "sha256": "c8441339d0b97917152d58a158df09050f962c64a3dc8a7bf2c15eef0e349d85"
+ }
+}

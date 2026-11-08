@@ -14,7 +14,7 @@ const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
  * @param {number} [o.margin] 障礙外擴 px
  * @returns {[number,number][]|null} 轉折點（空陣列＝直線即可）
  */
-export function routeWire({ a, b, obstacles, used = new Set(), grid = 10, margin = 5 }) {
+export function routeWire({ a, b, obstacles, used = new Set(), grid = 10, margin = 5, ownIds = [] }) {   // ownIds：起終點雖在外面、仍算自己的障礙（線從板緣外起算時，板子還是自己的）
   const xs = [a[0], b[0], ...obstacles.flatMap((o) => [o.x, o.x + o.w])], ys = [a[1], b[1], ...obstacles.flatMap((o) => [o.y, o.y + o.h])];
   const pad = 60;
   const minX = Math.floor((Math.min(...xs) - pad) / grid), minY = Math.floor((Math.min(...ys) - pad) / grid);
@@ -28,13 +28,16 @@ export function routeWire({ a, b, obstacles, used = new Set(), grid = 10, margin
   // 所有元件的外包框（再外擴 20 px）＝版面。版面外每格加價，線才會貼著元件走，不會跑到畫布外圍繞大圈
   const hull = { x0: Math.min(...obstacles.map((o) => o.x)) - 20, y0: Math.min(...obstacles.map((o) => o.y)) - 20, x1: Math.max(...obstacles.map((o) => o.x + o.w)) + 20, y1: Math.max(...obstacles.map((o) => o.y + o.h)) + 20 };
   const outside = (c) => { const x = (c[0] + minX) * grid, y = (c[1] + minY) * grid; return x < hull.x0 || x > hull.x1 || y < hull.y0 || y > hull.y1; };
-  obstacles.forEach((o, oi) => {
+  // 實體元件（hard）優先記：同一格同時在麵包板（soft）裡又在某元件外框邊上時，要算那個元件的，不然會把元件旁的孔當成走不進去
+  const bodyOf = new Uint16Array(W * H);   // 0＝不在任何本體裡，n＝在第 n 個障礙的本體裡
+  obstacles.map((o, oi) => oi).sort((i, j) => (obstacles[i].soft ? 1 : 0) - (obstacles[j].soft ? 1 : 0)).forEach((oi) => {
+    const o = obstacles[oi];
     const c0 = Math.floor((o.x - margin) / grid) - minX, c1 = Math.ceil((o.x + o.w + margin) / grid) - minX;
     const r0 = Math.floor((o.y - margin) / grid) - minY, r1 = Math.ceil((o.y + o.h + margin) / grid) - minY;
     for (let r = Math.max(0, r0); r <= Math.min(H - 1, r1); r++) for (let c = Math.max(0, c0); c <= Math.min(W - 1, c1); c++) {
       if (!blocked[r * W + c]) blocked[r * W + c] = oi + 1;
       const x = (c + minX) * grid, y = (r + minY) * grid;
-      if (x > o.x + 2 && x < o.x + o.w - 2 && y > o.y + 2 && y < o.y + o.h - 2) body[r * W + c] = 1;
+      if (x > o.x + 2 && x < o.x + o.w - 2 && y > o.y + 2 && y < o.y + o.h - 2) { body[r * W + c] = 1; if (!bodyOf[r * W + c]) bodyOf[r * W + c] = oi + 1; }
     }
   });
   const s = toCell(a), g = toCell(b);
@@ -44,7 +47,8 @@ export function routeWire({ a, b, obstacles, used = new Set(), grid = 10, margin
   const BUBBLE = 5;
   const dS = (c) => Math.abs(c[0] - s[0]) + Math.abs(c[1] - s[1]), dG = (c) => Math.abs(c[0] - g[0]) + Math.abs(c[1] - g[1]);
   // 腳位所屬的元件（含板子）整個外框都可以走（被鄰居包住時還走得出來），每格加價 2；別的元件只有腳位附近 BUBBLE 格可借道，每格加價 5
-  const own = (c, ob) => (ob === sObs && sObs) || (ob === gObs && gObs);
+  const ownSet = new Set(ownIds.map((id) => obstacles.findIndex((o) => o.id === id) + 1).filter(Boolean));
+  const own = (c, ob) => (ob === sObs && sObs) || (ob === gObs && gObs) || ownSet.has(ob);
   const near = (c, ob) => own(c, ob) || dS(c) <= BUBBLE || dG(c) <= BUBBLE;
   const foreign = (c, ob) => !own(c, ob);
   const key = (c) => c[0] + "," + c[1];
@@ -60,13 +64,16 @@ export function routeWire({ a, b, obstacles, used = new Set(), grid = 10, margin
     for (let d = 0; d < 4; d++) {
       const nc = [cur.c[0] + DIRS[d][0], cur.c[1] + DIRS[d][1]];
       if (nc[0] < 0 || nc[1] < 0 || nc[0] >= W || nc[1] >= H) continue;
-      const ob = blocked[nc[1] * W + nc[0]]; const isBlocked = ob !== 0; const inBody = body[nc[1] * W + nc[0]] === 1;
-      if (isBlocked && !near(nc, ob)) continue;
-      if (isBlocked && inBody && foreign(nc, ob)) continue;         // 別人的本體絕不穿
+      const ob = blocked[nc[1] * W + nc[0]], bo = bodyOf[nc[1] * W + nc[0]]; const isBlocked = ob !== 0;
+      const hardEdge = isBlocked && !obstacles[ob - 1].soft;                       // 元件外框邊（margin）
+      if (hardEdge && !near(nc, ob)) continue;
+      if (bo && !obstacles[bo - 1].soft && foreign(nc, bo) && dS(nc) > 1 && dG(nc) > 1) continue;   // 別人的本體絕不穿（麵包板孔緊貼元件時，起終點那一格例外）
       let step = 1;
       if (cur.dir !== -1 && cur.dir !== d) step += 2;              // 轉彎
       if (used.has(key(nc))) step += 6;                             // 和別條線重疊：寧可多轉一次也要錯開
-      if (isBlocked) step += foreign(nc, ob) ? 5 : (inBody ? (obstacles[ob - 1].soft ? 8 : 40) : 1);   // 自己的 margin 便宜；板子本體（腳位在裡面）加 8；元件本體（IC、模組）加 40＝幾乎一定繞外圍；借道鄰居 margin 加 5
+      // 本體：板子 30（線先從板緣垂直出來，不必再橫越板子壓過別排腳位）、麵包板 8、元件（IC、模組）40＝幾乎一定繞外圍；元件外框邊：自己的 1、鄰居的 5
+      if (bo) step += obstacles[bo - 1].soft ? (obstacles[bo - 1].id === "board" ? 30 : 8) : 40;
+      else if (hardEdge) step += foreign(nc, ob) ? 5 : 1;
       if (!isBlocked && outside(nc)) step += 2;                       // 版面外：能貼著走就不要跑出去
       const gc = cur.gc + step, k = key(nc) + "|" + d;
       if (gc < (best.get(k) ?? 1e9)) { best.set(k, gc); came.set(k, key(cur.c) + "|" + cur.dir); open.push({ c: nc, dir: d, gc, f: gc + h(nc) }); }

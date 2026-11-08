@@ -8,7 +8,7 @@ const RAIL_HOLES = 25;
 // ---- 版面常數（px，原點為整張左上）----
 const X0 = 20; // 第 1 欄的 x
 const WIDTH = 319; // 20 + 29*9.6 + 20.6 → 整數
-const HEIGHT = 184;
+const HEIGHT = 194; // 2026-11-08：中央溝槽改成真實的 3 格（0.3 吋），DIP IC 才能跨溝插在 e／f 列
 
 const ROWS_UPPER = ['a', 'b', 'c', 'd', 'e'];
 const ROWS_LOWER = ['f', 'g', 'h', 'i', 'j'];
@@ -16,7 +16,7 @@ const ROWS_LOWER = ['f', 'g', 'h', 'i', 'j'];
 const Y_TOP_PLUS = 20;
 const Y_TOP_MINUS = Y_TOP_PLUS + PITCH;
 const Y_A = Y_TOP_MINUS + PITCH * 1.5; // 44
-const Y_F = Y_A + PITCH * 4 + PITCH * 2; // e 與 f 之間隔 2 個 pitch（中央溝槽）
+const Y_F = Y_A + PITCH * 4 + PITCH * 3; // e 與 f 之間隔 3 個 pitch（中央溝槽，同真實麵包板與 DIP 寬度）
 const Y_BOT_PLUS = Y_F + PITCH * 4 + PITCH * 1.5;
 const Y_BOT_MINUS = Y_BOT_PLUS + PITCH;
 
