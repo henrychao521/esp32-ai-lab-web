@@ -76,7 +76,7 @@ svg.sim-wires path.wire-hit{fill:none;stroke:transparent;stroke-width:18;stroke-
 .ex-card{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);cursor:pointer;display:flex;flex-direction:column;gap:4px}
 .ex-card:hover{border-color:var(--accent)}
 .ex-card b{font-size:14px}.ex-card .lv{font-size:11px;color:var(--accent)}.ex-card .sm{font-size:12px;color:var(--muted)}
-#steps{display:none;position:absolute;left:10px;top:52px;z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px}
+#steps{display:none;position:relative;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px}
 #steps b{display:block;margin-bottom:4px}#steps-text{white-space:pre-line;max-height:min(42vh,320px);overflow:auto;line-height:1.55}#steps .nav{display:flex;gap:6px;margin-top:8px;align-items:center}#steps .muted{font-size:12px}
 svg.sim-wires path.temp{fill:none;stroke:var(--accent);stroke-width:3;stroke-dasharray:6 4;display:none}
 svg.sim-wires circle.wp{fill:#fff;stroke:var(--accent);stroke-width:2;pointer-events:all;cursor:move}
@@ -97,10 +97,17 @@ svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;
 @media (prefers-color-scheme:dark){.pb-w{background:#3a2a12;border-color:#9a5b1a;color:#f3e4d0}.pb-w.bad{background:#4a1d1d;border-color:#b33}}
 @media (prefers-color-scheme:dark){.sch-layer svg{--sch-ink:#e7e5e4;--sch-wire:#7cb3ff;--sch-muted:#9a9ea8}}
 .canvas-tools button{background:var(--panel)}
-#minimap{position:absolute;left:10px;bottom:10px;width:150px;height:100px;background:rgba(127,127,127,.15);border:1px solid var(--line);border-radius:6px;z-index:3;cursor:pointer;pointer-events:none;opacity:.55}   /* 只顯示、不吃點擊：原本會蓋住左下角的腳位，拉線變成平移 */
+#minimap{position:absolute;right:56px;top:10px;width:150px;height:100px;background:rgba(127,127,127,.15);border:1px solid var(--line);border-radius:6px;z-index:3;cursor:pointer;pointer-events:none;opacity:.55}   /* 只顯示、不吃點擊：原本會蓋住左下角的腳位，拉線變成平移 */
 #tooltip{position:absolute;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;pointer-events:none;display:none;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
 #tooltip b{display:block}#tooltip .v{color:var(--accent);font-family:ui-monospace,monospace}
-#toasts{position:absolute;left:50%;top:8px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:6;pointer-events:none}
+/* 2026-11-08 使用者：說明對話框會擋住電路 → 提示、接線步驟、數值調整統一放畫布下方（#dock） */
+#dock{position:absolute;left:10px;right:56px;bottom:10px;z-index:6;display:flex;flex-direction:column;align-items:flex-start;gap:6px;pointer-events:none;max-height:55%}
+#dock>*{pointer-events:auto;max-width:min(560px,100%)}
+#toasts{display:flex;flex-direction:column;gap:6px;pointer-events:none!important}
+#qedit{display:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px;width:100%}
+#qedit .hd{display:flex;align-items:center;gap:8px;margin-bottom:6px}#qedit .hd b{flex:1}
+#qedit .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0}#qedit .row label{min-width:64px;color:var(--muted);font-size:12px}
+#qedit input[type=text]{width:84px}#qedit input[type=range]{flex:1;min-width:120px}#qedit .val{min-width:56px;font-variant-numeric:tabular-nums}
 .toast{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);padding:6px 10px;border-radius:6px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.18);animation:toastin .2s}
 .toast.warn{border-left-color:var(--warn)}.toast.bad{border-left-color:var(--bad)}
 @keyframes toastin{from{opacity:0;transform:translateY(-6px)}to{opacity:1}}
@@ -179,7 +186,7 @@ html,body{touch-action:manipulation}
  .sch-layer .sch-hint{display:none}.sch-layer .sch-tools{bottom:52px}
  .canvas-tools.open{display:flex}
  #tools-toggle{display:inline-block!important}
- #steps{max-width:min(320px,calc(100vw - 20px))}
+ #dock{right:10px;bottom:6px;max-height:48%}
  #examples-close,#examples-dlg .hd .muted,#push-close,#teacher-close{display:none}
  dialog .hd,dialog>div:first-child{padding-right:48px!important}
  .sheet{max-height:72vh}
@@ -216,7 +223,7 @@ dialog{position:relative}
   <button id="btn-step" class="icon" title="單步（真韌體引擎才有）" disabled>⏭︎</button>
   <button id="btn-reset" class="icon" title="重置板子">⟲</button>
   <select id="speed" title="模擬速度"><option value="1">即時</option><option value="0.5">0.5×</option><option value="0.25">0.25×</option></select>
-  <span class="status"><span id="dot" class="dot"></span><span id="status-text" title="板子一放上畫布就有 3V3／5V／GND；不寫程式也能點 LED。按執行才會跑程式。">已供電，待執行</span></span>
+  <span class="status"><span id="dot" class="dot"></span><span id="status-text" title="按 ▶ 執行才會通電、跑程式；按停止就斷電。">未通電：按 ▶ 執行開始模擬</span></span>
   <span class="status" id="power-ind" title="電源指示：LED 與模組的總電流（估）">⚡︎ 0 mA</span>
   <span class="sep"></span>
   <button id="btn-wiremode" class="icon" title="接線模式：執行中也只拉線不操作元件">⌁ 接線</button><button id="btn-route" class="icon" title="整理走線：全部線重走成直角、避開元件（新拉的線與拖過的元件會自動整）">⌐ 整線</button>
@@ -257,7 +264,7 @@ dialog{position:relative}
   <button id="tools-toggle" class="icon" title="縮放與屬性">⊕</button>
   <canvas id="minimap" width="150" height="100"></canvas>
   <div id="tooltip"></div>
-  <div id="toasts"></div>
+  <div id="dock"><div id="toasts"></div><div id="qedit"></div>
   <div id="steps"><b id="steps-title"></b><div id="steps-text"></div><div class="nav"><button id="steps-prev" class="icon">‹</button><span id="steps-pos" class="muted"></span><button id="steps-next" class="icon">›</button><span style="flex:1"></span><button id="steps-close" class="icon">✕</button></div></div>
   <dialog id="push-dlg" style="border:0;border-radius:12px;padding:0;max-width:640px;width:94vw;background:var(--panel);color:var(--ink)">
     <div class="hd" style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)"><b>推到實機</b><span class="muted" id="push-board"></span><span style="flex:1"></span><button id="push-close">關閉</button></div>
@@ -336,7 +343,7 @@ dialog{position:relative}
     <div class="editor-bar"><select id="snippets"><option value="">程式範例…</option></select><button id="btn-check">檢查語法</button><span class="muted" id="editor-note">同一份程式之後可直接推到真板子；保護檢查的問題會在程式裡畫底線</span></div>
     <div id="cm"></div>
   </div></div>
-  <div class="pane" id="pane-console"><div class="pane-col"><div id="console"></div><div class="bar"><button id="btn-clear-console">清除</button><span id="sensors"></span></div></div></div>
+  <div class="pane" id="pane-console"><div class="pane-col"><div id="console"></div><div class="bar"><button id="btn-clear-console">清除</button><span id="sensors"></span></div></div></div></div>
   <div class="pane" id="pane-measure"><div class="pane-col"><div class="pane-body" id="measure">
     <div id="meter"><span>萬用電表：</span><span class="muted" id="meter-hint">按住 Alt 點兩個腳位量電壓差</span><span class="big" id="meter-v">—</span><button id="meter-clear" class="icon">✕</button></div>
     <div id="power" class="muted"></div>
@@ -467,8 +474,8 @@ const sim = createSimulator({
   onWarnings: (ws) => { renderIssues(ws); updatePower(); },
   onHover: showTooltip,
   onStatus: (s) => {
-    if ("running" in s) { $("btn-run").disabled = s.running; $("btn-pause").disabled = !s.running; $("dot").classList.toggle("on", s.running); $("status-text").textContent = s.running ? "執行中（可操作按鍵、旋鈕）" : "已供電，待執行"; $("status-text").title = s.running ? "" : "板子一放上畫布就有 3V3／5V／GND；不寫程式也能點 LED。按執行才會跑程式。"; }
-    if ("selected" in s || "selection" in s) renderProps(s);
+    if ("running" in s) { $("btn-run").disabled = s.running; $("btn-pause").disabled = !s.running; $("dot").classList.toggle("on", s.running); $("status-text").textContent = sim.doc.board === "power" ? (s.running ? "通電中（可操作開關、按鍵、旋鈕）" : "未通電：按 ▶ 通電") : s.running ? "執行中（可操作按鍵、旋鈕）" : "未通電：按 ▶ 執行開始模擬"; $("status-text").title = s.running ? "" : "按 ▶ 執行才會通電、跑程式；按停止就斷電。"; }
+    if ("selected" in s || "selection" in s) { renderProps(s); renderQuickEdit(); }
     if ("undo" in s) { $("btn-undo").disabled = !s.undo; $("btn-redo").disabled = !s.redo; }
     if ("toast" in s) toast(s.toast.text, s.toast.kind);
     if ("view" in s || "bounds" in s) drawMinimap();
@@ -493,7 +500,8 @@ $("engine").addEventListener("change", async function() {
   $("engine").disabled = false; $("btn-run").disabled = false; $("engine-load").style.display = "none";
 });
 $("firmware").addEventListener("change", function() { if (this.value) { toast("Arduino C 要在電腦上編譯，這裡只能執行已編譯的映像；按 ▶ 執行開機", "info"); log("已選 Arduino 映像：" + this.options[this.selectedIndex].text + "。Arduino C 要在電腦上編譯，這裡只能執行。", "sys"); } });
-$("btn-run").addEventListener("click", async () => { if (isUno()) { saveLocal(); await runUno(); return; } if ($("firmware").value) { const r = await sim.runFirmware($("firmware").value); if (!r.ok) log("無法開機：" + (r.msg || ""), "err"); else log("Arduino 映像開機中（無 REPL、無 lab 模組；主控台只有韌體自己的輸出）", "sys"); return; } const code = getCode(); saveLocal(); const r = await sim.run(code); if (!r.ok) { log("無法執行：" + (r.msg || "") + (r.line ? "（第 " + r.line + " 行）" : ""), "err"); showPane("console"); } });
+$("btn-run").addEventListener("click", async () => { if (sim.doc.board === "power") { await sim.run("", "power"); return; }   // 電源供應器：只通電，沒有程式
+  if (isUno()) { saveLocal(); await runUno(); return; } if ($("firmware").value) { const r = await sim.runFirmware($("firmware").value); if (!r.ok) log("無法開機：" + (r.msg || ""), "err"); else log("Arduino 映像開機中（無 REPL、無 lab 模組；主控台只有韌體自己的輸出）", "sys"); return; } const code = getCode(); saveLocal(); const r = await sim.run(code); if (!r.ok) { log("無法執行：" + (r.msg || "") + (r.line ? "（第 " + r.line + " 行）" : ""), "err"); showPane("console"); } });
 $("btn-pause").addEventListener("click", () => sim.stop());
 $("btn-step").addEventListener("click", () => sim.step());
 $("btn-reset").addEventListener("click", () => { sim.reset(); log("板子已重置", "sys"); });
@@ -761,7 +769,8 @@ function applyBoardUI(board) {
   const uno = board === "uno", pw = board === "power";   // pw：電源供應器（無開發板）
   const vis = (id, on) => { const el = $(id); if (!el) return; const w = el.closest(".more-item"); (w || el).style.display = on ? "" : "none"; };
   vis("engine", !uno && !pw); vis("btn-hex", uno); vis("btn-push", !uno && !pw); vis("snippets", !uno && !pw);
-  for (const id of ["btn-run", "btn-pause", "btn-step", "btn-reset", "btn-check"]) vis(id, !pw);
+  for (const id of ["btn-step", "btn-reset", "btn-check"]) vis(id, !pw);
+  $("btn-run").textContent = pw ? "▶ 通電" : "▶ 執行"; $("btn-pause").title = pw ? "斷電" : "停止（斷電）";
   if (uno || pw) vis("firmware", false);
   document.body.classList.toggle("board-power", pw);
   if (pw) { if (editorRef && !/^# 電源供應器模式/.test(getCode())) setCode(POWER_NOTE); }
@@ -769,6 +778,46 @@ function applyBoardUI(board) {
   $("editor-note").textContent = pw ? "電源供應器模式：純電路，不用寫程式" : uno ? "Arduino 程式（C++）：範例已預先編譯；改了程式要在電腦上編譯成 .hex 再匯入" : "同一份程式之後可直接推到真板子；保護檢查的問題會在程式裡畫底線";
   $("btn-check").textContent = uno ? "編譯說明" : "檢查語法";
   if (editorRef) setEditorLang(board);
+}
+// ---------- 數值調整（點元件或電源供應器，下方出現）2026-11-08 使用者：電壓、電阻、電容點到就能調 ----------
+// 每個屬性：常用值下拉＋可自訂（電阻 4.7k、電容 22u、頻率 3…）；電源供應器 V+ 用滑桿；可變電阻用滑桿轉旋鈕
+const QE = {
+  value: (type) => type === "capacitor" ? { label: "電容值", unit: "F", re: /^\d+(\.\d+)?\s*[pnuµm]?$/i, fmt: (v) => String(v).replace(/u$/, " µ") + "F", hint: "例：22u、470n" } : { label: "電阻值", unit: "Ω", re: /^\d+(\.\d+)?\s*[kKmM]?$/, fmt: (v) => v + " Ω", hint: "例：4.7k、330" },
+  vpk: () => ({ label: "振幅", re: /^\d+(\.\d+)?$/, fmt: (v) => v + " Vpk", hint: "0～12" }),
+  freq: () => ({ label: "頻率", re: /^\d+(\.\d+)?$/, fmt: (v) => v + " Hz", hint: "0.1～2000" }),
+  offset: () => ({ label: "直流偏壓", re: /^-?\d+(\.\d+)?$/, fmt: (v) => v + " V", hint: "−5～10" }),
+  wave: () => ({ label: "波形", fmt: (v) => ({ sine: "正弦波", square: "方波", triangle: "三角波" }[v] || v) }),
+  color: () => ({ label: "顏色", fmt: (v) => ({ red: "紅", green: "綠", blue: "藍", yellow: "黃", orange: "橘", white: "白" }[v] || v) }),
+  model: () => ({ label: "型號", fmt: (v) => v }), kind: () => ({ label: "種類", fmt: (v) => v }),
+};
+function renderQuickEdit() {
+  const box = $("qedit"), sel = sim.selected, parts = sim.doc.parts; box.innerHTML = "";
+  const row = (label) => { const r = document.createElement("div"); r.className = "row"; const l = document.createElement("label"); l.textContent = label; r.appendChild(l); box.appendChild(r); return r; };
+  const head = (title) => { const h = document.createElement("div"); h.className = "hd"; const b = document.createElement("b"); b.textContent = title; const x = document.createElement("button"); x.className = "icon"; x.textContent = "✕"; x.title = "關閉（點空白處也會關）"; x.addEventListener("click", () => { box.style.display = "none"; }); h.append(b, x); box.appendChild(h); };
+  const slider = (label, min, max, step, val, fmt, onInput) => { const r = row(label); const s2 = document.createElement("input"); s2.type = "range"; s2.min = min; s2.max = max; s2.step = step; s2.value = val; const v = document.createElement("span"); v.className = "val"; v.textContent = fmt(val); s2.addEventListener("input", () => { v.textContent = fmt(s2.value); onInput(s2.value); }); r.append(s2, v); };
+  if (sel === "board" && sim.doc.board === "power") {
+    head("電源供應器");
+    slider("V+ 電壓", 1, 15, 0.5, parseFloat(sim.doc.boardAttrs?.vplus) || 9, (v) => Number(v).toFixed(1) + " V", (v) => sim.setBoardAttr("vplus", String(v)));
+    const n = document.createElement("div"); n.className = "muted"; n.style.fontSize = "12px"; n.textContent = "5V 端子固定 5 V；V+ 可調。555 要 4.5 V 以上才會動。"; box.appendChild(n);
+    box.style.display = "block"; return;
+  }
+  const p = sel && parts[sel], c = p && CATALOG[p.type];
+  if (!p || (!c.attrOptions && p.type !== "potentiometer")) { box.style.display = "none"; return; }
+  head(sel + "　" + c.label);
+  if (p.type === "potentiometer") slider("旋鈕", 0, 100, 1, Math.round((sim.ui[sel]?.value ?? 0.5) * 100), (v) => v + " %", (v) => { sim.ui[sel] = { ...(sim.ui[sel] || {}), value: v / 100 }; sim.tick(); });
+  for (const [k, opts] of Object.entries(c.attrOptions || {})) {
+    const d = (QE[k] || (() => ({ label: k, fmt: (v) => v })))(p.type); const r = row(d.label);
+    const s2 = document.createElement("select"); const cur = String(p.attrs[k] ?? "");
+    const all = opts.includes(cur) || !cur ? opts : [cur, ...opts];
+    for (const o of all) { const op = document.createElement("option"); op.value = o; op.textContent = d.fmt(o); if (o === cur) op.selected = true; s2.appendChild(op); }
+    s2.addEventListener("change", () => sim.setAttr(sel, k, s2.value)); r.appendChild(s2);
+    if (d.re) {   // 自訂值
+      const inp = document.createElement("input"); inp.type = "text"; inp.placeholder = "自訂"; inp.title = d.hint; const ok = document.createElement("button"); ok.textContent = "套用";
+      const apply = () => { const v = inp.value.trim().replace("µ", "u"); if (!d.re.test(v)) { toast("格式不對：" + d.hint, "warn"); return; } sim.setAttr(sel, k, v); };
+      ok.addEventListener("click", apply); inp.addEventListener("keydown", (e) => { if (e.key === "Enter") apply(); }); r.append(inp, ok);
+    }
+  }
+  box.style.display = "block";
 }
 // ---------- 範例電路（sim/examples.json）＋步驟式接線提示 ----------
 let stepState = null;

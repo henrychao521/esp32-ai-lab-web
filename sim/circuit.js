@@ -62,8 +62,8 @@ export const BOARDS = {
   xiao_esp32s3: { name: "XIAO ESP32S3", power: { "3V3": 3.3, "5V": 5.0, GND: 0 }, gpios: [1, 2, 3, 4, 5, 6, 7, 8, 9, 43, 44],
                   usable: [1, 2, 3, 4, 5, 6, 7, 8, 9, 43, 44], adc: [1, 2, 3, 4, 5, 6, 7, 8, 9], input_only: [], reserved: {} },
   // Arduino UNO R3（ATmega328P，引擎 C avr8js）：5 V 系統。腳號 D0–D13＝0–13、A0–A5＝14–19；PWM 只有 D3/5/6/9/10/11；A4/A5 兼 I2C SDA/SCL
-  // 電源供應器（無開發板）：只有 9V、5V、GND 三個端子，沒有 GPIO；純電路（555、電晶體、整流、RC）用。2026-11-08 使用者：不用開發板、單純接電路的範例
-  power: { name: "電源供應器（無開發板）", power: { "9V": 9.0, "5V": 5.0, GND: 0 }, gpios: [], usable: [], adc: [], input_only: [], reserved: {} },
+  // 電源供應器（無開發板）：V+（可調 1～15 V，預設 9 V）、5V、GND 三個端子，沒有 GPIO；純電路（555、電晶體、整流、RC）用。2026-11-08 使用者：不用開發板、單純接電路的範例
+  power: { name: "電源供應器（無開發板）", power: { "V+": 9.0, "5V": 5.0, GND: 0 }, gpios: [], usable: [], adc: [], input_only: [], reserved: {} },
   uno: { name: "Arduino UNO", power: { "5V": 5.0, "3V3": 3.3, VIN: 5.0, GND: 0 }, vlogic: 5.0, gpioROut: 25,
          gpios: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
          usable: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], adc: [14, 15, 16, 17, 18, 19], pwm: [3, 5, 6, 9, 10, 11], input_only: [],
@@ -155,7 +155,8 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
   const nonlin = [];   // {type:"diode", a, b, Is, n, part} | {type:"npn", c, b, e, Is, bf, br, part}
 
   // 電源：GND 是參考；3V3／5V／VIN 是接 GND 的理想源（內阻 0.5Ω 以便算短路電流）
-  for (const [name, v] of Object.entries(B.power)) if (v > 0) addV(node("board:" + name), -1, v, 0.5, "supply:" + name);
+  // io.unpowered：還沒按 ▶ 執行／通電，所有電源端子 0 V（2026-11-08 使用者：一點開不要就在運作）；circuit.supply 可覆寫電壓（電源供應器可調 V+）
+  for (const [name, v0] of Object.entries(B.power)) { const v = (circuit.supply && circuit.supply[name] != null) ? circuit.supply[name] : v0; if (v0 > 0) addV(node("board:" + name), -1, io.unpowered ? 0 : v, 0.5, "supply:" + name); }
 
   // GPIO
   const gpioElems = {};

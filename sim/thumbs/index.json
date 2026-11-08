@@ -577,35 +577,35 @@
 },
 "ps_led@power": {
 "file": "thumbs/ps_led_at_power.webp",
-"hash": "19252aae6b4b"
+"hash": "d3be0b7ed2b6"
 },
 "ps_rc@power": {
 "file": "thumbs/ps_rc_at_power.webp",
-"hash": "521da2ae7c46"
+"hash": "4d8dbc8eccc5"
 },
 "ps_npn_switch@power": {
 "file": "thumbs/ps_npn_switch_at_power.webp",
-"hash": "a14a7b2fe884"
+"hash": "ab109b0bc5a2"
 },
 "ps_555_blink@power": {
 "file": "thumbs/ps_555_blink_at_power.webp",
-"hash": "aceb1ab3aca6"
+"hash": "a185bb4ba35b"
 },
 "ps_555_alternate@power": {
 "file": "thumbs/ps_555_alternate_at_power.webp",
-"hash": "addc9017547f"
+"hash": "7117c14115d6"
 },
 "ps_555_pot@power": {
 "file": "thumbs/ps_555_pot_at_power.webp",
-"hash": "fa49df699e62"
+"hash": "c52646300b66"
 },
 "ps_555_tone@power": {
 "file": "thumbs/ps_555_tone_at_power.webp",
-"hash": "d0df419eb65b"
+"hash": "f60cdeb2b289"
 },
 "ps_555_mono@power": {
 "file": "thumbs/ps_555_mono_at_power.webp",
-"hash": "5a35c2f434e2"
+"hash": "47a12999d5c6"
 },
 "ps_halfwave@power": {
 "file": "thumbs/ps_halfwave_at_power.webp",
@@ -613,11 +613,11 @@
 },
 "ps_555_schmitt@power": {
 "file": "thumbs/ps_555_schmitt_at_power.webp",
-"hash": "ac66a0c0e300"
+"hash": "9c0f68adc6fe"
 },
 "ps_wave_chain@power": {
 "file": "thumbs/ps_wave_chain_at_power.webp",
-"hash": "fc19c9d0f705"
+"hash": "4187b6ded662"
 },
 "ps_bridge@power": {
 "file": "thumbs/ps_bridge_at_power.webp",

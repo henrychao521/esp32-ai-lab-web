@@ -87,12 +87,12 @@ export const BOARD_ART = {
   },
   power: {
     w: 110, h: 96, color: "#2a2d33", title: "電源供應器", hideTitle: true, screen: null, buttons: [], led: null,
-    art: `<rect x="8" y="8" width="62" height="24" rx="3" fill="#0d1a10" stroke="#555"/><text x="39" y="25" fill="#5f5" font-size="13" text-anchor="middle" font-family="ui-monospace,monospace">9.00V</text>
-      <text x="8" y="44" fill="#ccc" font-size="7" font-family="sans-serif">電源供應器</text><text x="8" y="54" fill="#888" font-size="5.5" font-family="sans-serif">無開發板・通電就會動</text>
+    art: `<rect x="8" y="8" width="62" height="24" rx="3" fill="#0d1a10" stroke="#555"/><text class="psu-v" x="39" y="25" fill="#5f5" font-size="13" text-anchor="middle" font-family="ui-monospace,monospace">9.00V</text>
+      <text x="8" y="44" fill="#ccc" font-size="7" font-family="sans-serif">電源供應器</text><text x="8" y="54" fill="#888" font-size="5.5" font-family="sans-serif">無開發板・按 ▶ 通電</text>
       <circle cx="26" cy="74" r="11" fill="#444" stroke="#777"/><line x1="26" y1="74" x2="31" y2="66" stroke="#ddd" stroke-width="2"/>
       <rect x="86" y="10" width="22" height="78" rx="3" fill="#1d1f24" stroke="#444"/>
       <circle cx="97" cy="22" r="5.5" fill="none" stroke="#e53935" stroke-width="2"/><circle cx="97" cy="48" r="5.5" fill="none" stroke="#fb8c00" stroke-width="2"/><circle cx="97" cy="74" r="5.5" fill="none" stroke="#9e9e9e" stroke-width="2"/>`,
-    pins: [["9V", 97, 22, "9V"], ["5V", 97, 48, "5V"], ["GND", 97, 74, "GND"]],
+    pins: [["V+", 97, 22, "V+"], ["5V", 97, 48, "5V"], ["GND", 97, 74, "GND"]],
   },
   tdisplay_s3: {
     w: 150, h: 280, color: "#141414", title: "T-Display S3", screen: { x: 40, y: 60, w: 70, h: 130, native: [170, 320] },

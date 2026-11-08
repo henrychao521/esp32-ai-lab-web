@@ -219,12 +219,12 @@ export function createSimulator(opts) {
     const wires = [];
     for (const w of doc.wires) { const a = w.a.startsWith("board:") ? boardRefOf(w.a.slice(6)) : w.a, b = w.b.startsWith("board:") ? boardRefOf(w.b.slice(6)) : w.b; if (a && b) wires.push([a, b]); }
     const parts = {}; for (const [id, p] of Object.entries(doc.parts)) parts[id] = { type: p.type, attrs: p.attrs || {} };
-    return { board: doc.board, parts, wires };
+    return { board: doc.board, parts, wires, supply: doc.board === "power" && doc.boardAttrs && doc.boardAttrs.vplus ? { "V+": parseFloat(doc.boardAttrs.vplus) } : null };
   }
   function io() {
     const pins = {}, modes = {}, pulls = {}, pwm = {};
     for (const [p, s] of Object.entries(pinState)) { if (s.idle) continue; /* 引擎 C 回報全部 20 支腳；程式沒碰過的不算「用了」 */ modes[p] = s.mode; if (s.mode === "out" || s.mode === "pwm") pins[p] = s.level; if (s.pull) pulls[p] = 1; if (s.pwm) pwm[p] = s.pwm; }
-    return { pins, modes, pulls, pwm, ui, burned };
+    return { unpowered: !powered, pins, modes, pulls, pwm, ui, burned };
   }
   const boardButtons = () => (doc.board === "tqt_pro" ? [0, 47] : doc.board === "tdisplay_s3" ? [0, 14] : doc.board === "uno" ? [99] : [0]);
   let stoppedForShort = false;
@@ -234,6 +234,7 @@ export function createSimulator(opts) {
   // 步長：只有電容（RC）用 1 ms 就很準；有 555 用 0.2 ms（音頻 555 追不上即時就放慢，不會卡住畫面）
   const dtFor = () => { let dt = 1e-3; for (const p of Object.values(doc.parts)) { if (p.type === "ne555") dt = Math.min(dt, 2e-4); if (p.type === "acsource") dt = Math.min(dt, 1 / ((parseFloat(p.attrs?.freq) || 50) * 50)); } return Math.max(2e-5, dt); };
   let netsCache = null, netsKey = "", stepV = null;
+  let powered = false;   // 按 ▶ 執行（電源供應器：通電）才供電；停止＝斷電
   const probes = [];            // 節點參考（例如 "c1:+"、"board:4"）
   const probeData = {};         // ref → [[t, v], ...]
   const hasDyn = () => Object.values(doc.parts).some((p) => DYNAMIC_TYPES.has(p.type));
@@ -250,10 +251,10 @@ export function createSimulator(opts) {
   let dynBusy = false;
   function dynFrame(ts) {
     dynLoop = null;
-    if (!hasDyn()) { dynLastReal = 0; return; }
+    if (!hasDyn() || !powered) { dynLastReal = 0; return; }
     if (dynBusy) return; dynBusy = true;
     try { dynFrameBody(ts); } finally { dynBusy = false; }
-    if (hasDyn() && !dynLoop) dynLoop = requestAnimationFrame(dynFrame);
+    if (hasDyn() && powered && !dynLoop) dynLoop = requestAnimationFrame(dynFrame);
   }
   function dynFrameBody(ts) {
     const DT = dtFor(); const PROBE_EVERY = DT >= 1e-3 ? 1 : 5;
@@ -267,7 +268,7 @@ export function createSimulator(opts) {
     }
     if (r) commit(r);
   }
-  function ensureDynLoop() { if (hasDyn() && !dynLoop && !dynBusy) { dynLastReal = 0; dynLoop = requestAnimationFrame(dynFrame); } }
+  function ensureDynLoop() { if (hasDyn() && powered && !dynLoop && !dynBusy) { dynLastReal = 0; dynLoop = requestAnimationFrame(dynFrame); } }
   function resetDynamic() { dynState = {}; simT = 0; dynLastReal = 0; stepV = null; for (const k of Object.keys(probeData)) probeData[k] = []; }
   let inTick = false;
   function tick() {
@@ -298,6 +299,8 @@ export function createSimulator(opts) {
     return r;
   }
   function applyState() {
+    const psu = partsLayer.querySelector(".sim-board .psu-v");   // 電源供應器面板：通電顯示 V+ 電壓，斷電顯示 OFF
+    if (psu) { psu.textContent = powered ? (parseFloat(doc.boardAttrs?.vplus) || 9).toFixed(2) + "V" : "OFF"; psu.setAttribute("fill", powered ? "#5f5" : "#696"); }
     const r = lastResult; if (!r) return;
     for (const [id, p] of Object.entries(doc.parts)) {
       const el = partEls[id]?.firstChild; const s = r.parts[id] || {}; if (!el) continue;
@@ -485,10 +488,10 @@ export function createSimulator(opts) {
   }
 
   // ---------- 編輯 ----------
-  function snapshot() { return JSON.stringify({ board: doc.board, parts: doc.parts, wires: doc.wires, boardPos: doc.boardPos, breadboard: doc.breadboard, schematic: doc.schematic || null, perfboard: doc.perfboard || null }); }
+  function snapshot() { return JSON.stringify({ board: doc.board, boardAttrs: doc.boardAttrs || null, parts: doc.parts, wires: doc.wires, boardPos: doc.boardPos, breadboard: doc.breadboard, schematic: doc.schematic || null, perfboard: doc.perfboard || null }); }
   let lastSnap = snapshot();
   function pushUndo() { const s = snapshot(); if (s === lastSnap) return; undoStack.push(lastSnap); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; lastSnap = s; onStatus({ undo: undoStack.length, redo: redoStack.length }); }
-  function restore(s) { resetDynamic(); const d = JSON.parse(s); doc.board = d.board; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] });  if (engine && engineForBoard(doc.board, lastEngineKind) !== engine.kind) { api._attaching = api.attach(doc.board, lastEngineKind).catch((e) => console.error("換板子重接引擎失敗", e)).finally(() => { api._attaching = null; }); } }
+  function restore(s) { resetDynamic(); const d = JSON.parse(s); doc.board = d.board; doc.boardAttrs = d.boardAttrs || null; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] });  if (engine && engineForBoard(doc.board, lastEngineKind) !== engine.kind) { api._attaching = api.attach(doc.board, lastEngineKind).catch((e) => console.error("換板子重接引擎失敗", e)).finally(() => { api._attaching = null; }); } }
   // ---------- 自動整線（router.js）：直角、避開元件、並行線錯開 ----------
   let autoWire = (() => { try { return localStorage.getItem("sim.autowire") !== "0"; } catch { return true; } })();
   function obstacles() { return bounds().items.map((it) => ({ id: it.id, x: it.x, y: it.y, w: it.w, h: it.h, soft: it.id === "board" || it.id === "bb" })); }   // soft＝板子／麵包板：腳位在本體裡面，線可以穿；元件本體則要繞
@@ -592,6 +595,8 @@ export function createSimulator(opts) {
       selection = new Set(); pushUndo(); render(); tick(); select(null);
     },
     rotateSelected() { let any = false; for (const s of selection) if (doc.parts[s]) { if (!any) pushUndo(); any = true; doc.parts[s].rot = ((doc.parts[s].rot || 0) + 90) % 360; snapPart(s); } if (any) { pushUndo(); render(); tick(); } },
+    setBoardAttr(k, v) { pushUndo(); doc.boardAttrs = { ...(doc.boardAttrs || {}), [k]: v }; pushUndo(); render(); tick(); },
+    get powered() { return powered; },
     setAttr(id, k, v) { if (!doc.parts[id]) return; pushUndo(); doc.parts[id].attrs[k] = v; pushUndo(); render(); tick(); },
     setLabel(id, text) { if (!doc.parts[id]) return; pushUndo(); doc.parts[id].label = text || ""; pushUndo(); render(); },
     setWireColor(i, color) { if (!doc.wires[i]) return; pushUndo(); doc.wires[i].color = color; pushUndo(); render(); },
@@ -609,7 +614,7 @@ export function createSimulator(opts) {
     redo() { if (!redoStack.length) return; undoStack.push(lastSnap); restore(redoStack.pop()); },
     clear() { pushUndo(); doc.parts = {}; doc.wires = []; doc.breadboard = null; burned = new Set(); pushUndo(); render(); tick(); select(null); },
     async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); clearOfBoard(); pushUndo(); render(); if (engine) await api.attach(kind, engineForBoard(kind, lastEngineKind)); tick(); onStatus({ board: kind }); },
-    load(d) { restore(JSON.stringify({ board: d.board || "tqt_pro", parts: d.parts || {}, wires: (d.wires || []).map((w) => ({ pts: [], ...w })), boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null, schematic: d.schematic || null, perfboard: d.perfboard || null })); burned = new Set(); undoStack.length = 0; redoStack.length = 0; for (const k of Object.keys(ui)) delete ui[k]; },
+    load(d) { powered = false; restore(JSON.stringify({ board: d.board || "tqt_pro", boardAttrs: d.boardAttrs || null, parts: d.parts || {}, wires: (d.wires || []).map((w) => ({ pts: [], ...w })), boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null, schematic: d.schematic || null, perfboard: d.perfboard || null })); burned = new Set(); undoStack.length = 0; redoStack.length = 0; for (const k of Object.keys(ui)) delete ui[k]; },
     save() { return JSON.parse(snapshot()); },
     exportWokwi() { return toWokwiDiagram(api.save()); },
     importWokwi(json) { api.load(fromWokwiDiagram(json)); },
@@ -659,12 +664,12 @@ export function createSimulator(opts) {
       engine.on("screen", () => { screenDirty = true; applyState(); });
       onStatus({ engine: engine.kind, capabilities: engine.capabilities, engineKind: ek }); syncAttachments(); tick(); return engine;
     },
-    async run(code, name) { if (!engine) await api.attach(); if (shortNets.length) { toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } burned = new Set(); stoppedForShort = false; if (engine._setBootQuiet) engine._setBootQuiet(true); const r = await engine.boot({ program: code, name: name || "main.py", board: doc.board }); if (r.ok) { running = true; onStatus({ running }); } return r; },
+    async run(code, name) { if (!engine) await api.attach(); powered = true; tick(); ensureDynLoop(); if (shortNets.length) { toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } burned = new Set(); stoppedForShort = false; if (engine._setBootQuiet) engine._setBootQuiet(true); const r = await engine.boot({ program: code, name: name || "main.py", board: doc.board }); if (r.ok) { running = true; onStatus({ running, powered }); } return r; },
     /** Arduino UNO（引擎 C）：開機跑一份 Intel HEX（範例預編譯的或使用者匯入的）。hex＝文字；name＝顯示用檔名 */
-    async runHex(hex, name) { if (api._attaching) await api._attaching; if (!engine || !engine.capabilities.hex) await api.attach(doc.board); if (!engine.capabilities.hex) return { ok: false, msg: "這塊板子不能跑 .hex" }; if (shortNets.length) { toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } burned = new Set(); stoppedForShort = false; const r = await engine.boot({ hex, name: name || "sketch.hex", board: doc.board }); pinState = engine.pins(); tick(); /* 新開機：上一份程式用過的腳全部回到「沒碰過」 */ if (r.ok) { running = true; onStatus({ running }); } return r; },
+    async runHex(hex, name) { powered = true; ensureDynLoop(); if (api._attaching) await api._attaching; if (!engine || !engine.capabilities.hex) await api.attach(doc.board); if (!engine.capabilities.hex) return { ok: false, msg: "這塊板子不能跑 .hex" }; if (shortNets.length) { toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } burned = new Set(); stoppedForShort = false; const r = await engine.boot({ hex, name: name || "sketch.hex", board: doc.board }); pinState = engine.pins(); tick(); /* 新開機：上一份程式用過的腳全部回到「沒碰過」 */ if (r.ok) { running = true; onStatus({ running }); } return r; },
     /** 直接開機跑一個韌體映像（Arduino 合併 bin；只有引擎 B）：id 相對 sim-engine/，例如 "arduino/t_qt_weather_clock.bin" */
-    async runFirmware(id) { if (!engine) await api.attach(); if (!engine.capabilities.arduino) { toast("快速引擎不能跑 Arduino 映像，請切到真韌體引擎", "warn"); return { ok: false, msg: "engine" }; } burned = new Set(); stoppedForShort = false; if (engine._setBootQuiet) engine._setBootQuiet(false); const r = await engine.boot({ firmware: "arduino:" + id, board: doc.board, fresh: true }); if (r.ok) { running = true; onStatus({ running }); } return r; },
-    async stop() { if (!engine) return true; const ok = await engine.stop(); running = false; if (engine.capabilities.hex) { pinState = engine.pins(); tick(); } onStatus({ running }); return ok; },
+    async runFirmware(id) { powered = true; ensureDynLoop(); if (!engine) await api.attach(); if (!engine.capabilities.arduino) { toast("快速引擎不能跑 Arduino 映像，請切到真韌體引擎", "warn"); return { ok: false, msg: "engine" }; } burned = new Set(); stoppedForShort = false; if (engine._setBootQuiet) engine._setBootQuiet(false); const r = await engine.boot({ firmware: "arduino:" + id, board: doc.board, fresh: true }); if (r.ok) { running = true; onStatus({ running }); } return r; },
+    async stop() { powered = false; stepV = {}; dynState = {}; tick();   /* 斷電：不沿用斷電前的電壓／555 狀態，電容也放掉 */ if (engine && engine.kind === "none") { running = false; onStatus({ running, powered }); return true; } if (!engine) return true; const ok = await engine.stop(); running = false; if (engine.capabilities.hex) { pinState = engine.pins(); tick(); } onStatus({ running }); return ok; },
     pause() { if (engine) engine.pause(); },
     step() { if (engine) engine.step(); },
     async reset() { if (engine) await engine.reset(); for (const k of Object.keys(ui)) delete ui[k]; burned = new Set(); pinState = engine ? engine.pins() : {}; for (const id of Object.keys(partRuntime)) { const rt = partRuntime[id]; if (rt.decoder) { const T = rt.decoder.constructor; partRuntime[id] = {}; } else partRuntime[id] = {}; } for (const id of Object.keys(attached)) { attached[id](); delete attached[id]; } syncAttachments(); tick(); },
