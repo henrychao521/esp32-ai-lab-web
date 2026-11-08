@@ -990,7 +990,8 @@ function renderMeasure() {
   const rows = Object.entries(r.nets.nets).map(([root, members]) => [members.filter((m) => !m.startsWith("bb:")).map((m) => m.replace(/^board:/, "板子 ")).join("、"), r.nodeV[root]]).filter((x) => x[0]).sort((a, b) => b[1] - a[1]);
   for (const [names, v] of rows) { const tr = document.createElement("tr"); tr.innerHTML = `<td>${esc(names)}</td><td class="v">${fmtV(v)}</td>`; tb.appendChild(tr); }
   let total = 0; for (const p of Object.values(r.parts)) for (const l of Object.values(p.leds || {})) total += l.i || 0;
-  $("power").textContent = `LED 總電流約 ${(total * 1000).toFixed(1)} mA（板子 3.3 V 穩壓器大約可供 500 mA，USB 5 V 約 500 mA）` + (total > 0.5 ? "，已超過！" : "");
+  const supplyNote = sim.doc.board === "power" ? "（電源供應器：電流 0 代表這條路沒有導通，例如按鍵沒按、電晶體截止或還沒通電）" : sim.doc.board === "uno" ? "（UNO 的 5 V 經 USB 約可供 500 mA）" : "（板子 3.3 V 穩壓器大約可供 500 mA，USB 5 V 約 500 mA）";
+  $("power").textContent = `LED 總電流約 ${(total * 1000).toFixed(1)} mA${supplyNote}` + (total > 0.5 ? "，已超過！" : "");
 }
 setInterval(() => { if ($("pane-measure").classList.contains("active")) renderMeasure(); if ($("side").offsetParent !== null && sim.selected) renderProps({ selected: sim.selected, selection: sim.selection, part: sim.doc.parts[sim.selected] || null, wire: sim.selected.startsWith("wire:") ? sim.doc.wires[Number(sim.selected.slice(5))] : null, wireIndex: sim.selected.startsWith("wire:") ? Number(sim.selected.slice(5)) : null, isBoard: sim.selected === "board", isBB: sim.selected === "bb" }); }, 1000);
 
