@@ -43,8 +43,14 @@ function boardFoot(board) {
   if (board === "tqt_pro") return { pins: [["5V", 0, 0], ["GND", 1, 0], ["3V3", 2, 0], ["G16", 3, 0], ["G17", 4, 0], ["G18", 5, 0], ["G48", 6, 0]], body: [-1.5, -6.5, 10, 7.2], title: "T-QT Pro" };
   if (board === "xiao_esp32s3") return { pins: [["D0", 0, 0], ["D1", 0, 1], ["D2", 0, 2], ["D3", 0, 3], ["D4", 0, 4], ["D5", 0, 5], ["D6", 0, 6], ["5V", 6, 0], ["GND", 6, 1], ["3V3", 6, 2], ["D10", 6, 3], ["D9", 6, 4], ["D8", 6, 5], ["D7", 6, 6]], body: [-0.5, -1, 7, 8.2], title: "XIAO ESP32S3" };
   if (board === "tdisplay_s3") { const L = ["3V3", "GND", "G43", "G44", "G18", "G17", "G21", "G16", "G1", "G2", "G3", "G10", "G11", "G12", "G13"]; return { pins: L.map((n, i) => [n, 0, i]).concat([["5V", 9, 0], ["GND", 9, 1], ["3V3", 9, 2]]), body: [-0.5, -1, 10, 16.2], title: "T-Display S3" }; }
-  // Arduino UNO：板子本身放不進萬用板，畫成「排線接頭」——上排 D0～D13＋GND、下排電源與 A0～A5（實際做成 shield 時就是這兩排排針）
-  if (board === "uno") { const T = ["D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "GND"], Bt = ["5V", "3V3", "GND", "VIN", "A0", "A1", "A2", "A3", "A4", "A5"]; return { pins: T.map((n, i) => [n, i, 0]).concat(Bt.map((n, i) => [n, i, 1])), body: [-0.5, -2.5, 15, 2.2], title: "Arduino UNO（排線）" }; }
+  // Arduino UNO：做成擴充板（shield）的排針位置——上排數位、下排電源＋類比，左右順序與上下間距照 UNO 實際排針（catalog BOARD_ART 的座標換算成孔距，
+  // D7／D8 之間、VIN／A0 之間那段半格空隙取整成空一格）；兩排中間就是放元件的地方。下排標籤畫在排針下方（第 4 欄 "b"），才不會和上排疊在一起。
+  // SCL／SDA／AREF 在 GND 左邊、超出 5×7 板寬，而且 SDA／SCL 就是 A4／A5，所以不畫。（2026-11-08 使用者：洞洞板接線位置跟板子本身對不起來）
+  if (board === "uno") {
+    const top = [["GND", 0], ["D13", 1], ["D12", 2], ["D11", 3], ["D10", 4], ["D9", 5], ["D8", 6], ["D7", 8], ["D6", 9], ["D5", 10], ["D4", 11], ["D3", 12], ["D2", 13], ["D1", 14], ["D0", 15]];
+    const bot = [["IOREF", 2], ["RESET", 3], ["3V3", 4], ["5V", 5], ["GND", 6], ["GND", 7], ["VIN", 8], ["A0", 10], ["A1", 11], ["A2", 12], ["A3", 13], ["A4", 14], ["A5", 15]];
+    return { pins: top.map(([n, c]) => [n, c, 0]).concat(bot.map(([n, c]) => [n, c, 19, "b"])), body: [-0.5, -2.0, 16, 3.3], titleBelow: true, title: "Arduino UNO 擴充板排針（上：數位　下：電源／類比）" };
+  }
   // devkit：DEVKIT_PINS 的 x 小的是左排，依 y 排序
   const left = DEVKIT_PINS.filter((p) => p[1] < 50).sort((a, b) => a[2] - b[2]), right = DEVKIT_PINS.filter((p) => p[1] >= 50).sort((a, b) => a[2] - b[2]);
   return { pins: left.map((p, i) => [p[0], 0, i]).concat(right.map((p, i) => [p[0], 10, i])), body: [-0.5, -1, 11, left.length + 1.2], title: "ESP32 DevKit" };
@@ -54,7 +60,7 @@ function boardFoot(board) {
 export function rotFoot(foot, rot = 0) {
   const k = ((Math.round(rot / 90) % 4) + 4) % 4; if (!k) return foot;
   const R = ([x, y]) => { for (let i = 0; i < k; i++) [x, y] = [-y, x]; return [x, y]; };
-  const pins = foot.pins.map(([n, dc, dr]) => { const [x, y] = R([dc, dr]); return [n, x, y]; });
+  const pins = foot.pins.map(([n, dc, dr, ...rest]) => { const [x, y] = R([dc, dr]); return [n, x, y, ...rest]; });
   const [bx, by, bw, bh] = foot.body; const cs = [[bx, by], [bx + bw, by], [bx, by + bh], [bx + bw, by + bh]].map(R);
   const xs = cs.map((c) => c[0]), ys = cs.map((c) => c[1]); const x0 = Math.min(...xs), y0 = Math.min(...ys);
   return { ...foot, pins, body: [x0, y0, Math.max(...xs) - x0, Math.max(...ys) - y0], rot: k * 90 };
@@ -94,8 +100,8 @@ export function buildPerfboard({ doc, nets, size = "5x7" }) {
   const bf0 = boardFoot(board);
   const bf = manual.board ? rotFoot(bf0, manual.board.rot || 0) : bf0;
   const bodyCells = (foot, c0, r0) => { const [bx, by, bw, bh] = foot.body; const cells = []; for (let c = Math.floor(c0 + bx); c < Math.ceil(c0 + bx + bw); c++) for (let r = Math.floor(r0 + by); r < Math.ceil(r0 + by + bh); r++) cells.push([c, r]); return cells; };
-  const fits = (foot, c0, r0) => { for (const [c, r] of bodyCells(foot, c0, r0)) { if (c < 0 || r < 0 || c >= C || r >= R) return false; const o = occ.get(key(c, r)); if (o && o.body) return false; } for (const [, dc, dr] of foot.pins) { const c = c0 + dc, r = r0 + dr; if (c < 0 || r < 0 || c >= C || r >= R || occ.get(key(c, r))) return false; } return true; };
-  const put = (foot, id, c0, r0, refOf) => { for (const [c, r] of bodyCells(foot, c0, r0)) if (!occ.get(key(c, r))) occ.set(key(c, r), { body: true, part: id }); for (const [name, dc, dr] of foot.pins) { const ref = refOf(name); occ.set(key(c0 + dc, r0 + dr), { ref, net: netOf[ref] || null, part: id, pin: name }); } place[id] = { c: c0, r: r0, rot: foot.rot || 0 }; feet[id] = foot; };
+  const fits = (foot, c0, r0) => { for (const [c, r] of bodyCells(foot, c0, r0)) { if (c < 0 || r < 0 || c >= C || r >= R) return false; const o = occ.get(key(c, r)); if (o && (o.body || o.part === "board")) return false;   /* 本體也不能蓋到板子的排針（UNO 下排在 body 外） */ } for (const [, dc, dr] of foot.pins) { const c = c0 + dc, r = r0 + dr; if (c < 0 || r < 0 || c >= C || r >= R || occ.get(key(c, r))) return false; } return true; };
+  const put = (foot, id, c0, r0, refOf) => { for (const [c, r] of bodyCells(foot, c0, r0)) if (!occ.get(key(c, r))) occ.set(key(c, r), { body: true, part: id }); for (const [name, dc, dr, side] of foot.pins) { const ref = refOf(name); occ.set(key(c0 + dc, r0 + dr), { ref, net: netOf[ref] || null, part: id, pin: name }); if (side === "b") for (const k of [1, 2]) if (!occ.get(key(c0 + dc, r0 + dr + k))) occ.set(key(c0 + dc, r0 + dr + k), { body: true, part: id }); } place[id] = { c: c0, r: r0, rot: foot.rot || 0 }; feet[id] = foot; };
   // 板子：有手動位置就用，否則放左上（body 在腳位上方或左方）
   let bc0 = Math.max(1, Math.ceil(-bf.body[0])), br0 = Math.max(1, Math.ceil(-bf.body[1]));
   if (manual.board) { if (fits(bf, manual.board.c, manual.board.r)) { bc0 = manual.board.c; br0 = manual.board.r; } else warnings.push({ code: "MANUAL_BAD", part: "board", brief: `${bf.title} 放到那裡會超出板子，退回自動位置` }); }
@@ -205,9 +211,9 @@ function renderFront({ C, R, occ, place, parts, bf, jumpers, netOf, feet }) {
     const foot = feet[id] || (id === "board" ? bf : { pins: [], body: [0, 0, 1, 1] });
     const [bx, by, bw, bh] = foot.body;
     s += `<g class="pb-part" data-id="${esc(id)}"><rect class="pb-body" x="${X(p.c + bx) - 0}" y="${Y(p.r + by)}" width="${bw * PITCH}" height="${bh * PITCH}" rx="3"/>`;
-    for (const [name, dc, dr] of foot.pins) { const x = X(p.c + dc), y = Y(p.r + dr); s += `<rect class="pb-pin" x="${x - 3}" y="${y - 3}" width="6" height="6"/>`; if (name.length <= 1) s += `<text class="pb-txt" x="${x}" y="${y - 5}" text-anchor="middle">${esc(name)}</text>`; else s += `<text class="pb-txt" x="${x}" y="${y - 5}" text-anchor="start" transform="rotate(-90 ${x} ${y - 5})">${esc(name)}</text>`; }
+    for (const [name, dc, dr, side] of foot.pins) { const x = X(p.c + dc), y = Y(p.r + dr); s += `<rect class="pb-pin" x="${x - 3}" y="${y - 3}" width="6" height="6"/>`; if (side === "b") s += `<text class="pb-txt" x="${x}" y="${y + 5}" text-anchor="end" transform="rotate(-90 ${x} ${y + 5})">${esc(name)}</text>`; else if (name.length <= 1) s += `<text class="pb-txt" x="${x}" y="${y - 5}" text-anchor="middle">${esc(name)}</text>`; else s += `<text class="pb-txt" x="${x}" y="${y - 5}" text-anchor="start" transform="rotate(-90 ${x} ${y - 5})">${esc(name)}</text>`; }
     const label = id === "board" ? bf.title : id + (parts[id].attrs?.value ? " " + fmtValue(parts[id]) : "");
-    s += id === "board" ? `<text class="pb-title" x="${X(p.c + bx) + 3}" y="${Y(p.r + by) + 9}">${esc(label)}</text>` : `<text class="pb-title" x="${X(p.c + bx)}" y="${Y(p.r + by) - 2}">${esc(label)}</text>`;
+    s += id === "board" ? `<text class="pb-title" x="${X(p.c + bx) + 3}" y="${bf.titleBelow ? Y(p.r + 1) + 3 : Y(p.r + by) + 9}">${esc(label)}</text>` : `<text class="pb-title" x="${X(p.c + bx)}" y="${Y(p.r + by) - 2}">${esc(label)}</text>`;
     s += `</g>`;
   }
   jumpers.forEach(([a, b, net], i) => { const col = COLORS[i % COLORS.length]; const mx = (X(a[0]) + X(b[0])) / 2, my = (Y(a[1]) + Y(b[1])) / 2 - 10; s += `<path class="pb-jumper" stroke="${col}" d="M${X(a[0])},${Y(a[1])} Q${mx},${my} ${X(b[0])},${Y(b[1])}"/>`; });

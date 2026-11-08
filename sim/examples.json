@@ -24266,6 +24266,573 @@
   "layout": "7f718caa3594"
  },
  {
+  "id": "an_rc@uno",
+  "title": "電容充放電",
+  "level": "入門",
+  "summary": "滑動開關撥到充電，電容電壓沿曲線慢慢升到 3.3 V；撥到放電慢慢掉回 0。示波器探針看曲線，程式用 ADC 把電壓印出來。",
+  "breadboard": {
+   "x": 402,
+   "y": 64.5
+  },
+  "parts": {
+   "sw1": {
+    "type": "slide-switch",
+    "x": 425.1,
+    "y": 74.5,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {
+     "1": "a2",
+     "2": "a3",
+     "3": "a4"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 411.65,
+    "y": 161.2,
+    "rot": 90,
+    "attrs": {
+     "value": "1k"
+    },
+    "snaps": {
+     "1": "d3",
+     "2": "h3"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 466.4,
+    "y": 48.5,
+    "rot": 0,
+    "attrs": {
+     "value": "1000u"
+    },
+    "snaps": {
+     "+": "a7",
+     "-": "a8"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 450.05,
+    "y": 161.2,
+    "rot": 90,
+    "attrs": {
+     "value": "10k"
+    },
+    "snaps": {
+     "1": "d7",
+     "2": "h7"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 512.2,
+    "y": 66.5,
+    "rot": 0,
+    "attrs": {
+     "color": "yellow"
+    },
+    "snaps": {
+     "A": "a13",
+     "C": "a12"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:b4",
+    "b": "bb:top-4",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b8",
+    "b": "bb:top-8",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b12",
+    "b": "bb:top-9",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b2",
+    "b": "bb:top+4",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:j3",
+    "b": "bb:b7",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "board:A0",
+    "b": "bb:i3",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "bb:b13",
+    "b": "bb:j7",
+    "color": "#1565c0"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・滑動開關 ×1\n・1 kΩ 電阻 ×1\n・1000 µF 電解電容 ×1\n・10 kΩ 電阻 ×1\n・黃色 LED ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×9",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・滑動開關腳 1 接 3V3、腳 3 接 GND、中間腳 2 → 1kΩ\n・1kΩ 另一端接電容 +，電容 − 接 GND（電解電容有極性）\n・電容 + 也接到 A0（ADC）讓程式讀電壓\n・電容 + → 10kΩ → LED → GND（LED 只當指示，電阻大才不會把電容拉低）\n・執行後點滑動開關撥動；示波器分頁按探針 c1:+",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 上方「−」軌；紅線：板子 3V3 → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "滑動開關（sw1）插上麵包板：1→a2、2→a3、3→a4",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "1 kΩ 電阻（r1）插上麵包板（跨中央溝槽）：一腳→d3、另一腳→h3",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "1000 µF 電解電容（c1）插上麵包板：正極（長腳）→a7、負極（白條那側）→a8",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "10 kΩ 電阻（r2）插上麵包板（跨中央溝槽）：一腳→d7、另一腳→h7",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "黃色 LED（led1）插上麵包板：長腳（＋）→a13、短腳（−）→a12",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：b4（跟 sw1 的3同一直排） → 上方「−」軌\n黑線：b8（跟 c1 的負極（白條那側）同一直排） → 上方「−」軌\n黑線：b12（跟 led1 的短腳（−）同一直排） → 上方「−」軌",
+    "wires": [
+     2,
+     3,
+     4
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紅線：b2（跟 sw1 的1同一直排） → 上方「＋」軌",
+    "wires": [
+     5
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：j3（跟 r1 的另一腳同一直排） → b7（跟 c1 的正極（長腳）、r2 的一腳同一直排）\n橘線：板子 A0 → i3（跟 r1 的另一腳同一直排）",
+    "wires": [
+     6,
+     7
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：b13（跟 led1 的長腳（＋）同一直排） → j7（跟 r2 的另一腳同一直排）",
+    "wires": [
+     8
+    ]
+   }
+  ],
+  "code": "// 電容充放電（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\nfloat volts(int pin) { return analogRead(pin) * 5.0 / 1023.0; }   // UNO：0～1023 → 0～5 V\n\nvoid setup() { Serial.begin(9600); }\n\nvoid loop() {\n  float v = volts(A0);                      // 電容 + 接 A0\n  Serial.print(\"電容 \"); Serial.print(v, 2); Serial.print(\" V \");\n  for (int i = 0; i < int(v / 5.0 * 30); i++) Serial.print('#');\n  Serial.println();\n  delay(200);\n}\n",
+  "expect": "開關預設在充電端：主控台電壓每 0.2 秒變大、長條變長（τ=R×C=1 秒，約 5 秒接近 3 V）；撥到另一端慢慢放電降到 0。LED 隨電壓亮暗。",
+  "try": [
+   "把 1000u 換成 100u，看充電變多快",
+   "把 1k 換成 10k"
+  ],
+  "verify": {
+   "ui": {
+    "sw1": {
+     "value": 1
+    }
+   },
+   "console": "電容"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_rc_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "滑動開關 ×1",
+   "1 kΩ 電阻 ×1",
+   "1000 µF 電解電容 ×1",
+   "10 kΩ 電阻 ×1",
+   "黃色 LED ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×9"
+  ],
+  "circuit": [
+   "滑動開關腳 1 接 3V3、腳 3 接 GND、中間腳 2 → 1kΩ",
+   "1kΩ 另一端接電容 +，電容 − 接 GND（電解電容有極性）",
+   "電容 + 也接到 A0（ADC）讓程式讀電壓",
+   "電容 + → 10kΩ → LED → GND（LED 只當指示，電阻大才不會把電容拉低）",
+   "執行後點滑動開關撥動；示波器分頁按探針 c1:+"
+  ],
+  "layout": "227dc5e3527a"
+ },
+ {
+  "id": "an_gate@uno",
+  "title": "邏輯閘真值表",
+  "level": "入門",
+  "summary": "兩顆按鍵當輸入 A、B，74HC AND 閘輸出 Y 點 LED；點閘換成 OR／XOR／NAND 看真值表怎麼變。",
+  "breadboard": {
+   "x": 402,
+   "y": 50
+  },
+  "parts": {
+   "g1": {
+    "type": "gate",
+    "x": 426.8,
+    "y": 132.4,
+    "rot": 0,
+    "attrs": {
+     "kind": "AND"
+    },
+    "snaps": {
+     "A": "f2",
+     "B": "f3",
+     "Y": "f5",
+     "VCC": "e2",
+     "GND": "e5"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 455.45,
+    "y": 124.15,
+    "rot": 90,
+    "attrs": {},
+    "snaps": {
+     "1.l": "c9",
+     "2.l": "c7",
+     "1.r": "h9",
+     "2.r": "h7"
+    }
+   },
+   "btn2": {
+    "type": "pushbutton",
+    "x": 503.45,
+    "y": 124.15,
+    "rot": 90,
+    "attrs": {},
+    "snaps": {
+     "1.l": "c14",
+     "2.l": "c12",
+     "1.r": "h14",
+     "2.r": "h12"
+    }
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 555.65,
+    "y": 145.2,
+    "rot": 270,
+    "attrs": {
+     "value": "10k"
+    },
+    "snaps": {
+     "1": "h18",
+     "2": "d18"
+    }
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 392.45,
+    "y": 137.1,
+    "rot": 90,
+    "attrs": {
+     "value": "10k"
+    },
+    "snaps": {
+     "1": "c1",
+     "2": "g1"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 460.4,
+    "y": 184.35,
+    "rot": 0,
+    "attrs": {
+     "value": "220"
+    },
+    "snaps": {
+     "1": "i5",
+     "2": "i11"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 569.8,
+    "y": 52,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    },
+    "snaps": {
+     "A": "a19",
+     "C": "a18"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:bot-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:bot+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:j1",
+    "b": "bb:bot-2",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:a5",
+    "b": "bb:top-5",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b18",
+    "b": "bb:top-14",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:j9",
+    "b": "bb:bot+8",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:j14",
+    "b": "bb:bot+12",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:a2",
+    "b": "bb:top+2",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "board:D2",
+    "b": "bb:j5",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "bb:j2",
+    "b": "bb:j7",
+    "color": "#1565c0"
+   },
+   {
+    "a": "bb:i2",
+    "b": "bb:j18",
+    "color": "#1565c0"
+   },
+   {
+    "a": "bb:j3",
+    "b": "bb:j12",
+    "color": "#2e7d32"
+   },
+   {
+    "a": "bb:i3",
+    "b": "bb:a1",
+    "color": "#2e7d32"
+   },
+   {
+    "a": "bb:b19",
+    "b": "bb:j11",
+    "color": "#f9a825"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・邏輯閘 IC（74HC AND） ×1\n・按鍵 ×2\n・10 kΩ 電阻 ×2\n・220 Ω 電阻 ×1\n・綠色 LED ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×16",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・閘 VCC→3V3、GND→GND\n・3V3 → 按鍵 1 → A，A 經 10kΩ 下拉到 GND（沒按＝0）\n・3V3 → 按鍵 2 → B，B 經 10kΩ 下拉\n・Y → 220Ω → LED → GND\n・Y 也接 D2；執行後按按鍵、點閘換種類",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 上方「−」軌；黑線：板子 GND → 下方「−」軌；紅線：板子 3V3 → 上方「＋」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "邏輯閘 IC（74HC AND）（g1）插上麵包板（跨中央溝槽）：A→f2、B→f3、Y→f5、VCC→e2、GND→e5",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "按鍵（btn1）插上麵包板（跨中央溝槽）：腳 1→c9、腳 2→c7、腳 1'→h9、腳 2'→h7",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "按鍵（btn2）插上麵包板（跨中央溝槽）：腳 1→c14、腳 2→c12、腳 1'→h14、腳 2'→h12",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "220 Ω 電阻（r1）插上麵包板：一腳→i5、另一腳→i11",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "綠色 LED（led1）插上麵包板：長腳（＋）→a19、短腳（−）→a18",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "10 kΩ 電阻（ra）插上麵包板（跨中央溝槽）：一腳→h18、另一腳→d18",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "10 kΩ 電阻（rb）插上麵包板（跨中央溝槽）：一腳→c1、另一腳→g1",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：j1（跟 rb 的另一腳同一直排） → 下方「−」軌\n黑線：a5（跟 g1 的GND同一直排） → 上方「−」軌\n黑線：b18（跟 ra 的另一腳、led1 的短腳（−）同一直排） → 上方「−」軌",
+    "wires": [
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紅線：j9（跟 btn1 的腳 1'同一直排） → 下方「＋」軌\n紅線：j14（跟 btn2 的腳 1'同一直排） → 下方「＋」軌\n紅線：a2（跟 g1 的VCC同一直排） → 上方「＋」軌",
+    "wires": [
+     7,
+     8,
+     9
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：板子 D2 → j5（跟 g1 的Y、r1 的一腳同一直排）",
+    "wires": [
+     10
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：j2（跟 g1 的A同一直排） → j7（跟 btn1 的腳 2'同一直排）\n藍線：i2（跟 g1 的A同一直排） → j18（跟 ra 的一腳同一直排）",
+    "wires": [
+     11,
+     12
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "綠線：j3（跟 g1 的B同一直排） → j12（跟 btn2 的腳 2'同一直排）\n綠線：i3（跟 g1 的B同一直排） → a1（跟 rb 的一腳同一直排）",
+    "wires": [
+     13,
+     14
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "黃線：b19（跟 led1 的長腳（＋）同一直排） → j11（跟 r1 的另一腳同一直排）",
+    "wires": [
+     15
+    ]
+   }
+  ],
+  "code": "// 邏輯閘真值表（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\nconst int Y = 2;                            // 閘的輸出 Y 接 D2\nint prev = -1;\n\nvoid setup() { Serial.begin(9600); pinMode(Y, INPUT); Serial.println(\"按鍵 1＝A、按鍵 2＝B；點閘可換 AND/OR/XOR/NAND\"); }\n\nvoid loop() {\n  int v = digitalRead(Y);\n  if (v != prev) { Serial.print(\"Y = \"); Serial.println(v); prev = v; }\n  delay(50);\n}\n",
+  "expect": "AND：兩顆都按 LED 才亮；換 OR 任一顆就亮；XOR 只按一顆亮。",
+  "try": [
+   "用兩個閘做 A AND NOT B",
+   "把真值表抄在紙上再對照"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    },
+    "btn2": {
+     "pressed": true
+    }
+   },
+   "console": "Y = 1"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_gate_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "邏輯閘 IC（74HC AND） ×1",
+   "按鍵 ×2",
+   "10 kΩ 電阻 ×2",
+   "220 Ω 電阻 ×1",
+   "綠色 LED ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×16"
+  ],
+  "circuit": [
+   "閘 VCC→3V3、GND→GND",
+   "3V3 → 按鍵 1 → A，A 經 10kΩ 下拉到 GND（沒按＝0）",
+   "3V3 → 按鍵 2 → B，B 經 10kΩ 下拉",
+   "Y → 220Ω → LED → GND",
+   "Y 也接 D2；執行後按按鍵、點閘換種類"
+  ],
+  "layout": "74ffd73fabc3"
+ },
+ {
   "id": "uno_tone_scale@uno",
   "title": "蜂鳴器 tone 音階",
   "level": "進階",
@@ -25553,6 +26120,1583 @@
   "layout": "7ab0c907905d"
  },
  {
+  "id": "an_npn_light@uno",
+  "title": "電晶體光控開關",
+  "level": "進階",
+  "summary": "光敏模組的電壓經 10kΩ 進電晶體基極；亮的時候電晶體導通、LED 亮；暗了就熄。程式印出基極電壓與狀態。",
+  "breadboard": {
+   "x": 402,
+   "y": 50
+  },
+  "parts": {
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 402,
+    "y": 284,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {}
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 411.65,
+    "y": 145.2,
+    "rot": 270,
+    "attrs": {
+     "value": "10k"
+    },
+    "snaps": {
+     "1": "h3",
+     "2": "d3"
+    }
+   },
+   "q1": {
+    "type": "npn",
+    "x": 426.8,
+    "y": 54,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {
+     "E": "a2",
+     "B": "a3",
+     "C": "a4"
+    }
+   },
+   "rc": {
+    "type": "resistor",
+    "x": 459.65,
+    "y": 145.2,
+    "rot": 270,
+    "attrs": {
+     "value": "220"
+    },
+    "snaps": {
+     "1": "h8",
+     "2": "d8"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 464.2,
+    "y": 52,
+    "rot": 0,
+    "attrs": {
+     "color": "red"
+    },
+    "snaps": {
+     "A": "a8",
+     "C": "a7"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:bot+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:b2",
+    "b": "bb:top-4",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "bb:top-5",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:j8",
+    "b": "bb:bot+7",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "ldr1:VCC",
+    "b": "bb:top+4",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "board:A0",
+    "b": "bb:j3",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "bb:i3",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "bb:b4",
+    "b": "bb:b7",
+    "color": "#2e7d32"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・光敏電阻模組 ×1\n・10 kΩ 電阻 ×1\n・NPN 電晶體 2N2222 ×1\n・220 Ω 電阻 ×1\n・紅色 LED ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×10",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・光敏模組 VCC→3V3、GND→GND\n・AO → 10kΩ → 電晶體 B（基極）\n・E（射極）接 GND\n・3V3 → 220Ω → LED → 電晶體 C（集極）\n・AO 也接 A0 讓程式看電壓\n・執行後在光敏模組上拖亮暗",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 上方「−」軌；紅線：板子 3V3 → 上方「＋」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "NPN 電晶體 2N2222（q1）插上麵包板：E→a2、B→a3、C→a4",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "紅色 LED（led1）插上麵包板：長腳（＋）→a8、短腳（−）→a7",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "10 kΩ 電阻（rb）插上麵包板（跨中央溝槽）：一腳→h3、另一腳→d3",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "220 Ω 電阻（rc）插上麵包板（跨中央溝槽）：一腳→h8、另一腳→d8",
+    "wires": []
+   },
+   {
+    "title": "擺模組",
+    "text": "光敏電阻模組（ldr1）放在麵包板旁邊，用杜邦線接",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：b2（跟 q1 的E同一直排） → 上方「−」軌\n黑線：ldr1 的 GND → 上方「−」軌",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紅線：j8（跟 rc 的一腳同一直排） → 下方「＋」軌\n紅線：ldr1 的 VCC → 上方「＋」軌",
+    "wires": [
+     5,
+     6
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：板子 A0 → j3（跟 rb 的一腳同一直排）\n橘線：ldr1 的 AO → i3（跟 rb 的一腳同一直排）",
+    "wires": [
+     7,
+     8
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "綠線：b4（跟 q1 的C同一直排） → b7（跟 led1 的短腳（−）同一直排）",
+    "wires": [
+     9
+    ]
+   }
+  ],
+  "code": "// 電晶體光控開關（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\nfloat volts(int pin) { return analogRead(pin) * 5.0 / 1023.0; }   // UNO：0～1023 → 0～5 V\n\nvoid setup() { Serial.begin(9600); }\n\nvoid loop() {\n  float v = volts(A0);                      // 電晶體基極那一端\n  Serial.print(\"基極端 \"); Serial.print(v, 2);\n  Serial.println(v > 0.8 ? \" V → 導通，LED 亮\" : \" V → 截止，LED 滅\");\n  delay(300);\n}\n",
+  "expect": "預設亮度時 LED 亮；把光敏拖到很暗，基極電壓掉到 0.7 V 以下，LED 熄滅。",
+  "try": [
+   "把 10k 換成 100k，看導通門檻怎麼變",
+   "加一顆可變電阻做靈敏度調整"
+  ],
+  "verify": {
+   "console": "導通"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_npn_light_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "光敏電阻模組 ×1",
+   "10 kΩ 電阻 ×1",
+   "NPN 電晶體 2N2222 ×1",
+   "220 Ω 電阻 ×1",
+   "紅色 LED ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×10"
+  ],
+  "circuit": [
+   "光敏模組 VCC→3V3、GND→GND",
+   "AO → 10kΩ → 電晶體 B（基極）",
+   "E（射極）接 GND",
+   "3V3 → 220Ω → LED → 電晶體 C（集極）",
+   "AO 也接 A0 讓程式看電壓",
+   "執行後在光敏模組上拖亮暗"
+  ],
+  "layout": "ac5a12267949"
+ },
+ {
+  "id": "an_555_blink@uno",
+  "title": "555 閃燈",
+  "level": "進階",
+  "summary": "NE555 無穩態：R1=1kΩ、R2=47kΩ、C=10µF，約 1.5 Hz 閃；完全不用程式也會閃，程式只是數脈衝。",
+  "breadboard": {
+   "x": 402,
+   "y": 50
+  },
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 426.8,
+    "y": 132.4,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {
+     "GND": "f2",
+     "TRIG": "f3",
+     "OUT": "f4",
+     "RESET": "f5",
+     "CTRL": "e5",
+     "THR": "e4",
+     "DIS": "e3",
+     "VCC": "e2"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 460.4,
+    "y": 165.15,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    },
+    "snaps": {
+     "1": "g5",
+     "2": "g11"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 441.2,
+    "y": 88.35,
+    "rot": 0,
+    "attrs": {
+     "value": "47k"
+    },
+    "snaps": {
+     "1": "a3",
+     "2": "a9"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 418.4,
+    "y": 190.0,
+    "rot": 180,
+    "attrs": {
+     "value": "10u"
+    },
+    "snaps": {
+     "+": "i3",
+     "-": "i2"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 507.65,
+    "y": 137.1,
+    "rot": 90,
+    "attrs": {
+     "value": "220"
+    },
+    "snaps": {
+     "1": "c13",
+     "2": "g13"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 522.2,
+    "y": 191.6,
+    "rot": 180,
+    "attrs": {
+     "color": "red"
+    },
+    "snaps": {
+     "A": "j13",
+     "C": "j14"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:bot-4",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:bot+4",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:h2",
+    "b": "bb:bot-5",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:i14",
+    "b": "bb:bot-13",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:j5",
+    "b": "bb:bot+5",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:a2",
+    "b": "bb:top+2",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:i4",
+    "b": "bb:a13",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "board:D2",
+    "b": "bb:h4",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "bb:b9",
+    "b": "bb:h3",
+    "color": "#1565c0"
+   },
+   {
+    "a": "bb:c9",
+    "b": "bb:b4",
+    "color": "#1565c0"
+   },
+   {
+    "a": "bb:j11",
+    "b": "bb:b3",
+    "color": "#f9a825"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・NE555 計時器 IC ×1\n・1 kΩ 電阻 ×1\n・47 kΩ 電阻 ×1\n・10 µF 電解電容 ×1\n・220 Ω 電阻 ×1\n・紅色 LED ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×12",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・555 的 VCC 與 RESET 接 5V，GND 接 GND\n・5V → R1(1k) → DIS；DIS → R2(47k) → THR\n・THR 和 TRIG 接在一起，再接電容 +；電容 − 接 GND\n・OUT → 220Ω → LED → GND\n・OUT 也接 D2 讓程式數脈衝；示波器探針看 u1:THR 的三角波\n・555 無穩態：頻率 f ≈ 1.44 ÷ ((R1 + 2×R2) × C) = 1.44 ÷ ((1 kΩ + 2×47 kΩ) × 10 µF) ≈ 1.52 Hz；高電位約 0.333 秒、低電位約 0.326 秒（R1＝r1、R2＝r2）",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 下方「−」軌；紅線：板子 5V → 上方「＋」軌；紅線：板子 5V → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "NE555 計時器 IC（u1）插上麵包板（跨中央溝槽）：GND→f2、TRIG→f3、OUT→f4、RESET→f5、CTRL→e5、THR→e4、DIS→e3、VCC→e2",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "47 kΩ 電阻（r2）插上麵包板：一腳→a3、另一腳→a9",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "10 µF 電解電容（c1）插上麵包板：正極（長腳）→i3、負極（白條那側）→i2",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "1 kΩ 電阻（r1）插上麵包板：一腳→g5、另一腳→g11",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "220 Ω 電阻（r3）插上麵包板（跨中央溝槽）：一腳→c13、另一腳→g13",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "紅色 LED（led1）插上麵包板：長腳（＋）→j13、短腳（−）→j14",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：h2（跟 u1 的GND、c1 的負極（白條那側）同一直排） → 下方「−」軌\n黑線：i14（跟 led1 的短腳（−）同一直排） → 下方「−」軌",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紅線：j5（跟 u1 的RESET、r1 的一腳同一直排） → 下方「＋」軌\n紅線：a2（跟 u1 的VCC同一直排） → 上方「＋」軌",
+    "wires": [
+     5,
+     6
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：i4（跟 u1 的OUT同一直排） → a13（跟 r3 的一腳同一直排）\n橘線：板子 D2 → h4（跟 u1 的OUT同一直排）",
+    "wires": [
+     7,
+     8
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：b9（跟 r2 的另一腳同一直排） → h3（跟 u1 的TRIG、c1 的正極（長腳）同一直排）\n藍線：c9（跟 r2 的另一腳同一直排） → b4（跟 u1 的THR同一直排）",
+    "wires": [
+     9,
+     10
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "黃線：j11（跟 r1 的另一腳同一直排） → b3（跟 u1 的DIS、r2 的一腳同一直排）",
+    "wires": [
+     11
+    ]
+   }
+  ],
+  "code": "// 555 閃燈（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\nconst int OUT = 2;                          // 555 的 OUT 接 D2（只讀，不驅動）\nint prev = 0; unsigned long n = 0, t0;\n\nvoid setup() { Serial.begin(9600); pinMode(OUT, INPUT); t0 = millis(); }\n\nvoid loop() {\n  int v = digitalRead(OUT);\n  if (v && !prev) {                         // 上升緣＝一次脈衝\n    n++; float el = (millis() - t0) / 1000.0;\n    Serial.print(\"第 \"); Serial.print(n); Serial.print(\" 次脈衝，平均 \"); Serial.print(el > 0 ? n / el : 0, 2); Serial.println(\" Hz\");\n  }\n  prev = v;\n  delay(10);\n}\n",
+  "expect": "LED 約每 0.7 秒閃一次（f = 1.44 ÷ ((R1+2R2)×C)），主控台印脈衝次數與頻率；示波器 u1:THR 是 1/3～2/3 Vcc 的三角波。",
+  "try": [
+   "把 C 換成 100u，閃得慢 10 倍",
+   "把 R2 換成 4.7k 看工作比怎麼變"
+  ],
+  "verify": {
+   "console": "脈衝"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_555_blink_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "NE555 計時器 IC ×1",
+   "1 kΩ 電阻 ×1",
+   "47 kΩ 電阻 ×1",
+   "10 µF 電解電容 ×1",
+   "220 Ω 電阻 ×1",
+   "紅色 LED ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×12"
+  ],
+  "circuit": [
+   "555 的 VCC 與 RESET 接 5V，GND 接 GND",
+   "5V → R1(1k) → DIS；DIS → R2(47k) → THR",
+   "THR 和 TRIG 接在一起，再接電容 +；電容 − 接 GND",
+   "OUT → 220Ω → LED → GND",
+   "OUT 也接 D2 讓程式數脈衝；示波器探針看 u1:THR 的三角波",
+   "555 無穩態：頻率 f ≈ 1.44 ÷ ((R1 + 2×R2) × C) = 1.44 ÷ ((1 kΩ + 2×47 kΩ) × 10 µF) ≈ 1.52 Hz；高電位約 0.333 秒、低電位約 0.326 秒（R1＝r1、R2＝r2）"
+  ],
+  "layout": "340b634075d9"
+ },
+ {
+  "id": "an_555_buzzer@uno",
+  "title": "555 蜂鳴器",
+  "level": "進階",
+  "summary": "同一顆 555，換小電容就變成音頻：R1=1k、R2=4.7k、C=1µF ≈ 140 Hz，蜂鳴器直接響，不需要程式。",
+  "breadboard": {
+   "x": 402,
+   "y": 50
+  },
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 426.8,
+    "y": 132.4,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {
+     "GND": "f2",
+     "TRIG": "f3",
+     "OUT": "f4",
+     "RESET": "f5",
+     "CTRL": "e5",
+     "THR": "e4",
+     "DIS": "e3",
+     "VCC": "e2"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 460.4,
+    "y": 165.15,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    },
+    "snaps": {
+     "1": "g5",
+     "2": "g11"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 441.2,
+    "y": 88.35,
+    "rot": 0,
+    "attrs": {
+     "value": "4.7k"
+    },
+    "snaps": {
+     "1": "a3",
+     "2": "a9"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 418.4,
+    "y": 190.0,
+    "rot": 180,
+    "attrs": {
+     "value": "1u"
+    },
+    "snaps": {
+     "+": "i3",
+     "-": "i2"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 507.65,
+    "y": 137.1,
+    "rot": 90,
+    "attrs": {
+     "value": "100"
+    },
+    "snaps": {
+     "1": "c13",
+     "2": "g13"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 538.3,
+    "y": 179.2,
+    "rot": 180,
+    "attrs": {},
+    "snaps": {
+     "1": "g17",
+     "2": "g16"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:bot-4",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:bot+4",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:h2",
+    "b": "bb:bot-5",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:h16",
+    "b": "bb:bot-17",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:j5",
+    "b": "bb:bot+5",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:a2",
+    "b": "bb:top+2",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:i4",
+    "b": "bb:a13",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "board:D2",
+    "b": "bb:h4",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "bb:j13",
+    "b": "bb:h17",
+    "color": "#1565c0"
+   },
+   {
+    "a": "bb:b9",
+    "b": "bb:h3",
+    "color": "#2e7d32"
+   },
+   {
+    "a": "bb:c9",
+    "b": "bb:b4",
+    "color": "#2e7d32"
+   },
+   {
+    "a": "bb:j11",
+    "b": "bb:b3",
+    "color": "#f9a825"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・NE555 計時器 IC ×1\n・1 kΩ 電阻 ×1\n・4.7 kΩ 電阻 ×1\n・1 µF 電解電容 ×1\n・100 Ω 電阻 ×1\n・蜂鳴器 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×13",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・555 VCC、RESET 接 5V，GND 接 GND\n・R1、R2、C 照閃燈接法，但 R2=4.7k、C=1µF\n・OUT → 100Ω → 蜂鳴器 → GND\n・OUT 接 D2 讓程式量頻率\n・555 無穩態：頻率 f ≈ 1.44 ÷ ((R1 + 2×R2) × C) = 1.44 ÷ ((1 kΩ + 2×4.7 kΩ) × 1 µF) ≈ 138 Hz；高電位約 3.95 毫秒、低電位約 3.26 毫秒（R1＝r1、R2＝r2）",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 下方「−」軌；紅線：板子 5V → 上方「＋」軌；紅線：板子 5V → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "NE555 計時器 IC（u1）插上麵包板（跨中央溝槽）：GND→f2、TRIG→f3、OUT→f4、RESET→f5、CTRL→e5、THR→e4、DIS→e3、VCC→e2",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "4.7 kΩ 電阻（r2）插上麵包板：一腳→a3、另一腳→a9",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "1 µF 電解電容（c1）插上麵包板：正極（長腳）→i3、負極（白條那側）→i2",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "1 kΩ 電阻（r1）插上麵包板：一腳→g5、另一腳→g11",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "100 Ω 電阻（r3）插上麵包板（跨中央溝槽）：一腳→c13、另一腳→g13",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "蜂鳴器（bz1）插上麵包板：負極→g17、正極→g16",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：h2（跟 u1 的GND、c1 的負極（白條那側）同一直排） → 下方「−」軌\n黑線：h16（跟 bz1 的正極同一直排） → 下方「−」軌",
+    "wires": [
+     3,
+     4
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紅線：j5（跟 u1 的RESET、r1 的一腳同一直排） → 下方「＋」軌\n紅線：a2（跟 u1 的VCC同一直排） → 上方「＋」軌",
+    "wires": [
+     5,
+     6
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：i4（跟 u1 的OUT同一直排） → a13（跟 r3 的一腳同一直排）\n橘線：板子 D2 → h4（跟 u1 的OUT同一直排）",
+    "wires": [
+     7,
+     8
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：j13（跟 r3 的另一腳同一直排） → h17（跟 bz1 的負極同一直排）",
+    "wires": [
+     9
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "綠線：b9（跟 r2 的另一腳同一直排） → h3（跟 u1 的TRIG、c1 的正極（長腳）同一直排）\n綠線：c9（跟 r2 的另一腳同一直排） → b4（跟 u1 的THR同一直排）",
+    "wires": [
+     10,
+     11
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "黃線：j11（跟 r1 的另一腳同一直排） → b3（跟 u1 的DIS、r2 的一腳同一直排）",
+    "wires": [
+     12
+    ]
+   }
+  ],
+  "code": "// 555 蜂鳴器（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\n// 555 無穩態的頻率公式：f = 1.44 / ((R1 + 2·R2) × C)\nconst float R1 = 1000, R2 = 4700, C = 1e-6;\nunsigned long n = 0;\n\nvoid setup() {\n  Serial.begin(9600);\n  float f = 1.44 / ((R1 + 2 * R2) * C), duty = (R1 + R2) / (R1 + 2 * R2);\n  Serial.print(\"理論頻率 \"); Serial.print(f, 0); Serial.print(\" Hz，工作比 \"); Serial.print(duty * 100, 0); Serial.println(\" %\");\n  Serial.println(\"蜂鳴器直接由 555 驅動，和程式無關；到「示波器」按探針 u1:OUT 看方波、u1:THR 看三角波\");\n}\n\nvoid loop() {\n  n++; Serial.print(\"第 \"); Serial.print(n); Serial.println(\" 秒：還在響（換 C 試試 100n 或 10u）\");\n  delay(1000);\n}\n",
+  "expect": "蜂鳴器出現音符記號（有訊號）；主控台印出理論頻率約 140 Hz；示波器探針 u1:OUT 看得到方波，把 C 改小頻率變高。",
+  "try": [
+   "把 C 換 100n 看變多高（模擬器約到 1 kHz）",
+   "用可變電阻取代 R2 做滑音"
+  ],
+  "verify": {
+   "console": "理論頻率"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_555_buzzer_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "NE555 計時器 IC ×1",
+   "1 kΩ 電阻 ×1",
+   "4.7 kΩ 電阻 ×1",
+   "1 µF 電解電容 ×1",
+   "100 Ω 電阻 ×1",
+   "蜂鳴器 ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×13"
+  ],
+  "circuit": [
+   "555 VCC、RESET 接 5V，GND 接 GND",
+   "R1、R2、C 照閃燈接法，但 R2=4.7k、C=1µF",
+   "OUT → 100Ω → 蜂鳴器 → GND",
+   "OUT 接 D2 讓程式量頻率",
+   "555 無穩態：頻率 f ≈ 1.44 ÷ ((R1 + 2×R2) × C) = 1.44 ÷ ((1 kΩ + 2×4.7 kΩ) × 1 µF) ≈ 138 Hz；高電位約 3.95 毫秒、低電位約 3.26 毫秒（R1＝r1、R2＝r2）"
+  ],
+  "layout": "f718beb7a916"
+ },
+ {
+  "id": "an_555_mono@uno",
+  "title": "555 延時燈",
+  "level": "進階",
+  "summary": "單穩態：按一下按鍵，LED 亮 1.1×R×C 秒自動熄（R=100k、C=10µF ≈ 1.1 秒），像樓梯間的定時燈。",
+  "breadboard": {
+   "x": 402,
+   "y": 64.5
+  },
+  "parts": {
+   "u1": {
+    "type": "ne555",
+    "x": 426.8,
+    "y": 146.9,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {
+     "GND": "f2",
+     "TRIG": "f3",
+     "OUT": "f4",
+     "RESET": "f5",
+     "CTRL": "e5",
+     "THR": "e4",
+     "DIS": "e3",
+     "VCC": "e2"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 455.45,
+    "y": 138.65,
+    "rot": 90,
+    "attrs": {},
+    "snaps": {
+     "1.l": "c9",
+     "2.l": "c7",
+     "1.r": "h9",
+     "2.r": "h7"
+    }
+   },
+   "rp": {
+    "type": "resistor",
+    "x": 526.85,
+    "y": 151.6,
+    "rot": 90,
+    "attrs": {
+     "value": "10k"
+    },
+    "snaps": {
+     "1": "c15",
+     "2": "g15"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 392.45,
+    "y": 151.6,
+    "rot": 90,
+    "attrs": {
+     "value": "100k"
+    },
+    "snaps": {
+     "1": "c1",
+     "2": "g1"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 456.8,
+    "y": 48.5,
+    "rot": 0,
+    "attrs": {
+     "value": "10u"
+    },
+    "snaps": {
+     "+": "a6",
+     "-": "a7"
+    }
+   },
+   "r3": {
+    "type": "resistor",
+    "x": 498.05,
+    "y": 151.6,
+    "rot": 90,
+    "attrs": {
+     "value": "220"
+    },
+    "snaps": {
+     "1": "c12",
+     "2": "g12"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 512.6,
+    "y": 206.1,
+    "rot": 180,
+    "attrs": {
+     "color": "green"
+    },
+    "snaps": {
+     "A": "j12",
+     "C": "j13"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:bot-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:bot+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:j2",
+    "b": "bb:bot-2",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:i13",
+    "b": "bb:bot-12",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b7",
+    "b": "bb:top-7",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:j5",
+    "b": "bb:bot+5",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:a1",
+    "b": "bb:top+2",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:a2",
+    "b": "bb:top+3",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:a15",
+    "b": "bb:top+13",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:j4",
+    "b": "bb:a12",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "board:D2",
+    "b": "bb:i4",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "bb:j3",
+    "b": "bb:j9",
+    "color": "#1565c0"
+   },
+   {
+    "a": "bb:i3",
+    "b": "bb:j15",
+    "color": "#1565c0"
+   },
+   {
+    "a": "bb:a3",
+    "b": "bb:j1",
+    "color": "#2e7d32"
+   },
+   {
+    "a": "bb:b3",
+    "b": "bb:a4",
+    "color": "#2e7d32"
+   },
+   {
+    "a": "bb:b4",
+    "b": "bb:b6",
+    "color": "#2e7d32"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・NE555 計時器 IC ×1\n・按鍵 ×1\n・10 kΩ 電阻 ×1\n・100 kΩ 電阻 ×1\n・10 µF 電解電容 ×1\n・220 Ω 電阻 ×1\n・綠色 LED ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×18",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・555 VCC、RESET 接 5V，GND 接 GND\n・5V → 10kΩ → TRIG（上拉）；按鍵接 TRIG 與 GND（按下把 TRIG 拉低）\n・5V → 100kΩ → THR；THR 接 DIS 與電容 +，電容 − 接 GND\n・OUT → 220Ω → LED → GND\n・OUT 接 D2 讓程式量亮多久\n・555 單穩態：r1 與 c1 決定輸出維持多久，約 1.1 × R × C = 1.1 × 100 kΩ × 10 µF ≈ 1.1 秒",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 上方「−」軌；黑線：板子 GND → 下方「−」軌；紅線：板子 5V → 上方「＋」軌；紅線：板子 5V → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "NE555 計時器 IC（u1）插上麵包板（跨中央溝槽）：GND→f2、TRIG→f3、OUT→f4、RESET→f5、CTRL→e5、THR→e4、DIS→e3、VCC→e2",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "按鍵（btn1）插上麵包板（跨中央溝槽）：腳 1→c9、腳 2→c7、腳 1'→h9、腳 2'→h7",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "10 µF 電解電容（c1）插上麵包板：正極（長腳）→a6、負極（白條那側）→a7",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "100 kΩ 電阻（r1）插上麵包板（跨中央溝槽）：一腳→c1、另一腳→g1",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "220 Ω 電阻（r3）插上麵包板（跨中央溝槽）：一腳→c12、另一腳→g12",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "綠色 LED（led1）插上麵包板：長腳（＋）→j12、短腳（−）→j13",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "10 kΩ 電阻（rp）插上麵包板（跨中央溝槽）：一腳→c15、另一腳→g15",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：j2（跟 u1 的GND同一直排） → 下方「−」軌\n黑線：i13（跟 led1 的短腳（−）同一直排） → 下方「−」軌\n黑線：b7（跟 btn1 的腳 2、c1 的負極（白條那側）同一直排） → 上方「−」軌",
+    "wires": [
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紅線：j5（跟 u1 的RESET同一直排） → 下方「＋」軌\n紅線：a1（跟 r1 的一腳同一直排） → 上方「＋」軌\n紅線：a2（跟 u1 的VCC同一直排） → 上方「＋」軌\n紅線：a15（跟 rp 的一腳同一直排） → 上方「＋」軌",
+    "wires": [
+     7,
+     8,
+     9,
+     10
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：j4（跟 u1 的OUT同一直排） → a12（跟 r3 的一腳同一直排）\n橘線：板子 D2 → i4（跟 u1 的OUT同一直排）",
+    "wires": [
+     11,
+     12
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：j3（跟 u1 的TRIG同一直排） → j9（跟 btn1 的腳 1'同一直排）\n藍線：i3（跟 u1 的TRIG同一直排） → j15（跟 rp 的另一腳同一直排）",
+    "wires": [
+     13,
+     14
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "綠線：a3（跟 u1 的DIS同一直排） → j1（跟 r1 的另一腳同一直排）\n綠線：b3（跟 u1 的DIS同一直排） → a4（跟 u1 的THR同一直排）\n綠線：b4（跟 u1 的THR同一直排） → b6（跟 c1 的正極（長腳）同一直排）",
+    "wires": [
+     15,
+     16,
+     17
+    ]
+   }
+  ],
+  "code": "// 555 延時燈（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\nconst int OUT = 2;                          // 555 的 OUT 接 D2\nint prev = 0; unsigned long t0 = 0;\n\nvoid setup() { Serial.begin(9600); pinMode(OUT, INPUT); }\n\nvoid loop() {\n  int v = digitalRead(OUT);\n  if (v && !prev) { t0 = millis(); Serial.println(\"亮了\"); }\n  if (!v && prev) { Serial.print(\"熄了，亮了 \"); Serial.print((millis() - t0) / 1000.0, 2); Serial.println(\" 秒\"); }\n  prev = v;\n  delay(10);\n}\n",
+  "expect": "按一下按鍵 LED 亮約 1.1 秒自動熄，主控台印出亮了幾秒；按住不放也不會更久。",
+  "try": [
+   "把 100k 換 470k 延長到 5 秒",
+   "加第二顆 LED 做「正在計時」指示"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    }
+   },
+   "console": "亮了"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_555_mono_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "NE555 計時器 IC ×1",
+   "按鍵 ×1",
+   "10 kΩ 電阻 ×1",
+   "100 kΩ 電阻 ×1",
+   "10 µF 電解電容 ×1",
+   "220 Ω 電阻 ×1",
+   "綠色 LED ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×18"
+  ],
+  "circuit": [
+   "555 VCC、RESET 接 5V，GND 接 GND",
+   "5V → 10kΩ → TRIG（上拉）；按鍵接 TRIG 與 GND（按下把 TRIG 拉低）",
+   "5V → 100kΩ → THR；THR 接 DIS 與電容 +，電容 − 接 GND",
+   "OUT → 220Ω → LED → GND",
+   "OUT 接 D2 讓程式量亮多久",
+   "555 單穩態：r1 與 c1 決定輸出維持多久，約 1.1 × R × C = 1.1 × 100 kΩ × 10 µF ≈ 1.1 秒"
+  ],
+  "layout": "9a0855c322ac"
+ },
+ {
+  "id": "an_halfwave@uno",
+  "title": "半波整流",
+  "level": "進階",
+  "summary": "交流電源（3 Vpk、5 Hz）經一顆二極體只讓正半週通過；示波器探針比較 ac:+ 和 d1:K，程式用 ADC 把負載電壓印出來。",
+  "breadboard": {
+   "x": 402,
+   "y": 50
+  },
+  "parts": {
+   "ac1": {
+    "type": "acsource",
+    "x": 402,
+    "y": 284,
+    "rot": 0,
+    "attrs": {
+     "vpk": "3",
+     "freq": "5"
+    },
+    "snaps": {}
+   },
+   "d1": {
+    "type": "diode",
+    "x": 402.8,
+    "y": 131.0,
+    "rot": 90,
+    "attrs": {},
+    "snaps": {
+     "A": "c2",
+     "K": "g2"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 431.6,
+    "y": 174.75,
+    "rot": 0,
+    "attrs": {
+     "value": "1k"
+    },
+    "snaps": {
+     "1": "h2",
+     "2": "h8"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:bot-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:j8",
+    "b": "bb:bot-7",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "ac1:-",
+    "b": "bb:top-2",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:A0",
+    "b": "bb:j2",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "ac1:+",
+    "b": "bb:a2",
+    "color": "#1565c0"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・交流電源（3 Vpk、5 Hz，可用訊號產生器） ×1\n・二極體 1N4007 ×1\n・1 kΩ 電阻 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×6",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・交流電源 + → 二極體 A；二極體 K → 1kΩ → GND；交流電源 − 接 GND\n・二極體 K 也接 A0 讓程式讀電壓\n・執行後到示波器分頁按探針 ac1:+ 與 d1:K",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 上方「−」軌；黑線：板子 GND → 下方「−」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "二極體 1N4007（d1）插上麵包板（跨中央溝槽）：陽極 A→c2、陰極 K（白環那端）→g2",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "1 kΩ 電阻（r1）插上麵包板：一腳→h2、另一腳→h8",
+    "wires": []
+   },
+   {
+    "title": "擺模組",
+    "text": "交流電源（3 Vpk、5 Hz，可用訊號產生器）（ac1）放在麵包板旁邊，用杜邦線接",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：j8（跟 r1 的另一腳同一直排） → 下方「−」軌\n黑線：ac1 的 - → 上方「−」軌",
+    "wires": [
+     2,
+     3
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：板子 A0 → j2（跟 d1 的陰極 K（白環那端）、r1 的一腳同一直排）",
+    "wires": [
+     4
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：ac1 的 + → a2（跟 d1 的陽極 A同一直排）",
+    "wires": [
+     5
+    ]
+   }
+  ],
+  "code": "// 半波整流（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\nfloat volts(int pin) { return analogRead(pin) * 5.0 / 1023.0; }   // UNO：0～1023 → 0～5 V\n\nfloat vmax = 0;\n\nvoid setup() { Serial.begin(9600); }\n\nvoid loop() {\n  float v = volts(A0); if (v > vmax) vmax = v;   // 負載電阻上的電壓\n  Serial.print(\"負載 \"); Serial.print(v, 2); Serial.print(\" V（峰值 \"); Serial.print(vmax, 2); Serial.println(\"，約 = 3 − 0.7 的順向壓降）\");\n  delay(50);\n}\n",
+  "expect": "示波器：ac1:+ 是完整弦波、d1:K 只剩正半週，而且峰值少了約 0.7 V。",
+  "try": [
+   "把二極體反接，看變成只剩負半週（ADC 讀不到負電壓）",
+   "加一顆 100µF 電容並聯負載，看波形變平"
+  ],
+  "verify": {
+   "console": "負載"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_halfwave_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "交流電源（3 Vpk、5 Hz，可用訊號產生器） ×1",
+   "二極體 1N4007 ×1",
+   "1 kΩ 電阻 ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×6"
+  ],
+  "circuit": [
+   "交流電源 + → 二極體 A；二極體 K → 1kΩ → GND；交流電源 − 接 GND",
+   "二極體 K 也接 A0 讓程式讀電壓",
+   "執行後到示波器分頁按探針 ac1:+ 與 d1:K"
+  ],
+  "layout": "1a03b826e2fa"
+ },
+ {
+  "id": "an_opamp_cmp@uno",
+  "title": "運放比較器",
+  "level": "進階",
+  "summary": "LM358 比較光敏電壓與可變電阻設定的門檻：亮度高於門檻 LED 亮；旋鈕可調靈敏度。",
+  "breadboard": {
+   "x": 402,
+   "y": 73.0
+  },
+  "parts": {
+   "u1": {
+    "type": "lm358",
+    "x": 426.8,
+    "y": 155.4,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {
+     "OUT1": "f2",
+     "IN1-": "f3",
+     "IN1+": "f4",
+     "GND": "f5",
+     "IN2+": "e5",
+     "IN2-": "e4",
+     "OUT2": "e3",
+     "VCC": "e2"
+    }
+   },
+   "ldr1": {
+    "type": "photoresistor-sensor",
+    "x": 402,
+    "y": 307.0,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {}
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 460.2,
+    "y": 48.5,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {
+     "GND": "a8",
+     "SIG": "a9",
+     "VCC": "a10"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 392.45,
+    "y": 160.1,
+    "rot": 90,
+    "attrs": {
+     "value": "220"
+    },
+    "snaps": {
+     "1": "c1",
+     "2": "g1"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 464.6,
+    "y": 137.8,
+    "rot": 180,
+    "attrs": {
+     "color": "red"
+    },
+    "snaps": {
+     "A": "d7",
+     "C": "d8"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:bot-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:j5",
+    "b": "bb:bot-5",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b8",
+    "b": "bb:top-4",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "ldr1:GND",
+    "b": "bb:top-2",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b10",
+    "b": "bb:top+11",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "ldr1:VCC",
+    "b": "bb:top+2",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:a2",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:j2",
+    "b": "bb:a1",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "board:D2",
+    "b": "bb:i2",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "ldr1:AO",
+    "b": "bb:j4",
+    "color": "#1565c0"
+   },
+   {
+    "a": "bb:j1",
+    "b": "bb:b7",
+    "color": "#2e7d32"
+   },
+   {
+    "a": "bb:j3",
+    "b": "bb:b9",
+    "color": "#f9a825"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・LM358 運算放大器 IC ×1\n・光敏電阻模組 ×1\n・可變電阻 ×1\n・220 Ω 電阻 ×1\n・紅色 LED ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×14",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・LM358 VCC→5V、GND→GND\n・光敏模組 AO → IN1+；可變電阻 SIG → IN1−（兩個模組都接 3V3／GND）\n・OUT1 → 220Ω → LED → GND\n・OUT1 也接 D2 讓程式看結果\n・執行後拖光敏與可變電阻，找出門檻",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 上方「−」軌；黑線：板子 GND → 下方「−」軌；紅線：板子 3V3 → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "LM358 運算放大器 IC（u1）插上麵包板（跨中央溝槽）：OUT1→f2、IN1-→f3、IN1+→f4、GND→f5、IN2+→e5、IN2-→e4、OUT2→e3、VCC→e2",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "可變電阻（pot1）插上麵包板：GND→a8、SIG→a9、VCC→a10",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "220 Ω 電阻（r1）插上麵包板（跨中央溝槽）：一腳→c1、另一腳→g1",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "紅色 LED（led1）插上麵包板：長腳（＋）→d7、短腳（−）→d8",
+    "wires": []
+   },
+   {
+    "title": "擺模組",
+    "text": "光敏電阻模組（ldr1）放在麵包板旁邊，用杜邦線接",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：j5（跟 u1 的GND同一直排） → 下方「−」軌\n黑線：b8（跟 pot1 的GND、led1 的短腳（−）同一直排） → 上方「−」軌\n黑線：ldr1 的 GND → 上方「−」軌",
+    "wires": [
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紅線：b10（跟 pot1 的VCC同一直排） → 上方「＋」軌\n紅線：ldr1 的 VCC → 上方「＋」軌\n紅線：板子 5V → a2（跟 u1 的VCC同一直排）",
+    "wires": [
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：j2（跟 u1 的OUT1同一直排） → a1（跟 r1 的一腳同一直排）\n橘線：板子 D2 → i2（跟 u1 的OUT1同一直排）",
+    "wires": [
+     9,
+     10
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：ldr1 的 AO → j4（跟 u1 的IN1+同一直排）",
+    "wires": [
+     11
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "綠線：j1（跟 r1 的另一腳同一直排） → b7（跟 led1 的長腳（＋）同一直排）",
+    "wires": [
+     12
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "黃線：j3（跟 u1 的IN1-同一直排） → b9（跟 pot1 的SIG同一直排）",
+    "wires": [
+     13
+    ]
+   }
+  ],
+  "code": "// 運放比較器（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\nconst int OUT = 2;                          // 比較器輸出接 D2\nint prev = -1;\n\nvoid setup() { Serial.begin(9600); pinMode(OUT, INPUT); }\n\nvoid loop() {\n  int v = digitalRead(OUT);\n  if (v != prev) { Serial.println(v ? \"比較器輸出 高：光線 > 門檻，LED 亮\" : \"比較器輸出 低：光線 < 門檻，LED 滅\"); prev = v; }\n  delay(100);\n}\n",
+  "expect": "光敏拖亮 LED 亮、拖暗熄；轉可變電阻改門檻。",
+  "try": [
+   "IN+ 與 IN− 對調，變成暗才亮的夜燈",
+   "加 100k 從 OUT 回到 IN+ 做遲滯（史密特）"
+  ],
+  "verify": {
+   "ui": {
+    "ldr1": {
+     "light": 0.95
+    }
+   },
+   "console": "比較器輸出"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_opamp_cmp_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "LM358 運算放大器 IC ×1",
+   "光敏電阻模組 ×1",
+   "可變電阻 ×1",
+   "220 Ω 電阻 ×1",
+   "紅色 LED ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×14"
+  ],
+  "circuit": [
+   "LM358 VCC→5V、GND→GND",
+   "光敏模組 AO → IN1+；可變電阻 SIG → IN1−（兩個模組都接 3V3／GND）",
+   "OUT1 → 220Ω → LED → GND",
+   "OUT1 也接 D2 讓程式看結果",
+   "執行後拖光敏與可變電阻，找出門檻"
+  ],
+  "layout": "eccd899e9ea8"
+ },
+ {
   "id": "uno_dice@uno",
   "title": "電子骰子",
   "level": "專題",
@@ -26200,5 +28344,1186 @@
    "btn1 一腳接 D2、另一腳接 GND，程式開了內建上拉電阻：沒按讀到 1、按下讀到 0，所以不用外加電阻"
   ],
   "layout": "d501a32fbbee"
+ },
+ {
+  "id": "an_npn_flyback@uno",
+  "title": "電晶體驅動蜂鳴器",
+  "level": "專題",
+  "summary": "GPIO 只能給幾毫安，用 NPN 當開關去驅動蜂鳴器；蜂鳴器兩端反向並一顆二極體（飛輪），關斷時吸收反電動勢保護電晶體。",
+  "breadboard": {
+   "x": 402,
+   "y": 50
+  },
+  "parts": {
+   "rb": {
+    "type": "resistor",
+    "x": 507.65,
+    "y": 137.1,
+    "rot": 90,
+    "attrs": {
+     "value": "1k"
+    },
+    "snaps": {
+     "1": "c13",
+     "2": "g13"
+    }
+   },
+   "q1": {
+    "type": "npn",
+    "x": 426.8,
+    "y": 54,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {
+     "E": "a2",
+     "B": "a3",
+     "C": "a4"
+    }
+   },
+   "bz1": {
+    "type": "buzzer",
+    "x": 423.1,
+    "y": 121.6,
+    "rot": 180,
+    "attrs": {},
+    "snaps": {
+     "1": "c5",
+     "2": "c4"
+    }
+   },
+   "d1": {
+    "type": "diode",
+    "x": 460.4,
+    "y": 83.0,
+    "rot": 180,
+    "attrs": {
+     "model": "1N4007"
+    },
+    "snaps": {
+     "A": "a11",
+     "K": "a5"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:b2",
+    "b": "bb:top-4",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b5",
+    "b": "bb:top+5",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "board:D2",
+    "b": "bb:a13",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "bb:b11",
+    "b": "bb:b4",
+    "color": "#1565c0"
+   },
+   {
+    "a": "bb:j13",
+    "b": "bb:b3",
+    "color": "#2e7d32"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・1 kΩ 電阻 ×1\n・NPN 電晶體 2N2222 ×1\n・蜂鳴器 ×1\n・二極體 1N4007 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×7",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・D2 → 1kΩ → 電晶體 B；E 接 GND\n・蜂鳴器一腳接 5V、另一腳接電晶體 C\n・二極體 A 接 C、K 接 5V（反向並聯在蜂鳴器兩端）\n・執行：程式每秒切換 GPIO，蜂鳴器響停交替",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 上方「−」軌；紅線：板子 5V → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "NPN 電晶體 2N2222（q1）插上麵包板：E→a2、B→a3、C→a4",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "蜂鳴器（bz1）插上麵包板：負極→c5、正極→c4",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "二極體 1N4007（d1）插上麵包板：陽極 A→a11、陰極 K（白環那端）→a5",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "1 kΩ 電阻（rb）插上麵包板（跨中央溝槽）：一腳→c13、另一腳→g13",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：b2（跟 q1 的E同一直排） → 上方「−」軌",
+    "wires": [
+     2
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紅線：b5（跟 bz1 的負極、d1 的陰極 K（白環那端）同一直排） → 上方「＋」軌",
+    "wires": [
+     3
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：板子 D2 → a13（跟 rb 的一腳同一直排）",
+    "wires": [
+     4
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：b11（跟 d1 的陽極 A同一直排） → b4（跟 q1 的C、bz1 的正極同一直排）",
+    "wires": [
+     5
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "綠線：j13（跟 rb 的另一腳同一直排） → b3（跟 q1 的B同一直排）",
+    "wires": [
+     6
+    ]
+   }
+  ],
+  "code": "// 電晶體驅動蜂鳴器（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\nconst int DRV = 2;                          // D2 → 1kΩ → 電晶體基極\nunsigned long n = 0;\n\nvoid setup() { Serial.begin(9600); pinMode(DRV, OUTPUT); }\n\nvoid loop() {\n  digitalWrite(DRV, HIGH); Serial.print(\"第 \"); Serial.print(n); Serial.println(\" 次：電晶體導通，蜂鳴器通電\"); delay(500);\n  digitalWrite(DRV, LOW);  Serial.println(\"關斷：線圈反電動勢由飛輪二極體導走\"); delay(500);\n  n++;\n}\n",
+  "expect": "蜂鳴器每秒響停一次；點電晶體看屬性：導通時 Vce 很小（飽和）。拿掉二極體模擬器一樣會響，但實機電晶體會被反電動勢打壞。",
+  "try": [
+   "把 1k 換 100k，看電晶體還飽不飽和",
+   "改用繼電器模組的線圈（實機要加二極體）"
+  ],
+  "verify": {
+   "console": "導通"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_npn_flyback_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "1 kΩ 電阻 ×1",
+   "NPN 電晶體 2N2222 ×1",
+   "蜂鳴器 ×1",
+   "二極體 1N4007 ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×7"
+  ],
+  "circuit": [
+   "D2 → 1kΩ → 電晶體 B；E 接 GND",
+   "蜂鳴器一腳接 5V、另一腳接電晶體 C",
+   "二極體 A 接 C、K 接 5V（反向並聯在蜂鳴器兩端）",
+   "執行：程式每秒切換 GPIO，蜂鳴器響停交替"
+  ],
+  "layout": "dfcc421b4602"
+ },
+ {
+  "id": "an_bridge@uno",
+  "title": "橋式整流＋濾波",
+  "level": "專題",
+  "summary": "四顆二極體做全波整流，再用電容濾成近似直流；探針看 r1:1 從脈動變平滑。",
+  "breadboard": {
+   "x": 402,
+   "y": 64.5
+  },
+  "parts": {
+   "ac1": {
+    "type": "acsource",
+    "x": 402,
+    "y": 298.5,
+    "rot": 0,
+    "attrs": {
+     "vpk": "3",
+     "freq": "5"
+    },
+    "snaps": {}
+   },
+   "d1": {
+    "type": "diode",
+    "x": 412.4,
+    "y": 155.1,
+    "rot": 270,
+    "attrs": {},
+    "snaps": {
+     "A": "h3",
+     "K": "d3"
+    }
+   },
+   "d2": {
+    "type": "diode",
+    "x": 479.6,
+    "y": 97.5,
+    "rot": 180,
+    "attrs": {},
+    "snaps": {
+     "A": "a13",
+     "K": "a7"
+    }
+   },
+   "d3": {
+    "type": "diode",
+    "x": 393.2,
+    "y": 145.5,
+    "rot": 90,
+    "attrs": {},
+    "snaps": {
+     "A": "c1",
+     "K": "g1"
+    }
+   },
+   "d4": {
+    "type": "diode",
+    "x": 537.2,
+    "y": 107.1,
+    "rot": 180,
+    "attrs": {},
+    "snaps": {
+     "A": "b19",
+     "K": "b13"
+    }
+   },
+   "c1": {
+    "type": "capacitor",
+    "x": 428.0,
+    "y": 48.5,
+    "rot": 0,
+    "attrs": {
+     "value": "470u"
+    },
+    "snaps": {
+     "+": "a3",
+     "-": "a4"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 450.05,
+    "y": 161.2,
+    "rot": 90,
+    "attrs": {
+     "value": "1k"
+    },
+    "snaps": {
+     "1": "d7",
+     "2": "h7"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:bot-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:j7",
+    "b": "bb:bot-6",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:a1",
+    "b": "bb:top-5",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b4",
+    "b": "bb:top-6",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:a19",
+    "b": "bb:top-16",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b3",
+    "b": "bb:b7",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "board:A0",
+    "b": "bb:c3",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "bb:j1",
+    "b": "bb:j3",
+    "color": "#1565c0"
+   },
+   {
+    "a": "ac1:+",
+    "b": "bb:i1",
+    "color": "#1565c0"
+   },
+   {
+    "a": "ac1:-",
+    "b": "bb:c13",
+    "color": "#2e7d32"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・交流電源（3 Vpk、5 Hz，可用訊號產生器） ×1\n・二極體 1N4007 ×4\n・470 µF 電解電容 ×1\n・1 kΩ 電阻 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×11",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・ac+ → d1 → 輸出；ac− → d2 → 輸出（正半週與負半週各走一顆）\n・GND → d3 → ac+；GND → d4 → ac−（回流的兩顆）\n・輸出接 470µF 電容 + 與 1kΩ 負載，另一端都接 GND\n・輸出也接 A0\n・c1 是濾波電容：二極體導通時充電，不導通時經負載 r1 放電，放電時間常數 R × C = 1 kΩ × 470 µF = 0.47 秒，比交流電每半週 0.1 秒長得多，所以輸出的起伏變小",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 上方「−」軌；黑線：板子 GND → 下方「−」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "470 µF 電解電容（c1）插上麵包板：正極（長腳）→a3、負極（白條那側）→a4",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "二極體 1N4007（d1）插上麵包板（跨中央溝槽）：陽極 A→h3、陰極 K（白環那端）→d3",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "二極體 1N4007（d2）插上麵包板：陽極 A→a13、陰極 K（白環那端）→a7",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "二極體 1N4007（d3）插上麵包板（跨中央溝槽）：陽極 A→c1、陰極 K（白環那端）→g1",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "二極體 1N4007（d4）插上麵包板：陽極 A→b19、陰極 K（白環那端）→b13",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "1 kΩ 電阻（r1）插上麵包板（跨中央溝槽）：一腳→d7、另一腳→h7",
+    "wires": []
+   },
+   {
+    "title": "擺模組",
+    "text": "交流電源（3 Vpk、5 Hz，可用訊號產生器）（ac1）放在麵包板旁邊，用杜邦線接",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：j7（跟 r1 的另一腳同一直排） → 下方「−」軌\n黑線：a1（跟 d3 的陽極 A同一直排） → 上方「−」軌\n黑線：b4（跟 c1 的負極（白條那側）同一直排） → 上方「−」軌\n黑線：a19（跟 d4 的陽極 A同一直排） → 上方「−」軌",
+    "wires": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：b3（跟 d1 的陰極 K（白環那端）、c1 的正極（長腳）同一直排） → b7（跟 d2 的陰極 K（白環那端）、r1 的一腳同一直排）\n橘線：板子 A0 → c3（跟 d1 的陰極 K（白環那端）、c1 的正極（長腳）同一直排）",
+    "wires": [
+     6,
+     7
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：j1（跟 d3 的陰極 K（白環那端）同一直排） → j3（跟 d1 的陽極 A同一直排）\n藍線：ac1 的 + → i1（跟 d3 的陰極 K（白環那端）同一直排）",
+    "wires": [
+     8,
+     9
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "綠線：ac1 的 - → c13（跟 d2 的陽極 A、d4 的陰極 K（白環那端）同一直排）",
+    "wires": [
+     10
+    ]
+   }
+  ],
+  "code": "// 橋式整流＋濾波（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\nfloat volts(int pin) { return analogRead(pin) * 5.0 / 1023.0; }   // UNO：0～1023 → 0～5 V\n\nfloat lo = 9, hi = 0; unsigned long n = 0;\n\nvoid setup() { Serial.begin(9600); }\n\nvoid loop() {\n  float v = volts(A0); n++;\n  if (n > 20) { if (v < lo) lo = v; if (v > hi) hi = v; }    // 等電容充飽再統計\n  Serial.print(\"輸出 \"); Serial.print(v, 2); Serial.print(\" V（最低 \"); Serial.print(n > 20 ? lo : v, 2);\n  Serial.print(\" 最高 \"); Serial.print(hi, 2); Serial.print(\"，紋波 \"); Serial.print(n > 20 && hi > lo ? hi - lo : 0, 2); Serial.println(\"）\");\n  delay(50);\n}\n",
+  "expect": "探針 r1:1 幾乎是一條直線（紋波小），拿掉電容就變成一個個拱形。",
+  "try": [
+   "把 470u 換 10u 看紋波變大",
+   "把負載 1k 換 100，電容放電變快"
+  ],
+  "verify": {
+   "console": "輸出"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_bridge_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "交流電源（3 Vpk、5 Hz，可用訊號產生器） ×1",
+   "二極體 1N4007 ×4",
+   "470 µF 電解電容 ×1",
+   "1 kΩ 電阻 ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×11"
+  ],
+  "circuit": [
+   "ac+ → d1 → 輸出；ac− → d2 → 輸出（正半週與負半週各走一顆）",
+   "GND → d3 → ac+；GND → d4 → ac−（回流的兩顆）",
+   "輸出接 470µF 電容 + 與 1kΩ 負載，另一端都接 GND",
+   "輸出也接 A0",
+   "c1 是濾波電容：二極體導通時充電，不導通時經負載 r1 放電，放電時間常數 R × C = 1 kΩ × 470 µF = 0.47 秒，比交流電每半週 0.1 秒長得多，所以輸出的起伏變小"
+  ],
+  "layout": "01d6ef63af57"
+ },
+ {
+  "id": "an_opamp_amp@uno",
+  "title": "運放放大 ×11",
+  "level": "專題",
+  "summary": "非反相放大：Rf=10k、Rg=1k → 增益 11。可變電阻分壓出 0～0.3 V 小訊號，放大後 ADC 讀到 0～3.3 V。",
+  "breadboard": {
+   "x": 402,
+   "y": 73.0
+  },
+  "parts": {
+   "u1": {
+    "type": "lm358",
+    "x": 426.8,
+    "y": 155.4,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {
+     "OUT1": "f2",
+     "IN1-": "f3",
+     "IN1+": "f4",
+     "GND": "f5",
+     "IN2+": "e5",
+     "IN2-": "e4",
+     "OUT2": "e3",
+     "VCC": "e2"
+    }
+   },
+   "pot1": {
+    "type": "potentiometer",
+    "x": 508.2,
+    "y": 48.5,
+    "rot": 0,
+    "attrs": {},
+    "snaps": {
+     "GND": "a13",
+     "SIG": "a14",
+     "VCC": "a15"
+    }
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 478.85,
+    "y": 160.1,
+    "rot": 90,
+    "attrs": {
+     "value": "100k"
+    },
+    "snaps": {
+     "1": "c10",
+     "2": "g10"
+    }
+   },
+   "rf": {
+    "type": "resistor",
+    "x": 431.6,
+    "y": 188.15,
+    "rot": 0,
+    "attrs": {
+     "value": "10k"
+    },
+    "snaps": {
+     "1": "g2",
+     "2": "g8"
+    }
+   },
+   "rg": {
+    "type": "resistor",
+    "x": 459.65,
+    "y": 149.0,
+    "rot": 270,
+    "attrs": {
+     "value": "1k"
+    },
+    "snaps": {
+     "1": "f8",
+     "2": "b8"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:bot-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:5V",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:j5",
+    "b": "bb:bot-5",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:a8",
+    "b": "bb:top-7",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b13",
+    "b": "bb:top-8",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:b15",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:a2",
+    "b": "bb:top+2",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "board:A0",
+    "b": "bb:j2",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "bb:j4",
+    "b": "bb:j10",
+    "color": "#1565c0"
+   },
+   {
+    "a": "board:A1",
+    "b": "bb:i4",
+    "color": "#1565c0"
+   },
+   {
+    "a": "bb:b14",
+    "b": "bb:a10",
+    "color": "#2e7d32"
+   },
+   {
+    "a": "bb:j3",
+    "b": "bb:j8",
+    "color": "#f9a825"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・LM358 運算放大器 IC ×1\n・可變電阻 ×1\n・100 kΩ 電阻 ×1\n・10 kΩ 電阻 ×1\n・1 kΩ 電阻 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×13",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・LM358 VCC→5V、GND→GND\n・可變電阻 SIG → 100kΩ → IN1+（運放輸入阻抗高，這裡只是示意小訊號）\n・OUT1 → 10kΩ → IN1−；IN1− → 1kΩ → GND（負回授）\n・IN1+ 接 A1、OUT1 接 A0，程式算增益",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 上方「−」軌；黑線：板子 GND → 下方「−」軌；紅線：板子 5V → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "LM358 運算放大器 IC（u1）插上麵包板（跨中央溝槽）：OUT1→f2、IN1-→f3、IN1+→f4、GND→f5、IN2+→e5、IN2-→e4、OUT2→e3、VCC→e2",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "10 kΩ 電阻（rf）插上麵包板：一腳→g2、另一腳→g8",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "100 kΩ 電阻（ra）插上麵包板（跨中央溝槽）：一腳→c10、另一腳→g10",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "可變電阻（pot1）插上麵包板：GND→a13、SIG→a14、VCC→a15",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "1 kΩ 電阻（rg）插上麵包板（跨中央溝槽）：一腳→f8、另一腳→b8",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：j5（跟 u1 的GND同一直排） → 下方「−」軌\n黑線：a8（跟 rg 的另一腳同一直排） → 上方「−」軌\n黑線：b13（跟 pot1 的GND同一直排） → 上方「−」軌",
+    "wires": [
+     3,
+     4,
+     5
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紅線：板子 3V3 → b15（跟 pot1 的VCC同一直排）\n紅線：a2（跟 u1 的VCC同一直排） → 上方「＋」軌",
+    "wires": [
+     6,
+     7
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：板子 A0 → j2（跟 u1 的OUT1、rf 的一腳同一直排）",
+    "wires": [
+     8
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：j4（跟 u1 的IN1+同一直排） → j10（跟 ra 的另一腳同一直排）\n藍線：板子 A1 → i4（跟 u1 的IN1+同一直排）",
+    "wires": [
+     9,
+     10
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "綠線：b14（跟 pot1 的SIG同一直排） → a10（跟 ra 的一腳同一直排）",
+    "wires": [
+     11
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "黃線：j3（跟 u1 的IN1-同一直排） → j8（跟 rf 的另一腳、rg 的一腳同一直排）",
+    "wires": [
+     12
+    ]
+   }
+  ],
+  "code": "// 運放放大 ×11（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\nfloat volts(int pin) { return analogRead(pin) * 5.0 / 1023.0; }   // UNO：0～1023 → 0～5 V\n\nvoid setup() { Serial.begin(9600); }\n\nvoid loop() {\n  float a = volts(A1), b = volts(A0);       // A1＝輸入（可變電阻），A0＝運放輸出\n  Serial.print(\"輸入 \"); Serial.print(a, 2); Serial.print(\" V → 輸出 \"); Serial.print(b, 2);\n  Serial.print(\" V，增益 \"); Serial.println(a > 0.02 ? b / a : 0, 1);\n  delay(200);\n}\n",
+  "expect": "轉可變電阻，輸出是輸入的約 11 倍，到 3.3 V 左右就飽和（ADC 上限）。",
+  "try": [
+   "把 Rf 換 100k 看增益 101 多快飽和",
+   "改成反相放大"
+  ],
+  "verify": {
+   "adc": {
+    "15": 400
+   },
+   "console": "增益"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_opamp_amp_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "LM358 運算放大器 IC ×1",
+   "可變電阻 ×1",
+   "100 kΩ 電阻 ×1",
+   "10 kΩ 電阻 ×1",
+   "1 kΩ 電阻 ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×13"
+  ],
+  "circuit": [
+   "LM358 VCC→5V、GND→GND",
+   "可變電阻 SIG → 100kΩ → IN1+（運放輸入阻抗高，這裡只是示意小訊號）",
+   "OUT1 → 10kΩ → IN1−；IN1− → 1kΩ → GND（負回授）",
+   "IN1+ 接 A1、OUT1 接 A0，程式算增益"
+  ],
+  "layout": "53c55209e78d"
+ },
+ {
+  "id": "an_half_adder@uno",
+  "title": "半加器",
+  "level": "專題",
+  "summary": "XOR 給「和」、AND 給「進位」：兩顆按鍵輸入 1 位元，兩顆 LED 顯示 和／進位，程式印出 A+B。",
+  "breadboard": {
+   "x": 402,
+   "y": 50
+  },
+  "parts": {
+   "g1": {
+    "type": "gate",
+    "x": 426.8,
+    "y": 132.4,
+    "rot": 0,
+    "attrs": {
+     "kind": "XOR"
+    },
+    "snaps": {
+     "A": "f2",
+     "B": "f3",
+     "Y": "f5",
+     "VCC": "e2",
+     "GND": "e5"
+    }
+   },
+   "g2": {
+    "type": "gate",
+    "x": 465.2,
+    "y": 132.4,
+    "rot": 0,
+    "attrs": {
+     "kind": "AND"
+    },
+    "snaps": {
+     "A": "f6",
+     "B": "f7",
+     "Y": "f9",
+     "VCC": "e6",
+     "GND": "e9"
+    }
+   },
+   "btn1": {
+    "type": "pushbutton",
+    "x": 493.85,
+    "y": 124.15,
+    "rot": 90,
+    "attrs": {},
+    "snaps": {
+     "1.l": "c13",
+     "2.l": "c11",
+     "1.r": "h13",
+     "2.r": "h11"
+    }
+   },
+   "btn2": {
+    "type": "pushbutton",
+    "x": 541.85,
+    "y": 124.15,
+    "rot": 90,
+    "attrs": {},
+    "snaps": {
+     "1.l": "c18",
+     "2.l": "c16",
+     "1.r": "h18",
+     "2.r": "h16"
+    }
+   },
+   "ra": {
+    "type": "resistor",
+    "x": 594.05,
+    "y": 137.1,
+    "rot": 90,
+    "attrs": {
+     "value": "10k"
+    },
+    "snaps": {
+     "1": "c22",
+     "2": "g22"
+    }
+   },
+   "rb": {
+    "type": "resistor",
+    "x": 632.45,
+    "y": 137.1,
+    "rot": 90,
+    "attrs": {
+     "value": "10k"
+    },
+    "snaps": {
+     "1": "c26",
+     "2": "g26"
+    }
+   },
+   "r1": {
+    "type": "resistor",
+    "x": 392.45,
+    "y": 137.1,
+    "rot": 90,
+    "attrs": {
+     "value": "220"
+    },
+    "snaps": {
+     "1": "c1",
+     "2": "g1"
+    }
+   },
+   "led1": {
+    "type": "led",
+    "x": 483.4,
+    "y": 52,
+    "rot": 0,
+    "attrs": {
+     "color": "green"
+    },
+    "snaps": {
+     "A": "a10",
+     "C": "a9"
+    }
+   },
+   "r2": {
+    "type": "resistor",
+    "x": 584.45,
+    "y": 137.1,
+    "rot": 90,
+    "attrs": {
+     "value": "220"
+    },
+    "snaps": {
+     "1": "c21",
+     "2": "g21"
+    }
+   },
+   "led2": {
+    "type": "led",
+    "x": 599.0,
+    "y": 191.6,
+    "rot": 180,
+    "attrs": {
+     "color": "red"
+    },
+    "snaps": {
+     "A": "j21",
+     "C": "j22"
+    }
+   }
+  },
+  "wires": [
+   {
+    "a": "board:GND",
+    "b": "bb:top-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:GND",
+    "b": "bb:bot-1",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "board:3V3",
+    "b": "bb:bot+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:i22",
+    "b": "bb:bot-20",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:j26",
+    "b": "bb:bot-22",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:a5",
+    "b": "bb:top-5",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:b9",
+    "b": "bb:top-6",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:j13",
+    "b": "bb:bot+11",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:j18",
+    "b": "bb:bot+15",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:a2",
+    "b": "bb:top+2",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:a6",
+    "b": "bb:top+5",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:j5",
+    "b": "bb:a1",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "board:D2",
+    "b": "bb:i5",
+    "color": "#ef6c00"
+   },
+   {
+    "a": "bb:j9",
+    "b": "bb:a21",
+    "color": "#1565c0"
+   },
+   {
+    "a": "board:D3",
+    "b": "bb:i9",
+    "color": "#1565c0"
+   },
+   {
+    "a": "bb:j2",
+    "b": "bb:j6",
+    "color": "#2e7d32"
+   },
+   {
+    "a": "bb:i6",
+    "b": "bb:j11",
+    "color": "#2e7d32"
+   },
+   {
+    "a": "bb:h6",
+    "b": "bb:a22",
+    "color": "#2e7d32"
+   },
+   {
+    "a": "bb:j3",
+    "b": "bb:j7",
+    "color": "#f9a825"
+   },
+   {
+    "a": "bb:i7",
+    "b": "bb:j16",
+    "color": "#f9a825"
+   },
+   {
+    "a": "bb:h7",
+    "b": "bb:a26",
+    "color": "#f9a825"
+   },
+   {
+    "a": "bb:j1",
+    "b": "bb:b10",
+    "color": "#6a1b9a"
+   }
+  ],
+  "steps": [
+   {
+    "title": "材料",
+    "text": "・Arduino UNO ×1\n・邏輯閘 IC（74HC XOR） ×1\n・邏輯閘 IC（74HC AND） ×1\n・按鍵 ×2\n・10 kΩ 電阻 ×2\n・220 Ω 電阻 ×2\n・綠色 LED ×1\n・紅色 LED ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×23",
+    "wires": []
+   },
+   {
+    "title": "電路說明",
+    "text": "・兩個閘的 VCC→3V3、GND→GND\n・按鍵 1 → A（同時接 XOR 與 AND 的 A），10kΩ 下拉\n・按鍵 2 → B（同時接兩個閘的 B），10kΩ 下拉\n・XOR Y → 220Ω → 綠 LED（和）；AND Y → 220Ω → 紅 LED（進位）\n・兩個 Y 也接 D2／D3 讓程式印結果",
+    "wires": []
+   },
+   {
+    "title": "電源軌",
+    "text": "黑線：板子 GND → 上方「−」軌；黑線：板子 GND → 下方「−」軌；紅線：板子 3V3 → 上方「＋」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "wires": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "title": "插元件",
+    "text": "邏輯閘 IC（74HC XOR）（g1）插上麵包板（跨中央溝槽）：A→f2、B→f3、Y→f5、VCC→e2、GND→e5",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "邏輯閘 IC（74HC AND）（g2）插上麵包板（跨中央溝槽）：A→f6、B→f7、Y→f9、VCC→e6、GND→e9",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "按鍵（btn1）插上麵包板（跨中央溝槽）：腳 1→c13、腳 2→c11、腳 1'→h13、腳 2'→h11",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "按鍵（btn2）插上麵包板（跨中央溝槽）：腳 1→c18、腳 2→c16、腳 1'→h18、腳 2'→h16",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "220 Ω 電阻（r1）插上麵包板（跨中央溝槽）：一腳→c1、另一腳→g1",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "綠色 LED（led1）插上麵包板：長腳（＋）→a10、短腳（−）→a9",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "220 Ω 電阻（r2）插上麵包板（跨中央溝槽）：一腳→c21、另一腳→g21",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "紅色 LED（led2）插上麵包板：長腳（＋）→j21、短腳（−）→j22",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "10 kΩ 電阻（ra）插上麵包板（跨中央溝槽）：一腳→c22、另一腳→g22",
+    "wires": []
+   },
+   {
+    "title": "插元件",
+    "text": "10 kΩ 電阻（rb）插上麵包板（跨中央溝槽）：一腳→c26、另一腳→g26",
+    "wires": []
+   },
+   {
+    "title": "接線",
+    "text": "黑線：i22（跟 ra 的另一腳、led2 的短腳（−）同一直排） → 下方「−」軌\n黑線：j26（跟 rb 的另一腳同一直排） → 下方「−」軌\n黑線：a5（跟 g1 的GND同一直排） → 上方「−」軌\n黑線：b9（跟 g2 的GND、led1 的短腳（−）同一直排） → 上方「−」軌",
+    "wires": [
+     4,
+     5,
+     6,
+     7
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紅線：j13（跟 btn1 的腳 1'同一直排） → 下方「＋」軌\n紅線：j18（跟 btn2 的腳 1'同一直排） → 下方「＋」軌\n紅線：a2（跟 g1 的VCC同一直排） → 上方「＋」軌\n紅線：a6（跟 g2 的VCC同一直排） → 上方「＋」軌",
+    "wires": [
+     8,
+     9,
+     10,
+     11
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "橘線：j5（跟 g1 的Y同一直排） → a1（跟 r1 的一腳同一直排）\n橘線：板子 D2 → i5（跟 g1 的Y同一直排）",
+    "wires": [
+     12,
+     13
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：j9（跟 g2 的Y同一直排） → a21（跟 r2 的一腳同一直排）\n藍線：板子 D3 → i9（跟 g2 的Y同一直排）",
+    "wires": [
+     14,
+     15
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "綠線：j2（跟 g1 的A同一直排） → j6（跟 g2 的A同一直排）\n綠線：i6（跟 g2 的A同一直排） → j11（跟 btn1 的腳 2'同一直排）\n綠線：h6（跟 g2 的A同一直排） → a22（跟 ra 的一腳同一直排）",
+    "wires": [
+     16,
+     17,
+     18
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "黃線：j3（跟 g1 的B同一直排） → j7（跟 g2 的B同一直排）\n黃線：i7（跟 g2 的B同一直排） → j16（跟 btn2 的腳 2'同一直排）\n黃線：h7（跟 g2 的B同一直排） → a26（跟 rb 的一腳同一直排）",
+    "wires": [
+     19,
+     20,
+     21
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紫線：j1（跟 r1 的另一腳同一直排） → b10（跟 led1 的長腳（＋）同一直排）",
+    "wires": [
+     22
+    ]
+   }
+  ],
+  "code": "// 半加器（Arduino UNO 版）：電路本身是類比電路，程式只負責把量到的東西印到序列埠\nconst int S = 2, C = 3;                     // XOR（和）接 D2、AND（進位）接 D3\nint prev = -1;\n\nvoid setup() { Serial.begin(9600); pinMode(S, INPUT); pinMode(C, INPUT); }\n\nvoid loop() {\n  int s = digitalRead(S), c = digitalRead(C), v = c * 2 + s;\n  if (v != prev) { Serial.print(\"和 = \"); Serial.print(s); Serial.print(\" 進位 = \"); Serial.print(c); Serial.print(\" → A + B = \"); Serial.println(v); prev = v; }\n  delay(50);\n}\n",
+  "expect": "按一顆：綠亮（1+0=1）；按兩顆：紅亮綠滅（1+1=10 二進位）。",
+  "try": [
+   "加第三顆按鍵做全加器（要再兩個閘）",
+   "把 LED 換成 OLED 顯示算式"
+  ],
+  "verify": {
+   "ui": {
+    "btn1": {
+     "pressed": true
+    },
+    "btn2": {
+     "pressed": true
+    }
+   },
+   "console": "A \\+ B = 2"
+  },
+  "lang": "cpp",
+  "hex": "arduino-hex/an_half_adder_uno.hex",
+  "board": "uno",
+  "boardName": "Arduino UNO",
+  "hardware": [
+   "Arduino UNO ×1",
+   "邏輯閘 IC（74HC XOR） ×1",
+   "邏輯閘 IC（74HC AND） ×1",
+   "按鍵 ×2",
+   "10 kΩ 電阻 ×2",
+   "220 Ω 電阻 ×2",
+   "綠色 LED ×1",
+   "紅色 LED ×1",
+   "麵包板（半尺寸）×1",
+   "杜邦線 ×23"
+  ],
+  "circuit": [
+   "兩個閘的 VCC→3V3、GND→GND",
+   "按鍵 1 → A（同時接 XOR 與 AND 的 A），10kΩ 下拉",
+   "按鍵 2 → B（同時接兩個閘的 B），10kΩ 下拉",
+   "XOR Y → 220Ω → 綠 LED（和）；AND Y → 220Ω → 紅 LED（進位）",
+   "兩個 Y 也接 D2／D3 讓程式印結果"
+  ],
+  "layout": "e40f8c5fea9e"
  }
 ]

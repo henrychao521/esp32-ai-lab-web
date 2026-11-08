@@ -8,6 +8,114 @@
   "ram": 224,
   "sha256": "6fff353085bc4ee6e6120336a58b00f0ed6bb5f496067950cc7e7c3fb146bf52"
  },
+ "an_555_blink_uno": {
+  "compile_s": 0.72,
+  "core": "arduino:avr",
+  "flash": 3912,
+  "hex_bytes": 11022,
+  "libs": [],
+  "ram": 240,
+  "sha256": "551e85b3cf4f3c5d95acc434416e1dbc44e9097b7209e0a9f8912d4903d8d011"
+ },
+ "an_555_buzzer_uno": {
+  "compile_s": 0.62,
+  "core": "arduino:avr",
+  "flash": 3584,
+  "hex_bytes": 10106,
+  "libs": [],
+  "ram": 396,
+  "sha256": "642522a465faab27d8d77ccba94c65c4a0944da058a5f4b6da2a0d87dcc2d5d4"
+ },
+ "an_555_mono_uno": {
+  "compile_s": 0.64,
+  "core": "arduino:avr",
+  "flash": 3768,
+  "hex_bytes": 10617,
+  "libs": [],
+  "ram": 234,
+  "sha256": "4abd0208db82d82280e9808e8a9e46b40f00b007e15d41f3fdd5f5dffaacad28"
+ },
+ "an_bridge_uno": {
+  "compile_s": 0.66,
+  "core": "arduino:avr",
+  "flash": 3904,
+  "hex_bytes": 11006,
+  "libs": [],
+  "ram": 256,
+  "sha256": "26d5264c14e24abb00b9c7f9d94818b24ad1e9a357ff6a201f2716b42557e2cf"
+ },
+ "an_gate_uno": {
+  "compile_s": 0.62,
+  "core": "arduino:avr",
+  "flash": 2208,
+  "hex_bytes": 6236,
+  "libs": [],
+  "ram": 254,
+  "sha256": "bb04aefeea4b80a76f9d2bf194104e137df8a77df53735da3c21ca396200c8fc"
+ },
+ "an_half_adder_uno": {
+  "compile_s": 0.68,
+  "core": "arduino:avr",
+  "flash": 2420,
+  "hex_bytes": 6829,
+  "libs": [],
+  "ram": 222,
+  "sha256": "ede6ba7606e4bd25194a57aebc9ae26571f94d7c334a410d130a95ec42787be1"
+ },
+ "an_halfwave_uno": {
+  "compile_s": 0.62,
+  "core": "arduino:avr",
+  "flash": 3656,
+  "hex_bytes": 10302,
+  "libs": [],
+  "ram": 262,
+  "sha256": "27c92af09b6600cea02abcea297b4e5c3748a3f042984af60ddfa4e0c39e64fc"
+ },
+ "an_npn_flyback_uno": {
+  "compile_s": 0.66,
+  "core": "arduino:avr",
+  "flash": 2296,
+  "hex_bytes": 6477,
+  "libs": [],
+  "ram": 290,
+  "sha256": "c204abb3d601d68d54d15f7fbdae5d7b6e5ece1a78981d73b40d78a0bc9d05a2"
+ },
+ "an_npn_light_uno": {
+  "compile_s": 0.64,
+  "core": "arduino:avr",
+  "flash": 3482,
+  "hex_bytes": 9811,
+  "libs": [],
+  "ram": 258,
+  "sha256": "23da6068af1e18578f9eb3dc0f0f572916d2448540a25438d33fa98cbfa4c0e7"
+ },
+ "an_opamp_amp_uno": {
+  "compile_s": 0.62,
+  "core": "arduino:avr",
+  "flash": 3686,
+  "hex_bytes": 10388,
+  "libs": [],
+  "ram": 236,
+  "sha256": "8b72831f54a5025c862dfd254ff39f8691d8b9bc90977e2968f6c0cf3a6f1fda"
+ },
+ "an_opamp_cmp_uno": {
+  "compile_s": 0.63,
+  "core": "arduino:avr",
+  "flash": 2074,
+  "hex_bytes": 5864,
+  "libs": [],
+  "ram": 286,
+  "sha256": "f9f9ff3bf9248790f149b4fe78338d4312b671a0c65babcb6d79a741170cab6d"
+ },
+ "an_rc_uno": {
+  "compile_s": 2.51,
+  "core": "arduino:avr",
+  "flash": 3480,
+  "hex_bytes": 9807,
+  "libs": [],
+  "ram": 212,
+  "sha256": "e978600b55607fa72f6d39f8bbbc9482f668b57279d241cb78f7410d3981c5a6"
+ },
  "uno_blink": {
   "compile_s": 1.44,
   "core": "arduino:avr",

@@ -491,6 +491,14 @@
 "file": "thumbs/uno_traffic_at_uno.webp",
 "hash": "7f718caa3594"
 },
+"an_rc@uno": {
+"file": "thumbs/an_rc_at_uno.webp",
+"hash": "227dc5e3527a"
+},
+"an_gate@uno": {
+"file": "thumbs/an_gate_at_uno.webp",
+"hash": "74ffd73fabc3"
+},
 "uno_tone_scale@uno": {
 "file": "thumbs/uno_tone_scale_at_uno.webp",
 "hash": "206d3dabd52e"
@@ -519,6 +527,30 @@
 "file": "thumbs/uno_serial_led_at_uno.webp",
 "hash": "7ab0c907905d"
 },
+"an_npn_light@uno": {
+"file": "thumbs/an_npn_light_at_uno.webp",
+"hash": "ac5a12267949"
+},
+"an_555_blink@uno": {
+"file": "thumbs/an_555_blink_at_uno.webp",
+"hash": "340b634075d9"
+},
+"an_555_buzzer@uno": {
+"file": "thumbs/an_555_buzzer_at_uno.webp",
+"hash": "f718beb7a916"
+},
+"an_555_mono@uno": {
+"file": "thumbs/an_555_mono_at_uno.webp",
+"hash": "9a0855c322ac"
+},
+"an_halfwave@uno": {
+"file": "thumbs/an_halfwave_at_uno.webp",
+"hash": "1a03b826e2fa"
+},
+"an_opamp_cmp@uno": {
+"file": "thumbs/an_opamp_cmp_at_uno.webp",
+"hash": "eccd899e9ea8"
+},
 "uno_dice@uno": {
 "file": "thumbs/uno_dice_at_uno.webp",
 "hash": "6c9c3f73b105"
@@ -526,5 +558,21 @@
 "uno_reaction@uno": {
 "file": "thumbs/uno_reaction_at_uno.webp",
 "hash": "d501a32fbbee"
+},
+"an_npn_flyback@uno": {
+"file": "thumbs/an_npn_flyback_at_uno.webp",
+"hash": "dfcc421b4602"
+},
+"an_bridge@uno": {
+"file": "thumbs/an_bridge_at_uno.webp",
+"hash": "01d6ef63af57"
+},
+"an_opamp_amp@uno": {
+"file": "thumbs/an_opamp_amp_at_uno.webp",
+"hash": "53c55209e78d"
+},
+"an_half_adder@uno": {
+"file": "thumbs/an_half_adder_at_uno.webp",
+"hash": "e40f8c5fea9e"
 }
 }
