@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>電路模擬器 — ESP32 AI 實驗室</title>
 <style>
-:root{color-scheme:light dark;--bg:#f4f4f5;--panel:#fff;--ink:#1c1917;--muted:#6b7280;--line:#d4d4d8;--accent:#ff6a2b;--term:#0b0d10;--term-ink:#e7e5e4;--ok:#2a7;--warn:#e90;--bad:#e33}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--panel:#171a21;--ink:#e7e5e4;--muted:#9a9ea8;--line:#3f3f46}}
+:root{color-scheme:light dark;--bg:#f4f4f5;--panel:#fff;--ink:#1c1917;--muted:#6b7280;--line:#d4d4d8;--accent:#ff6a2b;--term:#0b0d10;--term-ink:#e7e5e4;--ok:#2a7;--warn:#e90;--bad:#e33;--canvas:#e6ebf1;--canvas-grid:#cfd7e1}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--panel:#171a21;--ink:#e7e5e4;--muted:#9a9ea8;--line:#3f3f46;--canvas:#3a4452;--canvas-grid:#4a5564}}   /* 畫布灰藍：黑色地線、橘色指標都看得到（2026-11-08 使用者） */
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.4 -apple-system,"PingFang TC","Noto Sans TC",sans-serif;-webkit-text-size-adjust:100%;overflow:hidden}
 body{display:grid;grid-template-rows:46px minmax(0,1fr) var(--bottom-h,260px);grid-template-columns:200px minmax(0,1fr) 300px;grid-template-areas:"top top top" "pal canvas side" "bottom bottom bottom";height:100dvh}
 button,select,input[type=text],input[type=search]{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:4px 9px;min-height:30px}
@@ -34,7 +34,7 @@ header b{margin-right:6px;font-size:15px}
 .pal .thumb>*{transform-origin:center;transform:scale(var(--s,.6))}
 .pal .item.ex.has-shot{height:auto;padding:4px 4px 6px}.pal .thumb.shot{height:auto}.pal .thumb.shot>*{transform:none}
 .ex-shot{display:block;width:100%;aspect-ratio:9/5;object-fit:cover;border-radius:6px;background:#f4f4f5;border:1px solid var(--line)}
-.sim-viewport{grid-area:canvas;position:relative;overflow:hidden;touch-action:none;background:linear-gradient(var(--line) 1px,transparent 1px) 0 0/24px 24px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/24px 24px,var(--bg);cursor:grab}
+.sim-viewport{grid-area:canvas;position:relative;overflow:hidden;touch-action:none;background:linear-gradient(var(--canvas-grid) 1px,transparent 1px) 0 0/24px 24px,linear-gradient(90deg,var(--canvas-grid) 1px,transparent 1px) 0 0/24px 24px,var(--canvas);cursor:grab}
 .sim-world{position:absolute;left:0;top:0;transform-origin:0 0;width:0;height:0}
 .sim-parts{position:absolute;left:0;top:0}
 .sim-item{position:absolute;transform-origin:center;user-select:none;-webkit-user-select:none}
@@ -76,8 +76,8 @@ svg.sim-wires path.wire-hit{fill:none;stroke:transparent;stroke-width:18;stroke-
 .ex-card{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);cursor:pointer;display:flex;flex-direction:column;gap:4px}
 .ex-card:hover{border-color:var(--accent)}
 .ex-card b{font-size:14px}.ex-card .lv{font-size:11px;color:var(--accent)}.ex-card .sm{font-size:12px;color:var(--muted)}
-#steps{display:none;position:relative;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px}
-#steps b{display:block;margin-bottom:4px}#steps-text{white-space:pre-line;max-height:min(42vh,320px);overflow:auto;line-height:1.55}#steps .nav{display:flex;gap:6px;margin-top:8px;align-items:center}#steps .muted{font-size:12px}
+#steps{display:none;position:relative;width:100%;box-shadow:none!important;border:0!important;padding:4px 2px!important;max-width:none!important;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px}
+#steps b{display:block;margin-bottom:4px}#steps-text{white-space:pre-line;font-size:14px;line-height:1.55}#steps .nav{display:flex;gap:6px;margin-top:8px;align-items:center}#steps .muted{font-size:12px}
 svg.sim-wires path.temp{fill:none;stroke:var(--accent);stroke-width:3;stroke-dasharray:6 4;display:none}
 svg.sim-wires circle.wp{fill:#fff;stroke:var(--accent);stroke-width:2;pointer-events:all;cursor:move}
 svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;stroke:var(--bg);stroke-width:3px;pointer-events:none}
@@ -103,7 +103,7 @@ svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;
 /* 2026-11-08 使用者：說明對話框會擋住電路 → 提示、接線步驟、數值調整統一放畫布下方（#dock） */
 #dock{position:absolute;left:10px;right:56px;bottom:10px;z-index:6;display:flex;flex-direction:column;align-items:flex-start;gap:6px;pointer-events:none;max-height:55%}
 #dock>*{pointer-events:auto;max-width:min(560px,100%)}
-#toasts{display:flex;flex-direction:column;gap:6px;pointer-events:none!important}
+#toasts{display:flex;flex-direction:column;gap:6px;pointer-events:none!important;max-width:100%}#toasts .toast{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;max-width:100%}
 #qedit{display:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13px;width:100%}
 #qedit .hd{display:flex;align-items:center;gap:8px;margin-bottom:6px}#qedit .hd b{flex:1}
 #qedit .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0}#qedit .row label{min-width:64px;color:var(--muted);font-size:12px}
@@ -264,8 +264,7 @@ dialog{position:relative}
   <button id="tools-toggle" class="icon" title="縮放與屬性">⊕</button>
   <canvas id="minimap" width="150" height="100"></canvas>
   <div id="tooltip"></div>
-  <div id="dock"><div id="toasts"></div><div id="qedit"></div>
-  <div id="steps"><b id="steps-title"></b><div id="steps-text"></div><div class="nav"><button id="steps-prev" class="icon">‹</button><span id="steps-pos" class="muted"></span><button id="steps-next" class="icon">›</button><span style="flex:1"></span><button id="steps-close" class="icon">✕</button></div></div>
+  <div id="dock"><div id="toasts"></div><div id="qedit"></div></div>
   <dialog id="push-dlg" style="border:0;border-radius:12px;padding:0;max-width:640px;width:94vw;background:var(--panel);color:var(--ink)">
     <div class="hd" style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)"><b>推到實機</b><span class="muted" id="push-board"></span><span style="flex:1"></span><button id="push-close">關閉</button></div>
     <div style="padding:12px 16px;max-height:70vh;overflow:auto;font-size:13px">
@@ -330,6 +329,7 @@ dialog{position:relative}
   <div id="resize"></div>
   <button id="btn-bigpanel" class="icon" title="放大面板／縮小畫布">⬆︎</button>
   <div class="tabs">
+    <button data-pane="steps">步驟</button>
     <button class="active" data-pane="editor">程式</button>
     <button data-pane="console">主控台<span class="badge" id="badge-con"></span></button>
     <button data-pane="measure">量測</button>
@@ -339,11 +339,14 @@ dialog{position:relative}
     <span style="flex:1"></span>
     <span class="status" id="engine-note" style="padding-right:10px"></span>
   </div>
+  <div class="pane" id="pane-steps"><div class="pane-col"><div class="pane-body"><div id="steps-empty" class="muted">載入範例電路後，這裡會一步一步列出材料、電路說明和接線步驟；畫布上會標出這一步的線。</div>
+<div id="steps"><b id="steps-title"></b><div id="steps-text"></div><div class="nav"><button id="steps-prev" class="icon">‹</button><span id="steps-pos" class="muted"></span><button id="steps-next" class="icon">›</button><span style="flex:1"></span><button id="steps-close" class="icon">✕</button></div></div>
+  </div></div></div>
   <div class="pane active" id="pane-editor"><div id="editor">
     <div class="editor-bar"><select id="snippets"><option value="">程式範例…</option></select><button id="btn-check">檢查語法</button><span class="muted" id="editor-note">同一份程式之後可直接推到真板子；保護檢查的問題會在程式裡畫底線</span></div>
     <div id="cm"></div>
   </div></div>
-  <div class="pane" id="pane-console"><div class="pane-col"><div id="console"></div><div class="bar"><button id="btn-clear-console">清除</button><span id="sensors"></span></div></div></div></div>
+  <div class="pane" id="pane-console"><div class="pane-col"><div id="console"></div><div class="bar"><button id="btn-clear-console">清除</button><span id="sensors"></span></div></div></div>
   <div class="pane" id="pane-measure"><div class="pane-col"><div class="pane-body" id="measure">
     <div id="meter"><span>萬用電表：</span><span class="muted" id="meter-hint">按住 Alt 點兩個腳位量電壓差</span><span class="big" id="meter-v">—</span><button id="meter-clear" class="icon">✕</button></div>
     <div id="power" class="muted"></div>
@@ -834,11 +837,11 @@ function loadExample(ex) {
   if (ex.board) $("board").value = ex.board; applyBoardUI(sim.doc.board); sim.autoRoute(); setCode(ex.code);
   for (const r of sim.probes) sim.removeProbe(r);   // 換範例先清掉上一個範例的探針
   for (const r of ex.probes || []) sim.addProbe(r);   // 純電路範例：示波器探針先加好（u1:OUT、c1:+ …）
-  if (ex.init) { for (const [id, v] of Object.entries(ex.init)) sim.ui[id] = { ...(sim.ui[id] || {}), ...v }; sim.tick(); }   // 開關初始位置 sim.fit(); showPane("editor"); buildPalette($("search").value.trim());
+  if (ex.init) { for (const [id, v] of Object.entries(ex.init)) sim.ui[id] = { ...(sim.ui[id] || {}), ...v }; sim.tick(); }   /* 開關初始位置 */ sim.fit(); showPane("steps"); buildPalette($("search").value.trim());
   stepState = { ex, i: 0 }; renderStep(); toast("已載入「" + ex.title + "」。預期：" + ex.expect);
 }
 function renderStep() {
-  const box = $("steps"); if (!stepState) { box.style.display = "none"; sim.highlightWires([]); return; }
+  const box = $("steps"); $("steps-empty").style.display = stepState ? "none" : ""; if (!stepState) { box.style.display = "none"; sim.highlightWires([]); return; }
   const { ex, i } = stepState; const st = ex.steps[i]; box.style.display = "block";
   $("steps-title").textContent = ex.title + "：" + (st.title || "接線步驟"); $("steps-text").textContent = st.text; $("steps-pos").textContent = (i + 1) + " / " + ex.steps.length;
   $("steps-prev").disabled = i === 0; $("steps-next").textContent = i === ex.steps.length - 1 ? "完成" : "›";
@@ -1080,7 +1083,7 @@ function drawMinimap() {
   cv.onclick = (e) => { const r = cv.getBoundingClientRect(); sim.panTo((e.clientX - r.left - ox) / s + minX, (e.clientY - r.top - oy) / s + minY); };
 }
 
-function toast(text, kind) { const d = document.createElement("div"); d.className = "toast " + (kind || ""); d.textContent = text; $("toasts").appendChild(d); setTimeout(() => d.remove(), 3500); }
+function toast(text, kind) { for (const old of [...$("toasts").children]) old.remove(); const d = document.createElement("div"); d.title = text; d.className = "toast " + (kind || ""); d.textContent = text; $("toasts").appendChild(d); setTimeout(() => d.remove(), 3500); }
 function download(name, text, type) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); }
 async function compress(str) { const cs = new CompressionStream("deflate-raw"); const w = cs.writable.getWriter(); w.write(new TextEncoder().encode(str)); w.close(); const buf = await new Response(cs.readable).arrayBuffer(); return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
 async function decompress(b64) { const bin = atob(b64.replace(/-/g, "+").replace(/_/g, "/")); const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0)); const ds = new DecompressionStream("deflate-raw"); const w = ds.writable.getWriter(); w.write(bytes); w.close(); return new TextDecoder().decode(await new Response(ds.readable).arrayBuffer()); }
