@@ -316,8 +316,10 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
   // 事後檢查：LED 電流、極性、無電阻；電源短路；GPIO 過流；浮接
   for (const L of ledList) {
     const vA = V(L.A), vC = V(L.C), vf = LED_VF[L.color] ?? 2.0;
-    const on = !!ledOn.get(L.key) && !burned.has(L.key);
-    const i = on ? Math.max(0, ((vA - vC) - vf) / 10) : 0;
+    // 要有實際電流才算亮：另一端懸空（例如電晶體截止）時兩端剛好等於 Vf、電流 0，以前會被畫成亮（2026-11-08 使用者回報）
+    const iRaw = Math.max(0, ((vA - vC) - vf) / 10);
+    const on = !!ledOn.get(L.key) && !burned.has(L.key) && iRaw > 2e-5;
+    const i = on ? iRaw : 0;
     const st = partState[L.part] = partState[L.part] || { leds: {} };
     st.leds[L.key] = { on, i, vA, vC, burned: burned.has(L.key) };
     if (burned.has(L.key)) { warn("LED_BURN", L.part, `${L.part} 已燒毀`, "為什麼：剛才電流超過 LED 上限 30 mA（沒有串電阻，電流只受腳位內阻限制）。", "怎麼改：按「重置」或重新「執行」讓 LED 復活，並在 LED 長腳（A）和 GPIO 之間串 220 Ω～1 kΩ 電阻。"); continue; }
