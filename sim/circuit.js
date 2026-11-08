@@ -33,7 +33,7 @@ export const PARTS = {
   diode: { pins: ["A", "K"], label: "二極體", attrs: { model: "1N4007" } },
   npn: { pins: ["E", "B", "C"], label: "NPN 電晶體", attrs: { model: "2N2222" } },
   ne555: { pins: ["GND", "TRIG", "OUT", "RESET", "CTRL", "THR", "DIS", "VCC"], label: "555 計時器", attrs: {} },
-  acsource: { pins: ["+", "-"], label: "交流電源", attrs: { vpk: "5", freq: "50" } },
+  acsource: { pins: ["+", "-"], label: "訊號產生器", attrs: { vpk: "5", freq: "50", wave: "sine", offset: "0" } },
   lm358: { pins: ["OUT1", "IN1-", "IN1+", "GND", "IN2+", "IN2-", "OUT2", "VCC"], label: "LM358 運算放大器", attrs: {} },
   gate: { pins: ["A", "B", "Y", "VCC", "GND"], label: "邏輯閘", attrs: { kind: "AND" } },
   "led-bar-graph": { pins: ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10"], label: "LED 長條", attrs: { color: "red" } },
@@ -62,6 +62,8 @@ export const BOARDS = {
   xiao_esp32s3: { name: "XIAO ESP32S3", power: { "3V3": 3.3, "5V": 5.0, GND: 0 }, gpios: [1, 2, 3, 4, 5, 6, 7, 8, 9, 43, 44],
                   usable: [1, 2, 3, 4, 5, 6, 7, 8, 9, 43, 44], adc: [1, 2, 3, 4, 5, 6, 7, 8, 9], input_only: [], reserved: {} },
   // Arduino UNO R3（ATmega328P，引擎 C avr8js）：5 V 系統。腳號 D0–D13＝0–13、A0–A5＝14–19；PWM 只有 D3/5/6/9/10/11；A4/A5 兼 I2C SDA/SCL
+  // 電源供應器（無開發板）：只有 9V、5V、GND 三個端子，沒有 GPIO；純電路（555、電晶體、整流、RC）用。2026-11-08 使用者：不用開發板、單純接電路的範例
+  power: { name: "電源供應器（無開發板）", power: { "9V": 9.0, "5V": 5.0, GND: 0 }, gpios: [], usable: [], adc: [], input_only: [], reserved: {} },
   uno: { name: "Arduino UNO", power: { "5V": 5.0, "3V3": 3.3, VIN: 5.0, GND: 0 }, vlogic: 5.0, gpioROut: 25,
          gpios: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
          usable: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], adc: [14, 15, 16, 17, 18, 19], pwm: [3, 5, 6, 9, 10, 11], input_only: [],
@@ -95,7 +97,14 @@ export function buildNets(circuit, extraLinks = []) {
 export function parseC(v) { const s = String(v ?? "100u").toLowerCase().replace(/f|µ/g, (m) => (m === "µ" ? "u" : "")); const m = /^([\d.]+)\s*([pnum]?)$/.exec(s.trim()); if (!m) return 100e-6; return parseFloat(m[1]) * ({ p: 1e-12, n: 1e-9, u: 1e-6, m: 1e-3, "": 1 })[m[2]]; }
 const DIODES = { "1N4007": { Is: 7e-9, n: 1.8 }, "1N4148": { Is: 2.5e-9, n: 1.75 }, "1N5819": { Is: 3e-6, n: 1.1 } };
 const NPNS = { "2N2222": { Is: 1e-14, bf: 200, br: 3 }, "2N3904": { Is: 1e-14, bf: 150, br: 3 }, "8050": { Is: 1e-14, bf: 120, br: 3 } };
-export const DYNAMIC_TYPES = new Set(["capacitor", "ne555", "acsource"]);   // 需要時間步進的元件
+export const DYNAMIC_TYPES = new Set(["capacitor", "ne555", "acsource"]);
+/** 訊號產生器的波形（相位 cycles＝f·t），回傳 −1～1：sine 正弦、square 方波、triangle 三角波 */
+export function waveform(kind, cycles) {
+  const ph = cycles - Math.floor(cycles);
+  if (kind === "square") return ph < 0.5 ? 1 : -1;
+  if (kind === "triangle") return ph < 0.5 ? -1 + 4 * ph : 3 - 4 * ph;
+  return Math.sin(2 * Math.PI * ph);
+}   // 需要時間步進的元件
 export const GATE_FN = { AND: (a, b) => a && b, OR: (a, b) => a || b, NOT: (a) => !a, NAND: (a, b) => !(a && b), NOR: (a, b) => !(a || b), XOR: (a, b) => a !== b };
 function parseR(v) { const s = String(v ?? "220").toLowerCase().replace(/ω|ohm|s/g, ""); const m = /^([\d.]+)\s*([km]?)$/.exec(s); if (!m) return 220; return Number(m[1]) * (m[2] === "k" ? 1e3 : m[2] === "m" ? 1e6 : 1); }
 
@@ -207,9 +216,9 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       }
       case "diode": { const m = DIODES[p.attrs?.model] || DIODES["1N4007"]; nonlin.push({ type: "diode", a: a("A"), b: a("K"), Is: m.Is, n: m.n, part: id }); break; }
       case "npn": { const m = NPNS[p.attrs?.model] || NPNS["2N2222"]; nonlin.push({ type: "npn", c: a("C"), b: a("B"), e: a("E"), Is: m.Is, bf: m.bf, br: m.br, part: id }); break; }
-      case "acsource": {   // 弦波電壓源：v = Vpk·sin(2πft)，內阻 1Ω；dt=0（直流）時當 0 V
-        const vpk = parseFloat(p.attrs?.vpk ?? 5) || 5, f = parseFloat(p.attrs?.freq ?? 50) || 50, t = (dyn && dyn.t) || 0;
-        addV(a("+"), a("-"), dt > 0 ? vpk * Math.sin(2 * Math.PI * f * t) : 0, 1, "ac:" + id); nextState[id] = { t }; break;
+      case "acsource": {   // 訊號產生器：v = 偏壓 + Vpk·波形(ft)，波形＝正弦／方波／三角波（±1），內阻 1Ω；dt=0（直流）時只剩偏壓
+        const vpk = parseFloat(p.attrs?.vpk ?? 5) || 5, f = parseFloat(p.attrs?.freq ?? 50) || 50, t = (dyn && dyn.t) || 0, off = parseFloat(p.attrs?.offset ?? 0) || 0;
+        addV(a("+"), a("-"), off + (dt > 0 ? vpk * waveform(p.attrs?.wave, f * t) : 0), 1, "ac:" + id); nextState[id] = { t }; break;
       }
       case "lm358": {   // 雙運放：VCC／GND 供電，OUT = clamp(A·(IN+ − IN−))，在迭代裡以鬆弛收斂（可做比較器也可做負回授放大）
         addR(a("VCC"), a("GND"), 5000);

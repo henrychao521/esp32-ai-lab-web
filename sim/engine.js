@@ -10,11 +10,21 @@ export const ENGINES = {
 };
 /** 這塊板子該用哪個引擎：UNO 一律 avr8js；ESP32 系列不能用 avr8js（退回快速引擎） */
 export function engineForBoard(board, kind) {
+  if (board === "power") return "none";   // 電源供應器：沒有微控制器，電路自己動
   if (board === "uno") return "arduino-avr8js";
   return kind === "arduino-avr8js" || !ENGINES[kind] ? "micropython-wasm" : kind;
 }
 
+/** 空引擎（電源供應器模式）：沒有程式可跑，所有呼叫都是空操作；畫布照樣求解電路、跑電容／555 暫態與示波器 */
+function createNoneEngine() {
+  const noop = () => {};
+  return { kind: "none", apiVersion: API_VERSION, capabilities: { screen: false, i2c: false, spi: false, uart: false, rmt: false, step: false, cycleAccurate: false, arduino: false, hex: false },
+    on: noop, off: noop, pins: () => ({}), setPin: noop, setAnalog: noop, pressButton: noop, releaseButton: noop, pause: noop, step: noop, cmd: noop,
+    boot: async () => ({ ok: true, msg: "電源供應器模式沒有程式" }), stop: async () => true, reset: async () => {}, check: async () => ({ ok: true, errors: [] }),
+    screenSize: () => null, screenRGBA: () => null, takeScreenDirty: () => false, registerI2CDevice: noop, registerPulseSource: noop, time: () => 0 };
+}
 export async function createEngine(kind = "micropython-wasm", opts = {}) {
+  if (kind === "none") return createNoneEngine();
   if (kind === "micropython-wasm") return createWasmEngine(opts);
   if (kind === "arduino-avr8js") {
     const mod = await import(new URL(ENGINES["arduino-avr8js"].module, import.meta.url).href);

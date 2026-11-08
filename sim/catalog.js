@@ -28,7 +28,7 @@ export const CATALOG = {
   diode: { tag: "sim-diode", w: 57.6, h: 22, label: "二極體", attrs: { model: "1N4007" }, cat: "類比", attrOptions: { model: ["1N4007", "1N4148", "1N5819"] } },
   npn: { tag: "sim-npn", w: 28.8, h: 40, label: "NPN 電晶體", attrs: { model: "2N2222" }, cat: "類比", attrOptions: { model: ["2N2222", "2N3904", "8050"] } },
   ne555: { tag: "sim-ne555", w: 38.4, h: 28.8, label: "555 計時器", attrs: {}, cat: "類比" },
-  acsource: { tag: "sim-acsource", w: 60, h: 70, label: "交流電源", attrs: { vpk: "5", freq: "50" }, cat: "類比", attrOptions: { vpk: ["1", "2", "5", "9", "12"], freq: ["1", "5", "50", "60", "200", "1000"] } },
+  acsource: { tag: "sim-acsource", w: 60, h: 70, label: "訊號產生器", attrs: { vpk: "5", freq: "50", wave: "sine", offset: "0" }, cat: "類比", attrOptions: { wave: ["sine", "square", "triangle"], vpk: ["0.5", "1", "2", "3", "4", "5", "9", "12"], offset: ["0", "2.5", "4.5"], freq: ["0.5", "1", "2", "5", "10", "50", "60", "100", "200", "1000"] } },
   lm358: { tag: "sim-lm358", w: 38.4, h: 28.8, label: "LM358 運算放大器", attrs: {}, cat: "類比" },
   gate: { tag: "sim-gate", w: 38.4, h: 28.8, label: "邏輯閘（74HC）", attrs: { kind: "AND" }, cat: "類比", attrOptions: { kind: ["AND", "OR", "NOT", "NAND", "NOR", "XOR"] } },
 };
@@ -84,6 +84,15 @@ export const BOARD_ART = {
     buttons: [{ gpio: 0, label: "BOOT", x: 4, y: 60, w: 8, h: 28 }, { gpio: 47, label: "KEY", x: 188, y: 60, w: 8, h: 28 }],
     pins: [["5V", 22, 168, "5V"], ["GND", 48, 168, "GND"], ["3V3", 74, 168, "3V3"], ["G16", 100, 168, 16], ["G17", 126, 168, 17], ["G18", 152, 168, 18], ["G48", 178, 168, 48]],
     led: null,
+  },
+  power: {
+    w: 110, h: 96, color: "#2a2d33", title: "電源供應器", hideTitle: true, screen: null, buttons: [], led: null,
+    art: `<rect x="8" y="8" width="62" height="24" rx="3" fill="#0d1a10" stroke="#555"/><text x="39" y="25" fill="#5f5" font-size="13" text-anchor="middle" font-family="ui-monospace,monospace">9.00V</text>
+      <text x="8" y="44" fill="#ccc" font-size="7" font-family="sans-serif">電源供應器</text><text x="8" y="54" fill="#888" font-size="5.5" font-family="sans-serif">無開發板・通電就會動</text>
+      <circle cx="26" cy="74" r="11" fill="#444" stroke="#777"/><line x1="26" y1="74" x2="31" y2="66" stroke="#ddd" stroke-width="2"/>
+      <rect x="86" y="10" width="22" height="78" rx="3" fill="#1d1f24" stroke="#444"/>
+      <circle cx="97" cy="22" r="5.5" fill="none" stroke="#e53935" stroke-width="2"/><circle cx="97" cy="48" r="5.5" fill="none" stroke="#fb8c00" stroke-width="2"/><circle cx="97" cy="74" r="5.5" fill="none" stroke="#9e9e9e" stroke-width="2"/>`,
+    pins: [["9V", 97, 22, "9V"], ["5V", 97, 48, "5V"], ["GND", 97, 74, "GND"]],
   },
   tdisplay_s3: {
     w: 150, h: 280, color: "#141414", title: "T-Display S3", screen: { x: 40, y: 60, w: 70, h: 130, native: [170, 320] },

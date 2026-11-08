@@ -185,7 +185,8 @@ export function createSimulator(opts) {
       const hl = hlWires.has(i);
       const sel = selection.has("wire:" + i), isShort = shortNets.length && [w.a, w.b].some((r) => shortNets.includes(netOf(r)));
       const path = document.createElementNS(SVGNS, "path"); path.setAttribute("d", d); path.setAttribute("stroke", isShort ? "#f00" : w.color);
-      path.setAttribute("class", "wire" + (sel ? " selected" : "") + (isShort ? " short" : "") + (hl ? " hl" : "") + (hlWires.size && !hl ? " dim" : "")); path.dataset.index = i; wireLayer.appendChild(path);
+      const dk = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(w.color || "") && (() => { const h = w.color.length === 4 ? w.color.replace(/#(.)(.)(.)/, "#$1$1$2$2$3$3") : w.color; const n = parseInt(h.slice(1), 16); return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) < 60; })();   // 黑、深灰的地線：深色背景要加淺色外框才看得到
+      path.setAttribute("class", "wire" + (dk ? " dark" : "") + (sel ? " selected" : "") + (isShort ? " short" : "") + (hl ? " hl" : "") + (hlWires.size && !hl ? " dim" : "")); path.dataset.index = i; wireLayer.appendChild(path);
       if (w.label) { const m = midpoint(w); const t = document.createElementNS(SVGNS, "text"); t.setAttribute("x", m[0]); t.setAttribute("y", m[1] - 6); t.setAttribute("class", "wire-label"); t.textContent = w.label; wireLayer.appendChild(t); }
       if (sel) for (const [k, pt] of (w.pts || []).entries()) { const h = document.createElementNS(SVGNS, "circle"); h.setAttribute("cx", pt[0]); h.setAttribute("cy", pt[1]); h.setAttribute("r", 5); h.setAttribute("class", "wp"); h.dataset.wire = i; h.dataset.pt = k; wireLayer.appendChild(h); }
     });
@@ -232,7 +233,7 @@ export function createSimulator(opts) {
   let dynState = {}, dynLoop = null, simT = 0, dynLastReal = 0, dynLag = 0; const PROBE_MAX = 4000, FRAME_BUDGET_MS = 10;
   // 步長：只有電容（RC）用 1 ms 就很準；有 555 用 0.2 ms（音頻 555 追不上即時就放慢，不會卡住畫面）
   const dtFor = () => { let dt = 1e-3; for (const p of Object.values(doc.parts)) { if (p.type === "ne555") dt = Math.min(dt, 2e-4); if (p.type === "acsource") dt = Math.min(dt, 1 / ((parseFloat(p.attrs?.freq) || 50) * 50)); } return Math.max(2e-5, dt); };
-  let netsCache = null, netsKey = "";
+  let netsCache = null, netsKey = "", stepV = null;
   const probes = [];            // 節點參考（例如 "c1:+"、"board:4"）
   const probeData = {};         // ref → [[t, v], ...]
   const hasDyn = () => Object.values(doc.parts).some((p) => DYNAMIC_TYPES.has(p.type));
@@ -240,8 +241,9 @@ export function createSimulator(opts) {
     const c = circuitForSolver(), links = breadboardLinks();
     const key = JSON.stringify(c.wires) + "|" + Object.keys(c.parts).join() + "|" + JSON.stringify(links);
     if (key !== netsKey) { netsKey = key; netsCache = null; }
-    const r = solve(c, { ...io(), prevV: lastResult ? lastResult.nodeV : {}, dyn: { dt, state: dynState, t: simT }, nets: netsCache }, links);
-    netsCache = r.nets;
+    // prevV 要用「上一步」的電壓：555 比較門檻、二極體等非線性都看它。以前用上一幀（commit 才更新），一幀跑幾十步時 555 每幀最多翻一次 → 音頻 555 被鎖在 60 Hz（2026-11-08 修）
+    const r = solve(c, { ...io(), prevV: stepV || (lastResult ? lastResult.nodeV : {}), dyn: { dt, state: dynState, t: simT }, nets: netsCache }, links);
+    netsCache = r.nets; stepV = r.nodeV;
     if (r.dynState) dynState = r.dynState;
     return r;
   }
@@ -266,7 +268,7 @@ export function createSimulator(opts) {
     if (r) commit(r);
   }
   function ensureDynLoop() { if (hasDyn() && !dynLoop && !dynBusy) { dynLastReal = 0; dynLoop = requestAnimationFrame(dynFrame); } }
-  function resetDynamic() { dynState = {}; simT = 0; dynLastReal = 0; for (const k of Object.keys(probeData)) probeData[k] = []; }
+  function resetDynamic() { dynState = {}; simT = 0; dynLastReal = 0; stepV = null; for (const k of Object.keys(probeData)) probeData[k] = []; }
   let inTick = false;
   function tick() {
     // 引擎事件（腳位變化）會呼叫 tick，而 commit 又會 setPin 觸發事件：防重入，否則暫態電路會無限遞迴
@@ -319,7 +321,7 @@ export function createSimulator(opts) {
         case "diode": el.setAttribute("on", s.on ? "true" : "false"); el.setAttribute("model", p.attrs?.model || "1N4007"); break;
         case "npn": el.setAttribute("on", s.on ? "true" : "false"); el.setAttribute("model", p.attrs?.model || "2N2222"); break;
         case "ne555": el.setAttribute("out", s.q ? "true" : "false"); break;
-        case "acsource": el.setAttribute("voltage", (s.v ?? 0).toFixed(2)); el.setAttribute("vpk", p.attrs?.vpk || "5"); el.setAttribute("freq", p.attrs?.freq || "50"); break;
+        case "acsource": el.setAttribute("voltage", (s.v ?? 0).toFixed(2)); el.setAttribute("vpk", p.attrs?.vpk || "5"); el.setAttribute("freq", p.attrs?.freq || "50"); el.setAttribute("wave", p.attrs?.wave || "sine"); el.setAttribute("offset", p.attrs?.offset || "0"); break;
         case "lm358": el.setAttribute("out1", (s.out1 ?? 0).toFixed(2)); el.setAttribute("out2", (s.out2 ?? 0).toFixed(2)); break;
         case "gate": el.setAttribute("kind", p.attrs?.kind || "AND"); el.setAttribute("y", s.y ? "true" : "false"); break;
       }
@@ -519,6 +521,16 @@ export function createSimulator(opts) {
     }
     return n;
   }
+  // 換成比較大的板子（例如 UNO）時，原本的元件可能被板子蓋住：整組（元件、麵包板、線的轉折點）往右移到板子右邊 40 px
+  function clearOfBoard() {
+    const bw = doc.board === "devkit" ? [106.6, 204.3] : [BOARD_ART[doc.board].w, BOARD_ART[doc.board].h];
+    const right = doc.boardPos.x + bw[0], bottom = doc.boardPos.y + bw[1];
+    const items = Object.values(doc.parts).map((p) => [p.x, p.y, CATALOG[p.type].w, CATALOG[p.type].h]); if (doc.breadboard) items.push([doc.breadboard.x, doc.breadboard.y, BREADBOARD.width, BREADBOARD.height]);
+    if (!items.some(([x, y, w, h]) => x < right && x + w > doc.boardPos.x && y < bottom && y + h > doc.boardPos.y)) return;
+    const dx = snap(right + 40 - Math.min(...items.map((it) => it[0])));
+    for (const p of Object.values(doc.parts)) p.x += dx; if (doc.breadboard) doc.breadboard.x += dx;
+    for (const w of doc.wires) w.pts = (w.pts || []).map(([x, y]) => [x + dx, y]);
+  }
   function bounds() {
     let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9; const add = (x, y, w, h) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h); };
     const bw = doc.board === "devkit" ? [106.6, 204.3] : [BOARD_ART[doc.board].w, BOARD_ART[doc.board].h]; add(doc.boardPos.x, doc.boardPos.y, bw[0], bw[1]);
@@ -596,7 +608,7 @@ export function createSimulator(opts) {
     undo() { if (!undoStack.length) return; redoStack.push(lastSnap); restore(undoStack.pop()); },
     redo() { if (!redoStack.length) return; undoStack.push(lastSnap); restore(redoStack.pop()); },
     clear() { pushUndo(); doc.parts = {}; doc.wires = []; doc.breadboard = null; burned = new Set(); pushUndo(); render(); tick(); select(null); },
-    async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); pushUndo(); render(); if (engine) await api.attach(kind, engineForBoard(kind, lastEngineKind)); tick(); onStatus({ board: kind }); },
+    async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); clearOfBoard(); pushUndo(); render(); if (engine) await api.attach(kind, engineForBoard(kind, lastEngineKind)); tick(); onStatus({ board: kind }); },
     load(d) { restore(JSON.stringify({ board: d.board || "tqt_pro", parts: d.parts || {}, wires: (d.wires || []).map((w) => ({ pts: [], ...w })), boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null, schematic: d.schematic || null, perfboard: d.perfboard || null })); burned = new Set(); undoStack.length = 0; redoStack.length = 0; for (const k of Object.keys(ui)) delete ui[k]; },
     save() { return JSON.parse(snapshot()); },
     exportWokwi() { return toWokwiDiagram(api.save()); },

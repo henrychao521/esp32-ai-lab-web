@@ -81,16 +81,17 @@ class SimNE555 extends HTMLElement {   // DIP-8：下排 GND TRIG OUT RESET、�
   }
 }
 class SimACSource extends HTMLElement {   // 60×70，腳在下緣、相距 2 格：+ (20.4,70)、− (39.6,70)
-  static get observedAttributes() { return ["voltage", "vpk", "freq"]; }
+  static get observedAttributes() { return ["voltage", "vpk", "freq", "wave", "offset"]; }
   constructor() { super(); this.attachShadow({ mode: "open" }); this.render(); }
   attributeChangedCallback() { this.render(); }
   get pinInfo() { return [{ name: "+", x: 20.4, y: 70 }, { name: "-", x: 39.6, y: 70 }]; }
   render() {
-    const v = Number(this.getAttribute("voltage") || 0), vpk = this.getAttribute("vpk") || "5", f = this.getAttribute("freq") || "50";
+    const v = Number(this.getAttribute("voltage") || 0), vpk = this.getAttribute("vpk") || "5", f = this.getAttribute("freq") || "50", wave = this.getAttribute("wave") || "sine", off = Number(this.getAttribute("offset") || 0);
+    const shape = wave === "square" ? "M18 30 v-12 h6 v12 h6 v-12 h6 v12 h6" : wave === "triangle" ? "M18 30 l6 -12 l6 12 l6 -12 l6 12" : "M19 24 q5.5 -10 11 0 t11 0";
     this.shadowRoot.innerHTML = `<svg ${SVGH} width="60" height="70" viewBox="0 0 60 70">
       <rect x="2" y="2" width="56" height="52" rx="6" fill="#2b2b2b" stroke="#111"/>
-      <circle cx="30" cy="24" r="15" fill="#111" stroke="#888"/><path d="M19 24 q5.5 -10 11 0 t11 0" fill="none" stroke="#3f3" stroke-width="2"/>
-      <text x="30" y="48" fill="#ddd" font-size="6.5" text-anchor="middle" font-family="sans-serif">${vpk} Vpk ${f} Hz</text>
+      <circle cx="30" cy="24" r="15" fill="#111" stroke="#888"/><path d="${shape}" fill="none" stroke="#3f3" stroke-width="1.6"/>
+      <text x="30" y="46" fill="#ddd" font-size="6" text-anchor="middle" font-family="sans-serif">${vpk} Vpk ${f} Hz</text>${off ? `<text x="30" y="53" fill="#9cf" font-size="5.5" text-anchor="middle" font-family="sans-serif">偏壓 ${off} V</text>` : ""}
       <rect x="44" y="${24 - Math.max(-12, Math.min(12, v * 2.4))}" width="4" height="${Math.abs(Math.max(-12, Math.min(12, v * 2.4)))}" fill="#ffd54a" opacity=".8"/>
       <line x1="20.4" y1="54" x2="20.4" y2="62" stroke="#888" stroke-width="2"/><line x1="39.6" y1="54" x2="39.6" y2="62" stroke="#888" stroke-width="2"/>
       ${PIN(20.4, 70, "+")}${PIN(39.6, 70, "−")}</svg>`;

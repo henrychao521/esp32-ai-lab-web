@@ -51,6 +51,8 @@ function boardFoot(board) {
     const bot = [["IOREF", 2], ["RESET", 3], ["3V3", 4], ["5V", 5], ["GND", 6], ["GND", 7], ["VIN", 8], ["A0", 10], ["A1", 11], ["A2", 12], ["A3", 13], ["A4", 14], ["A5", 15]];
     return { pins: top.map(([n, c]) => [n, c, 0]).concat(bot.map(([n, c]) => [n, c, 19, "b"])), body: [-0.5, -2.0, 16, 3.3], titleBelow: true, title: "Arduino UNO 擴充板排針（上：數位　下：電源／類比）" };
   }
+  // 電源供應器（無開發板）：萬用板上只有一組三孔電源端子（接到電源供應器或 9V 電池扣）
+  if (board === "power") return { pins: [["9V", 0, 0], ["5V", 1, 0], ["GND", 2, 0]], body: [-0.5, -2.2, 3, 2.7], title: "電源端子" };
   // devkit：DEVKIT_PINS 的 x 小的是左排，依 y 排序
   const left = DEVKIT_PINS.filter((p) => p[1] < 50).sort((a, b) => a[2] - b[2]), right = DEVKIT_PINS.filter((p) => p[1] >= 50).sort((a, b) => a[2] - b[2]);
   return { pins: left.map((p, i) => [p[0], 0, i]).concat(right.map((p, i) => [p[0], 10, i])), body: [-0.5, -1, 11, left.length + 1.2], title: "ESP32 DevKit" };
@@ -73,7 +75,7 @@ export function footFor(doc, id) {
 }
 
 const key = (c, r) => c + "," + r;
-const POWER = new Set(["3V3", "5V", "VIN", "GND"]);
+const POWER = new Set(["3V3", "5V", "VIN", "GND", "9V"]);
 
 /**
  * @param {object} o

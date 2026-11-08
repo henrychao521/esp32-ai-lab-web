@@ -66,6 +66,7 @@ svg.sim-wires path.wire-hit{fill:none;stroke:transparent;stroke-width:18;stroke-
 .sim-cursor{display:none;position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border:2px solid var(--accent);border-radius:50%;background:rgba(255,106,43,.12);pointer-events:none;z-index:4;box-shadow:0 0 0 1px var(--bg)}
 .sim-cursor::before,.sim-cursor::after{content:"";position:absolute;background:var(--accent)}
 .sim-cursor::before{left:50%;top:-8px;width:2px;height:38px;margin-left:-1px}.sim-cursor::after{top:50%;left:-8px;height:2px;width:38px;margin-top:-1px}
+.sim-label{display:none}.sim-item:hover>.sim-label,.sim-item.selected>.sim-label,body.show-labels .sim-label,.sim-part.burned .sim-label{display:block}   /* 2026-11-08 使用者：名稱標籤擋住線和元件，平常隱藏、滑過或點選才出現 */
 .sim-part.burned .sim-label{color:#f33;border-color:#f33}.sim-part.burned .sim-label::before{content:"燒毀 "}
 @keyframes hlblink{from{opacity:1}to{opacity:.5}}
 #examples-dlg{border:0;border-radius:12px;padding:0;max-width:760px;width:94vw;background:var(--panel);color:var(--ink);box-shadow:0 10px 40px rgba(0,0,0,.4)}
@@ -92,6 +93,7 @@ svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;
 .sch-on .canvas-tools,.sch-on #tools-toggle,.sch-on #minimap{display:none!important}
 .pb-layer .pb-bar{position:absolute;left:10px;top:48px;z-index:3;display:flex;gap:6px;align-items:center}.pb-layer .pb-bar select{max-width:170px;min-height:30px}.pb-layer .pb-bar button{background:var(--panel);min-height:30px}
 .pb-layer .pb-panel{position:absolute;right:10px;top:48px;z-index:4;width:min(320px,70%);max-height:60%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px}.pb-panel-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.pb-panel ol{margin:0 0 6px 18px;padding:0}.pb-panel li{margin:2px 0}.pb-w{background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:4px 6px;margin:4px 0}.pb-w.bad{background:#fee2e2;border-color:#f87171}
+@media (prefers-color-scheme:dark){svg.sim-wires path.wire.dark{filter:drop-shadow(0 0 1px rgba(255,255,255,.9)) drop-shadow(0 0 1px rgba(255,255,255,.6))}}   /* 黑色地線在深色背景加淺色外框 */
 @media (prefers-color-scheme:dark){.pb-w{background:#3a2a12;border-color:#9a5b1a;color:#f3e4d0}.pb-w.bad{background:#4a1d1d;border-color:#b33}}
 @media (prefers-color-scheme:dark){.sch-layer svg{--sch-ink:#e7e5e4;--sch-wire:#7cb3ff;--sch-muted:#9a9ea8}}
 .canvas-tools button{background:var(--panel)}
@@ -203,7 +205,7 @@ dialog{position:relative}
 <header>
   <b>電路模擬器</b>
   <button id="btn-pal" class="icon" title="元件庫">☰ 元件</button><button id="btn-more" class="icon" title="更多功能">⋯</button><span class="brk"></span>
-  <select id="board" title="板子"><option value="tqt_pro">T-QT Pro</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option><option value="xiao_esp32s3">XIAO ESP32S3</option><option value="uno">Arduino UNO</option></select>
+  <select id="board" title="板子"><option value="tqt_pro">T-QT Pro</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option><option value="xiao_esp32s3">XIAO ESP32S3</option><option value="uno">Arduino UNO</option><option value="power">電源供應器（無開發板）</option></select>
   <select id="engine" title="執行引擎：快速＝秒開的 MicroPython wasm；真韌體＝未修改的 ESP32 韌體在 esp32sim 裡逐指令執行"><option value="micropython-wasm">快速引擎</option><option value="esp32sim">真韌體引擎（esp32sim）</option></select>
   <select id="firmware" title="要執行的程式：MicroPython 程式（編輯器）或 Arduino 已編譯映像（只有真韌體引擎）" style="display:none"><option value="">MicroPython</option><option value="arduino/t_qt_weather_clock.bin">Arduino：天氣時鐘</option></select>
   <button id="btn-hex" title="Arduino UNO：匯入 arduino-cli／Arduino IDE 編好的 .hex（「草稿 → 匯出已編譯的二進位檔」）" style="display:none">匯入 .hex</button>
@@ -234,6 +236,7 @@ dialog{position:relative}
   <button id="btn-png" class="desk" title="匯出 PNG">PNG</button>
   <button id="btn-import" class="desk">匯入</button>
   <button id="btn-share" class="desk" title="分享網址">分享</button>
+  <button id="btn-labels" class="desk" title="元件名稱平常隱藏（滑過或點選才出現）；按這裡全部顯示">名稱</button>
   <button id="btn-clear" class="desk">清空</button>
   <button id="btn-push" title="把程式送到真板子，並顯示接線對照表">推到實機</button>
   <button id="btn-teacher" class="desk" title="出題與批改">老師</button>
@@ -303,7 +306,7 @@ dialog{position:relative}
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="uno-dlg-hex" class="primary">匯入 .hex</button><button id="uno-dlg-ex">開範例</button><button id="uno-dlg-restore" style="display:none">還原範例程式並執行</button><span style="flex:1"></span><button id="uno-dlg-close">關閉</button></div>
     </div>
   </dialog>
-  <dialog id="examples-dlg"><div class="hd"><b>範例電路</b><span class="muted">點一個：電路、程式、接線步驟一起載入</span><span style="flex:1"></span><select id="ex-board" title="哪塊板子的範例"><option value="">全部板子</option><option value="tqt_pro">T-QT Pro</option><option value="xiao_esp32s3">XIAO ESP32S3</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option><option value="uno">Arduino UNO</option></select><button id="examples-close">關閉</button></div><div class="grid" id="examples-grid"></div></dialog>
+  <dialog id="examples-dlg"><div class="hd"><b>範例電路</b><span class="muted">點一個：電路、程式、接線步驟一起載入</span><span style="flex:1"></span><select id="ex-board" title="哪塊板子的範例"><option value="">全部板子</option><option value="tqt_pro">T-QT Pro</option><option value="xiao_esp32s3">XIAO ESP32S3</option><option value="devkit">ESP32 DevKit</option><option value="tdisplay_s3">T-Display S3</option><option value="uno">Arduino UNO</option><option value="power">電源供應器（無開發板）</option></select><button id="examples-close">關閉</button></div><div class="grid" id="examples-grid"></div></dialog>
   <div id="tour"><div class="box">
     <h3>第一次用？三步驟</h3>
     <ol><li>左邊<b>元件庫</b>點一下或拖進畫布；把元件腳放到麵包板孔上會自動插進去（同一欄 5 孔相通）。</li>
@@ -511,6 +514,10 @@ $("z-in").addEventListener("click", () => sim.zoom(1.2)); $("z-out").addEventLis
 // 清空：App 的 WKWebView 不顯示 confirm()（按了會沒反應），改成直接清空、提示可按復原救回
 function clearCanvas() { try { sim.stop(); } catch (_) {} sim.clear(); stepState = null; renderStep(); toast("已清空畫布（程式保留）。按「復原」可以救回來。"); }
 $("btn-clear").addEventListener("click", clearCanvas);
+// 元件名稱：平常隱藏（擋住線與元件），這顆按鈕切換全部顯示，記在這個瀏覽器
+const setLabels = (on) => { document.body.classList.toggle("show-labels", on); $("btn-labels").classList.toggle("on", on); try { localStorage.setItem("sim.showLabels", on ? "1" : "0"); } catch (_) {} };
+setLabels((() => { try { return localStorage.getItem("sim.showLabels") === "1"; } catch (_) { return false; } })());
+$("btn-labels").addEventListener("click", () => setLabels(!document.body.classList.contains("show-labels")));
 $("btn-clearall").addEventListener("click", clearCanvas);
 $("btn-clear-console").addEventListener("click", () => { con.innerHTML = ""; });
 $("btn-save").addEventListener("click", () => { saveLocal(); toast("已存到這個瀏覽器"); });
@@ -628,9 +635,9 @@ $("push-go").addEventListener("click", async () => {
 // ---------- 手機版面：主要動作列＋「更多」工作表、抽屜關閉機制（寬度 ≤ 900px） ----------
 (() => {
   const mq = window.matchMedia("(max-width: 900px)");
-  const MORE = ["board", "engine", "power-ind", "speed", "firmware", "btn-hex", "btn-wiremode", "btn-route", "wire-color", "btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-clear", "btn-teacher", "btn-help"];
+  const MORE = ["board", "engine", "power-ind", "speed", "firmware", "btn-hex", "btn-wiremode", "btn-route", "wire-color", "btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-labels", "btn-clear", "btn-teacher", "btn-help"];
   const home = {};   // id → { parent, next }：搬回桌機位置用
-  const LABEL = { "btn-hex": "匯入 .hex（Arduino）", board: "板子", engine: "執行引擎", "power-ind": "電源指示（LED 與模組總電流，估）", speed: "模擬速度", firmware: "要執行的程式", "wire-color": "線色", "btn-wiremode": "接線模式", "btn-route": "整理走線", "btn-del": "刪除所選", "btn-undo": "復原", "btn-redo": "重做", "btn-rotate": "旋轉", "btn-selall": "全選", "btn-align-l": "靠左對齊", "btn-align-t": "靠上對齊", "btn-grid": "格線吸附", "btn-fit": "縮放到全部", "btn-examples": "範例電路", "btn-save": "儲存到瀏覽器", "btn-export": "匯出 KiCad／Wokwi", "btn-png": "匯出 PNG", "btn-import": "匯入", "btn-share": "分享網址", "btn-clear": "清空畫布", "btn-teacher": "老師模式", "btn-help": "說明與快捷鍵" };
+  const LABEL = { "btn-hex": "匯入 .hex（Arduino）", board: "板子", engine: "執行引擎", "power-ind": "電源指示（LED 與模組總電流，估）", speed: "模擬速度", firmware: "要執行的程式", "wire-color": "線色", "btn-wiremode": "接線模式", "btn-route": "整理走線", "btn-del": "刪除所選", "btn-undo": "復原", "btn-redo": "重做", "btn-rotate": "旋轉", "btn-selall": "全選", "btn-align-l": "靠左對齊", "btn-align-t": "靠上對齊", "btn-grid": "格線吸附", "btn-fit": "縮放到全部", "btn-examples": "範例電路", "btn-save": "儲存到瀏覽器", "btn-export": "匯出 KiCad／Wokwi", "btn-png": "匯出 PNG", "btn-import": "匯入", "btn-share": "分享網址", "btn-labels": "顯示全部元件名稱", "btn-clear": "清空畫布", "btn-teacher": "老師模式", "btn-help": "說明與快捷鍵" };
   const ENGINE_LABELS = { "micropython-wasm": ["快速引擎", "快速"], "esp32sim": ["真韌體引擎（esp32sim）", "真韌體"] };
   const setEngineLabels = (short) => { for (const o of $("engine").options) if (ENGINE_LABELS[o.value]) o.textContent = ENGINE_LABELS[o.value][short ? 1 : 0]; };
   function toMobile() {
@@ -746,16 +753,20 @@ function swapCodeForBoard(from, to, keep) {
   if (!editorRef || from === to) return;
   const code = getCode(), looksIno = /void\s+setup\s*\(/.test(code);
   if (to === "uno" && !looksIno && !keep) { const ex = EXAMPLES.find((e) => e.board === "uno"); if (ex) { unoProg = { src: "example", id: ex.id, title: ex.title, hexUrl: ex.hex, name: ex.hex.split("/").pop(), code: ex.code }; saveUnoProg(); setCode(ex.code); toast("Arduino UNO 用 C++（.ino）；編輯器換成「" + ex.title + "」範例，按 ▶ 執行"); } }
-  else if (from === "uno" && to !== "uno" && looksIno) setCode(SNIPPETS[Object.keys(SNIPPETS)[0]]);
+  else if (to !== "uno" && to !== "power" && (looksIno && from === "uno" || /^# 電源供應器模式/.test(code))) setCode(SNIPPETS[Object.keys(SNIPPETS)[0]]);   // 從 UNO 或電源供應器換回 ESP32：換回 MicroPython 範例
 }
 /** 依板子切換介面：UNO 隱藏引擎切換、推到實機、Python 片段；顯示「匯入 .hex」；編輯器改 C++ */
+const POWER_NOTE = "# 電源供應器模式：沒有開發板，也不用寫程式。\n# 電路接好就通電，555、電容、電晶體會自己動；到「示波器」分頁按探針看波形。\n";
 function applyBoardUI(board) {
-  const uno = board === "uno";
+  const uno = board === "uno", pw = board === "power";   // pw：電源供應器（無開發板）
   const vis = (id, on) => { const el = $(id); if (!el) return; const w = el.closest(".more-item"); (w || el).style.display = on ? "" : "none"; };
-  vis("engine", !uno); vis("btn-hex", uno); vis("btn-push", !uno); vis("snippets", !uno);
-  if (uno) vis("firmware", false);
+  vis("engine", !uno && !pw); vis("btn-hex", uno); vis("btn-push", !uno && !pw); vis("snippets", !uno && !pw);
+  for (const id of ["btn-run", "btn-pause", "btn-step", "btn-reset", "btn-check"]) vis(id, !pw);
+  if (uno || pw) vis("firmware", false);
+  document.body.classList.toggle("board-power", pw);
+  if (pw) { if (editorRef && !/^# 電源供應器模式/.test(getCode())) setCode(POWER_NOTE); }
   $("serial-in").placeholder = uno ? "送到 Arduino 的序列埠（程式用 Serial.read 讀）" : "送到板子（真韌體引擎才會收到）";
-  $("editor-note").textContent = uno ? "Arduino 程式（C++）：範例已預先編譯；改了程式要在電腦上編譯成 .hex 再匯入" : "同一份程式之後可直接推到真板子；保護檢查的問題會在程式裡畫底線";
+  $("editor-note").textContent = pw ? "電源供應器模式：純電路，不用寫程式" : uno ? "Arduino 程式（C++）：範例已預先編譯；改了程式要在電腦上編譯成 .hex 再匯入" : "同一份程式之後可直接推到真板子；保護檢查的問題會在程式裡畫底線";
   $("btn-check").textContent = uno ? "編譯說明" : "檢查語法";
   if (editorRef) setEditorLang(board);
 }
@@ -771,7 +782,10 @@ function loadExample(ex) {
   sim.stop();
   if (ex.board === "uno") { unoProg = { src: "example", id: ex.id, title: ex.title, hexUrl: ex.hex, name: ex.hex.split("/").pop(), code: ex.code }; saveUnoProg(); }
   sim.load({ board: ex.board, parts: JSON.parse(JSON.stringify(ex.parts)), wires: ex.wires.map((w) => ({ ...w, pts: [] })), boardPos: { x: 60, y: 40 }, breadboard: ex.breadboard || null });
-  if (ex.board) $("board").value = ex.board; applyBoardUI(sim.doc.board); sim.autoRoute(); setCode(ex.code); sim.fit(); showPane("editor"); buildPalette($("search").value.trim());
+  if (ex.board) $("board").value = ex.board; applyBoardUI(sim.doc.board); sim.autoRoute(); setCode(ex.code);
+  for (const r of sim.probes) sim.removeProbe(r);   // 換範例先清掉上一個範例的探針
+  for (const r of ex.probes || []) sim.addProbe(r);   // 純電路範例：示波器探針先加好（u1:OUT、c1:+ …）
+  if (ex.init) { for (const [id, v] of Object.entries(ex.init)) sim.ui[id] = { ...(sim.ui[id] || {}), ...v }; sim.tick(); }   // 開關初始位置 sim.fit(); showPane("editor"); buildPalette($("search").value.trim());
   stepState = { ex, i: 0 }; renderStep(); toast("已載入「" + ex.title + "」。預期：" + ex.expect);
 }
 function renderStep() {
@@ -849,7 +863,7 @@ function renderProps(s) {
     const id = sel, p = s.part, c = CATALOG[p.type], card = cards?.parts?.[p.type];
     el.innerHTML = `<h3>${esc(id)} <span class="muted" style="font-weight:400">${c.label}</span></h3>` + (card ? `<div class="muted">${esc(card.summary)}</div>` : "");
     const nameIn = document.createElement("input"); nameIn.type = "text"; nameIn.placeholder = "顯示名稱（選填）"; nameIn.value = p.label || ""; nameIn.addEventListener("change", () => sim.setLabel(id, nameIn.value)); el.appendChild(nameIn);
-    for (const [k, opts] of Object.entries(c.attrOptions || {})) { const sel2 = document.createElement("select"); for (const o of opts) { const op = document.createElement("option"); op.value = o; op.textContent = (k === "value" ? "電阻值 " : k === "color" ? "顏色 " : k + " ") + o + (k === "value" ? " Ω" : ""); if (String(p.attrs[k]) === o) op.selected = true; sel2.appendChild(op); } sel2.addEventListener("change", () => sim.setAttr(id, k, sel2.value)); el.appendChild(sel2); }
+    for (const [k, opts] of Object.entries(c.attrOptions || {})) { const sel2 = document.createElement("select"); for (const o of opts) { const op = document.createElement("option"); op.value = o; op.textContent = k === "wave" ? "波形 " + ({ sine: "正弦波", square: "方波", triangle: "三角波" }[o] || o) : k === "vpk" ? "振幅 " + o + " Vpk" : k === "freq" ? "頻率 " + o + " Hz" : k === "offset" ? "直流偏壓 " + o + " V" : (k === "value" ? "電阻值 " : k === "color" ? "顏色 " : k + " ") + o + (k === "value" ? " Ω" : ""); if (String(p.attrs[k]) === o) op.selected = true; sel2.appendChild(op); } sel2.addEventListener("change", () => sim.setAttr(id, k, sel2.value)); el.appendChild(sel2); }
     const r = sim.result?.parts?.[id];
     if (r) { const st = document.createElement("div"); st.className = "muted"; st.textContent = "狀態：" + describeState(p.type, r); el.appendChild(st); }
     const u = sim.ui[id] = sim.ui[id] || {};
@@ -1029,9 +1043,10 @@ async function decompress(b64) { const bin = atob(b64.replace(/-/g, "+").replace
   if (m) { try { const data = JSON.parse(await decompress(m[1])); sim.load(data.d); sharedCode = data.c || null; loaded = true; toast("已載入分享的電路"); } catch (e) { toast("分享網址解析失敗", "bad"); } }
   if (!loaded && q.get("fresh") !== "1") { try { const saved = localStorage.getItem("sim.doc"); if (saved) { sim.load(JSON.parse(saved)); loaded = true; } } catch (e) {} }
   let unoStart = null;
-  if (!loaded && sim.doc.board === "uno") {   // Arduino UNO 第一次開：直接載入 Blink 範例（電路＋程式＋預編譯 hex）
+  if (!loaded) {   // 第一次開：直接載入這塊板子的 LED 閃爍範例（麵包板接法＋程式；UNO 含預編譯 hex），不再放手排的 LED（換到 UNO 時會壓在板子上）
     for (let i = 0; i < 50 && !EXAMPLES.length; i++) await new Promise((r) => setTimeout(r, 100));
-    unoStart = EXAMPLES.find((e) => e.board === "uno"); if (unoStart) { loadExample(unoStart); loaded = true; }
+    const mine = EXAMPLES.filter((e) => e.board === sim.doc.board && Object.keys(e.parts).length);
+    unoStart = mine.find((e) => /閃爍|Blink/.test(e.title)) || mine[0]; if (unoStart) { loadExample(unoStart); loaded = true; }
   }
   if (!loaded) {
     const led = sim.addPart("led", 380, 150), r = sim.addPart("resistor", 300, 150);
