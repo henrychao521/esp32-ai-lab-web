@@ -2,17 +2,20 @@
 // 版面由 perfboard.js 產生；手動擺過的位置記在 doc.perfboard.place[id] = { c, r, rot }，其餘元件自動繞開。
 import { buildPerfboard, BOARD_SIZES, PITCH } from "./perfboard.js";
 
-export function mountPerfboard(sim, { viewport, toast = () => {} }) {
+export function mountPerfboard(sim, { viewport, toast = () => {}, solderHost = null, showSolder = () => {} }) {
   const toggle = viewport.querySelector(".sch-toggle");
   const btn = document.createElement("button"); btn.dataset.v = "pb"; btn.textContent = "萬用板"; toggle.appendChild(btn);
   const layer = document.createElement("div"); layer.className = "sch-layer pb-layer"; layer.hidden = true;
   layer.innerHTML = `<div class="sch-canvas"></div>
     <div class="pb-bar"><select id="pb-size">${Object.entries(BOARD_SIZES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("")}</select><button id="pb-side" class="icon">看背面</button><button id="pb-rot" class="icon" title="把選到的元件轉 90°（也可按 R）">⟳ 旋轉</button><button id="pb-steps" class="icon">焊接順序</button></div>
-    <div class="sch-tools"><button id="pb-fit" class="icon" title="縮放到全部">⤢</button><button id="pb-relayout" class="icon" title="全部重新自動排列（清掉手動拖過的位置）">↺</button><button id="pb-png" class="icon" title="下載 PNG">PNG</button><button id="pb-svg" class="icon" title="下載 SVG">SVG</button></div>
-    <div class="sch-hint pb-hint">拖元件可換位置（會自動對齊孔位並重走錫橋）；點一下再按「旋轉」轉 90°。板子（排母）也可以拖。</div>
-    <div class="pb-panel" hidden><div class="pb-panel-hd"><b>焊接順序與提醒</b><button class="icon pb-panel-x">✕</button></div><ol id="pb-steplist"></ol><div id="pb-warn"></div></div>`;
+    <div class="sch-tools"><button id="pb-fit" class="icon" title="縮放到全部">⤢</button><button id="pb-relayout" class="icon pb-auto" title="自動佈線：重新自動擺放元件、重走背面錫橋（清掉手動拖過的位置）">自動佈線</button><button id="pb-png" class="icon" title="下載 PNG">PNG</button><button id="pb-svg" class="icon" title="下載 SVG">SVG</button></div>
+    <div class="sch-hint pb-hint">元件位置和背面錫橋都是自動佈線的；拖元件可換位置（會自動對齊孔位並重走錫橋），點一下再按「旋轉」轉 90°，按「自動佈線」全部重排。焊接順序在下方「步驟」。</div>`;
   viewport.appendChild(layer);
   const canvas = layer.querySelector(".sch-canvas"); const $ = (id) => layer.querySelector("#" + id);
+  // 焊接順序與提醒放在下方「步驟」分頁（原本浮在板子上會擋住，使用者 2026-11-09 回報）
+  const solder = document.createElement("div"); solder.className = "pb-solder"; solder.hidden = true;
+  solder.innerHTML = `<b>萬用板：焊接順序與提醒</b><ol class="pb-steplist"></ol><div class="pb-warn"></div>`;
+  (solderHost || layer).prepend(solder);
   let built = null, side = "front", size = (sim.doc.perfboard && sim.doc.perfboard.size) || "5x7", view = { x: 0, y: 0, z: 1 }, needFit = true, timer = null, selId = null;
   $("pb-size").value = size;
   const manual = () => { sim.doc.perfboard = sim.doc.perfboard || {}; sim.doc.perfboard.place = sim.doc.perfboard.place || {}; return sim.doc.perfboard.place; };
@@ -26,8 +29,8 @@ export function mountPerfboard(sim, { viewport, toast = () => {} }) {
     canvas.innerHTML = side === "front" ? built.svgFront : built.svgBack;
     if (selId && !(selId in built.place)) selId = null;
     if (selId) canvas.querySelector(`.pb-part[data-id="${selId}"]`)?.classList.add("selected");
-    $("pb-steplist").innerHTML = built.steps.map((s) => `<li>${s.replace(/^\d+\.\s*/, "")}</li>`).join("");
-    $("pb-warn").innerHTML = built.warnings.map((w) => `<div class="pb-w ${w.code === "NO_SPACE" || w.code === "BOARD_TOO_BIG" ? "bad" : ""}">${w.brief}</div>`).join("");
+    solder.querySelector(".pb-steplist").innerHTML = built.steps.map((s) => `<li>${s.replace(/^\d+\.\s*/, "")}</li>`).join("");
+    solder.querySelector(".pb-warn").innerHTML = built.warnings.map((w) => `<div class="pb-w ${w.code === "NO_SPACE" || w.code === "BOARD_TOO_BIG" ? "bad" : ""}">${w.brief}</div>`).join("");
     const hard = built.warnings.find((w) => w.code === "NO_SPACE" || w.code === "BOARD_TOO_BIG");
     if (hard && size === "5x7") { size = "7x9"; $("pb-size").value = size; toast("5×7 放不下，改用 7×9"); return rebuild(); }
     if (needFit) { fit(); needFit = false; } else apply();
@@ -41,12 +44,11 @@ export function mountPerfboard(sim, { viewport, toast = () => {} }) {
     const z = Math.max(0.3, Math.min(3, Math.min((r.width - (r.width < 600 ? 100 : 60)) / built.w, (r.height - top - 20) / built.h)));
     view = { z, x: Math.max(10, (r.width - (r.width < 600 ? 60 : 0) - built.w * z) / 2), y: Math.max(top, (r.height - top - built.h * z) / 2 + top) }; apply();
   }
-  function show(v) { layer.hidden = v !== "pb"; if (v === "pb") rebuild(); }
+  function show(v) { layer.hidden = v !== "pb"; solder.hidden = v !== "pb"; if (v === "pb") rebuild(); }
   viewport.addEventListener("simview", (e) => show(e.detail));
   $("pb-size").addEventListener("change", function () { size = this.value; sim.doc.perfboard = { ...(sim.doc.perfboard || {}), size }; needFit = true; rebuild(); });
   $("pb-side").addEventListener("click", function () { side = side === "front" ? "back" : "front"; this.textContent = side === "front" ? "看背面" : "看正面"; rebuild(); });
-  $("pb-steps").addEventListener("click", () => { const p = layer.querySelector(".pb-panel"); p.hidden = !p.hidden; });
-  layer.querySelector(".pb-panel-x").addEventListener("click", () => { layer.querySelector(".pb-panel").hidden = true; });
+  $("pb-steps").addEventListener("click", () => { solder.hidden = false; showSolder(); solder.scrollIntoView({ block: "nearest" }); });
   $("pb-fit").addEventListener("click", fit);
   $("pb-relayout").addEventListener("click", () => { if (sim.doc.perfboard) sim.doc.perfboard.place = {}; selId = null; needFit = true; rebuild(); toast("已重新自動排列"); });
   // 旋轉：選到的元件（或板子）順時針轉 90°；位置不變，放不下會退回並提醒

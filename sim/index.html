@@ -92,7 +92,7 @@ svg.sim-wires text.wire-label{font-size:10px;fill:var(--ink);paint-order:stroke;
 .sch-layer .sch-hint{position:absolute;left:10px;bottom:10px;max-width:min(60%,420px);font-size:11px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;pointer-events:none}
 .sch-on .canvas-tools,.sch-on #tools-toggle,.sch-on #minimap{display:none!important}
 .pb-layer .pb-bar{position:absolute;left:10px;top:48px;z-index:3;display:flex;gap:6px;align-items:center}.pb-layer .pb-bar select{max-width:170px;min-height:30px}.pb-layer .pb-bar button{background:var(--panel);min-height:30px}
-.pb-layer .pb-panel{position:absolute;right:10px;top:48px;z-index:4;width:min(320px,70%);max-height:60%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px}.pb-panel-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.pb-panel ol{margin:0 0 6px 18px;padding:0}.pb-panel li{margin:2px 0}.pb-w{background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:4px 6px;margin:4px 0}.pb-w.bad{background:#fee2e2;border-color:#f87171}
+.pb-solder{margin-bottom:14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.pb-solder ol{margin:8px 0;padding-left:22px;line-height:1.7}.pb-solder .pb-w{margin-top:6px;padding:6px 10px;border-radius:8px;background:color-mix(in srgb,#e69a00 18%,transparent)}.pb-solder .pb-w.bad{background:color-mix(in srgb,#d33 20%,transparent)}.pb-auto{width:auto!important;padding:0 10px}.pb-panel-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.pb-panel ol{margin:0 0 6px 18px;padding:0}.pb-panel li{margin:2px 0}.pb-w{background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:4px 6px;margin:4px 0}.pb-w.bad{background:#fee2e2;border-color:#f87171}
 @media (prefers-color-scheme:dark){svg.sim-wires path.wire.dark{filter:drop-shadow(0 0 1px rgba(255,255,255,.9)) drop-shadow(0 0 1px rgba(255,255,255,.6))}}   /* 黑色地線在深色背景加淺色外框 */
 @media (prefers-color-scheme:dark){.pb-w{background:#3a2a12;border-color:#9a5b1a;color:#f3e4d0}.pb-w.bad{background:#4a1d1d;border-color:#b33}}
 @media (prefers-color-scheme:dark){.sch-layer svg{--sch-ink:#e7e5e4;--sch-wire:#7cb3ff;--sch-muted:#9a9ea8}}
@@ -488,7 +488,7 @@ const sim = createSimulator({
 });
 const schematicView = mountSchematic(sim, { viewport: document.querySelector(".sim-viewport"), toast });
 window.schematicView = schematicView;
-const perfboardView = mountPerfboard(sim, { viewport: document.querySelector(".sim-viewport"), toast });
+const perfboardView = mountPerfboard(sim, { viewport: document.querySelector(".sim-viewport"), toast, solderHost: document.querySelector("#pane-steps .pane-body"), showSolder: () => showPane("steps") });
 window.perfboardView = perfboardView;
 window.sim = sim;
 fetch("part_cards.json").then((r) => (r.ok ? r.json() : null)).then((c) => { if (c) { cards = c; sim.setCards(c); } }).catch(() => {});
