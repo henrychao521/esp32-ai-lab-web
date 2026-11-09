@@ -171,6 +171,7 @@ export class LabDriver {
 
   // ---------------------------------------------------------------- inputs
   setPin(gpio, level) {
+    if (!this.core || !this.core.emu) return false;   // 同上
     const st = this.pinState[gpio];
     if (st && (st.mode === 'out' || st.mode === 'pwm')) return false;     // the chip drives it
     this.core.gpio(gpio, level ? 1 : 0); return true;
@@ -178,6 +179,7 @@ export class LabDriver {
   releasePin(gpio) { this.core.gpio(gpio, 2); }
   /// The canvas convention (engine A): raw = 4095 * V / 3.3; the firmware's read_uv applies the S3 curve to that count.
   setAnalog(gpio, volts) {
+    if (!this.core || !this.core.emu) return false;   // 還沒開機：emu=0 傳進 wasm 會卡死（App 主執行緒整頁凍住，2026-11-09）
     const raw = Math.max(0, Math.min(4095, Math.round(volts / 3.3 * 4095)));
     if (this.cfg && this.cfg.chip !== 'esp32s3') { this.core.analog(gpio, volts); return true; }
     return this.core.w.esp32sim_lab_adc_raw(this.core.emu, gpio, raw) === 0;

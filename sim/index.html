@@ -369,7 +369,7 @@ import { createSimulator, WIRE_COLORS } from "./sim.js";
 import { mountSchematic } from "./schematic-view.js";
 import { mountPerfboard } from "./perfboard-view.js";
 import { exportKiCad } from "./kicad.js";
-import { ENGINES, engineForBoard } from "./engine.js";
+import { ENGINES, engineForBoard, engineLimits } from "./engine.js";
 import { CATALOG, BOARD_ART } from "./catalog.js";
 import { BOARDS, gpioName } from "./circuit.js";
 const pinLabel = (g) => gpioName(window.sim ? sim.doc.board : "", Number(g));   // UNO：D13／A0；ESP32：GPIO16
@@ -504,7 +504,7 @@ $("engine").addEventListener("change", async function() {
 });
 $("firmware").addEventListener("change", function() { if (this.value) { toast("Arduino C 要在電腦上編譯，這裡只能執行已編譯的映像；按 ▶ 執行開機", "info"); log("已選 Arduino 映像：" + this.options[this.selectedIndex].text + "。Arduino C 要在電腦上編譯，這裡只能執行。", "sys"); } });
 $("btn-run").addEventListener("click", async () => { if (sim.doc.board === "power") { await sim.run("", "power"); return; }   // 電源供應器：只通電，沒有程式
-  if (isUno()) { saveLocal(); await runUno(); return; } if ($("firmware").value) { const r = await sim.runFirmware($("firmware").value); if (!r.ok) log("無法開機：" + (r.msg || ""), "err"); else log("Arduino 映像開機中（無 REPL、無 lab 模組；主控台只有韌體自己的輸出）", "sys"); return; } const code = getCode(); saveLocal(); const r = await sim.run(code); if (!r.ok) { log("無法執行：" + (r.msg || "") + (r.line ? "（第 " + r.line + " 行）" : ""), "err"); showPane("console"); } });
+  if (isUno()) { saveLocal(); await runUno(); return; } if ($("firmware").value) { const r = await sim.runFirmware($("firmware").value); if (!r.ok) log("無法開機：" + (r.msg || ""), "err"); else log("Arduino 映像開機中（無 REPL、無 lab 模組；主控台只有韌體自己的輸出）", "sys"); return; } const code = getCode(); saveLocal(); const lim = engineLimits(sim.engine && sim.engine.kind, sim.doc.board, sim.doc.parts, code); if (lim.length) { log("真韌體引擎還不支援：" + lim.join("、") + "。這個電路請切到「快速引擎」再執行", "err"); toast("真韌體引擎還不支援" + lim[0] + "，請切到快速引擎", "warn"); } const r = await sim.run(code); if (!r.ok) { log("無法執行：" + (r.msg || "") + (r.line ? "（第 " + r.line + " 行）" : ""), "err"); showPane("console"); } });
 $("btn-pause").addEventListener("click", () => sim.stop());
 $("btn-step").addEventListener("click", () => sim.step());
 $("btn-reset").addEventListener("click", () => { sim.reset(); log("板子已重置", "sys"); });
@@ -691,6 +691,26 @@ $("push-go").addEventListener("click", async () => {
 window.addEventListener("message", (ev) => { const m = ev.data || {}; if (m.t === "sim:setCode" && typeof m.code === "string") { setCode(m.code); toast("已載入 IDE 的程式"); } if (m.t === "sim:getCode") { ev.source.postMessage({ t: "sim:code", code: getCode() }, "*"); } if (m.t === "sim:board") { parentBoard = m; if (m.board && BOARDS[m.board] && m.board !== sim.doc.board) toast("IDE 連線的是 " + BOARDS[m.board].name + "，可從上方選單切換板子"); } });
 if (EMBED) { document.body.classList.add("embed"); window.parent.postMessage({ t: "sim:ready" }, "*"); }
 // ---------- ?bench=1：量 FPS 與互動延遲（App 實機效能用），結果 postMessage 給宿主 ----------
+// ?check=1：全部範例實跑檢查（sim/selfcheck.js）；&ids=a,b 只跑指定範例。結果經 sim:bench 回傳（App：-simcheck → Documents/tmp/simbench.txt）
+if (q.get("check") === "1") (async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 100 && (!sim.engine || !EXAMPLES.length); i++) await wait(100);
+  const { runSelfCheck } = await import("./selfcheck.js");
+  const hooks = {
+    sim, examples: EXAMPLES,
+    loadExample: async (ex) => { loadExample(ex); await wait(200); },
+    consoleText: () => [...$("console").querySelectorAll(".l")].map((d) => (d.lastChild ? d.lastChild.textContent : "")).join("\n"),   /* 不含每行前面的時間戳記：時鐘範例檢查「時:分:秒」會被時間戳記騙過（2026-11-09） */
+    clearConsole: () => { con.innerHTML = ""; },
+    engineLimits: (ex) => engineLimits(sim.engine && sim.engine.kind, ex.board, ex.parts, ex.code),
+    runButton: async () => { for (let i = 0; i < 100 && $("btn-run").disabled; i++) await wait(100); /* 像真人：鈕可以按了才按 */ $("btn-run").click(); for (let i = 0; i < 60 && !sim.powered; i++) await wait(100); },
+    stopButton: async () => { $("btn-pause").disabled = false; $("btn-pause").click(); for (let i = 0; i < 30 && sim.powered; i++) await wait(100); },
+  };
+  const ids = q.get("ids") ? q.get("ids").split(",") : null;
+  const result = await runSelfCheck(hooks, { ids, onProgress: (n, total, id) => { $("status-text").textContent = `檢查 ${n + 1}/${total} ${id}`; window.parent.postMessage({ t: "sim:progress", n, total, id }, "*"); } });
+  window.__checkResult = result;
+  window.parent.postMessage({ t: "sim:bench", result }, "*");
+  toast(`範例檢查：${result.pass}/${result.total} 通過`);
+})();
 if (q.get("bench") === "1") (async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   for (let i = 0; i < 100 && !sim.engine; i++) await wait(100);
@@ -1112,7 +1132,7 @@ async function decompress(b64) { const bin = atob(b64.replace(/-/g, "+").replace
   window.addEventListener("beforeunload", saveLocal);
   const engineQ = q.get("engine") || (localStorage.getItem("sim.engine") || "micropython-wasm"); $("engine").value = ENGINES[engineQ] && engineQ !== "arduino-avr8js" ? engineQ : "micropython-wasm";
   applyBoardUI(sim.doc.board);
-  try { await sim.attach(sim.doc.board, $("engine").value); $("engine-load").style.display = "none"; log("模擬器就緒（" + (sim.engine.kind === "esp32sim" ? "真韌體引擎 esp32sim" : sim.engine.kind === "arduino-avr8js" ? "Arduino UNO，" + sim.engine.info().version : sim.engine.info().version) + "）", "sys"); } catch (e) { log("MicroPython 載入失敗：" + e.message, "err"); }
+  try { await sim.attach(sim.doc.board, $("engine").value); $("engine-load").style.display = "none"; log("模擬器就緒（" + (sim.engine.kind === "none" ? "電源供應器，無開發板" : sim.engine.kind === "esp32sim" ? "真韌體引擎 esp32sim" : sim.engine.kind === "arduino-avr8js" ? "Arduino UNO，" + sim.engine.info().version : sim.engine.info().version) + "）", "sys"); } catch (e) { log("模擬器引擎載入失敗：" + e.message, "err"); }
   if (await loadAssignmentFromHash()) toast("已載入作業");
   sim.fit();
   // 畫布剛開時若還沒有尺寸（分頁在背景、面板剛展開），fit 會算成最小縮放；等它有尺寸再 fit 一次

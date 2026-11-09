@@ -9,6 +9,17 @@ export const ENGINES = {
   "arduino-avr8js": { label: "Arduino UNO（avr8js）", note: "ATmega328P 16 MHz 逐指令模擬，跑預先編譯的 .hex；時序精確、可單步；App 內不編譯 C++", module: "./engine-avr.js", boards: ["uno"] },
 };
 /** 這塊板子該用哪個引擎：UNO 一律 avr8js；ESP32 系列不能用 avr8js（退回快速引擎） */
+/** 引擎還不支援的功能（2026-11-09 真韌體全範例檢查）：回傳說明字串陣列，空陣列＝都支援。
+ *  真韌體引擎（esp32sim）：經典 ESP32（DevKit）晶片沒有 I2C 模型、DHT22 感測器沒接、T-Display S3 彩色螢幕沒有驅動。 */
+export function engineLimits(kind, board, parts, code) {
+  if (kind !== "esp32sim") return [];
+  const types = new Set(Object.values(parts || {}).map((p) => p.type)); const out = [];
+  if (types.has("dht22")) out.push("DHT22 溫濕度感測器（讀不到值）");
+  if (board === "devkit" && (types.has("ssd1306") || types.has("lcd1602"))) out.push("ESP32 DevKit 上的 I2C 螢幕（OLED、LCD1602 會出現 ENODEV）");
+  if (board === "tdisplay_s3" && /lab\.display/.test(code || "")) out.push("T-Display S3 的彩色螢幕");
+  return out;
+}
+
 export function engineForBoard(board, kind) {
   if (board === "power") return "none";   // 電源供應器：沒有微控制器，電路自己動
   if (board === "uno") return "arduino-avr8js";
@@ -21,7 +32,8 @@ function createNoneEngine() {
   return { kind: "none", apiVersion: API_VERSION, capabilities: { screen: false, i2c: false, spi: false, uart: false, rmt: false, step: false, cycleAccurate: false, arduino: false, hex: false },
     on: noop, off: noop, pins: () => ({}), setPin: noop, setAnalog: noop, pressButton: noop, releaseButton: noop, pause: noop, step: noop, cmd: noop,
     boot: async () => ({ ok: true, msg: "電源供應器模式沒有程式" }), stop: async () => true, reset: async () => {}, check: async () => ({ ok: true, errors: [] }),
-    screenSize: () => null, screenRGBA: () => null, takeScreenDirty: () => false, registerI2CDevice: noop, registerPulseSource: noop, time: () => 0 };
+    screenSize: () => null, screenRGBA: () => null, takeScreenDirty: () => false, registerI2CDevice: noop, registerPulseSource: noop, registerSensor: noop, time: () => 0,
+    info: () => ({ version: "電源供應器（無開發板）" }), setSpeed: noop, schedule: noop, uartWrite: noop, releasePin: noop, run: noop, get running() { return false; } };   // 介面要和其他引擎一樣齊：啟動時呼叫 info() 會報「MicroPython 載入失敗」（使用者 2026-11-09 回報）
 }
 export async function createEngine(kind = "micropython-wasm", opts = {}) {
   if (kind === "none") return createNoneEngine();

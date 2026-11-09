@@ -137,15 +137,15 @@
 },
 "xi_face@xiao_esp32s3": {
 "file": "thumbs/xi_face_at_xiao_esp32s3.webp",
-"hash": "e8db50eef6d6"
+"hash": "b26ac2810a4b"
 },
 "xi_clock@xiao_esp32s3": {
 "file": "thumbs/xi_clock_at_xiao_esp32s3.webp",
-"hash": "e8db50eef6d6"
+"hash": "b26ac2810a4b"
 },
 "xi_dice@xiao_esp32s3": {
 "file": "thumbs/xi_dice_at_xiao_esp32s3.webp",
-"hash": "f85b974fafbb"
+"hash": "94e540b8c192"
 },
 "an_rc@xiao_esp32s3": {
 "file": "thumbs/an_rc_at_xiao_esp32s3.webp",
@@ -165,11 +165,11 @@
 },
 "xi_wearable@xiao_esp32s3": {
 "file": "thumbs/xi_wearable_at_xiao_esp32s3.webp",
-"hash": "51c18ee1ee44"
+"hash": "a610d87b7ed5"
 },
 "xi_metronome@xiao_esp32s3": {
 "file": "thumbs/xi_metronome_at_xiao_esp32s3.webp",
-"hash": "6a76001c18aa"
+"hash": "4fa9c2b3b450"
 },
 "xi_servo_finger@xiao_esp32s3": {
 "file": "thumbs/xi_servo_finger_at_xiao_esp32s3.webp",
@@ -185,7 +185,7 @@
 },
 "xi_heartbeat@xiao_esp32s3": {
 "file": "thumbs/xi_heartbeat_at_xiao_esp32s3.webp",
-"hash": "6a76001c18aa"
+"hash": "4fa9c2b3b450"
 },
 "an_npn_light@xiao_esp32s3": {
 "file": "thumbs/an_npn_light_at_xiao_esp32s3.webp",
@@ -213,7 +213,7 @@
 },
 "xi_weather_station@xiao_esp32s3": {
 "file": "thumbs/xi_weather_station_at_xiao_esp32s3.webp",
-"hash": "e0d5ef2bc5e7"
+"hash": "b47afb52e4aa"
 },
 "an_npn_flyback@xiao_esp32s3": {
 "file": "thumbs/an_npn_flyback_at_xiao_esp32s3.webp",
@@ -373,7 +373,7 @@
 },
 "dk_clock@devkit": {
 "file": "thumbs/dk_clock_at_devkit.webp",
-"hash": "5b249902ccbf"
+"hash": "3c0cebf34e17"
 },
 "dk_water_level@devkit": {
 "file": "thumbs/dk_water_level_at_devkit.webp",
@@ -453,7 +453,7 @@
 },
 "dk_dice_board@devkit": {
 "file": "thumbs/dk_dice_board_at_devkit.webp",
-"hash": "5b5efa91a97a"
+"hash": "5965f9ab3075"
 },
 "an_npn_flyback@devkit": {
 "file": "thumbs/an_npn_flyback_at_devkit.webp",

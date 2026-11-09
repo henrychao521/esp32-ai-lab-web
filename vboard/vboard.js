@@ -82,11 +82,38 @@ function balanceExtraParen(code, marker) {
 
 const BOARD_NAMES = { tqt_pro: "虛擬 T-QT Pro", devkit: "虛擬 ESP32 DevKit", generic: "虛擬 ESP32" };
 
+/* 整頁只建一個 MicroPython，換板子時只重設板子設定（_vboard.setup）。
+   以前每換一塊板子就再載一次 wasm：MicroPython 的 JS 物件對照表是全域共用的，舊實體被回收時會清掉新實體的參照
+   （App 裡出現「module '' has no attribute 'check'」；舊程式沒停完就建新的會直接 function signature mismatch），2026-11-09 全系統檢查抓到。 */
+let SHARED = null;
+function sharedRuntime(firstLabjs) {
+  if (SHARED) return SHARED;
+  SHARED = (async () => {
+    const S = { cur: null };
+    const { loadMicroPython } = await import(new URL("./micropython.mjs", import.meta.url).href);
+    S.mp = await loadMicroPython({
+      stdout: (s) => S.cur && S.cur.emit({ t: "out", s: s + "\n" }),
+      stderr: (s) => S.cur && S.cur.emit({ t: "err", s: s + "\n" }),
+    });
+    const deleg = {};
+    for (const k of Object.keys(firstLabjs)) deleg[k] = (...a) => S.cur.labjs[k](...a);
+    S.mp.registerJsModule("labjs", deleg);
+    try { S.mp.FS.mkdir("/lib"); } catch (e) {}
+    for (const [path, src] of Object.entries(PY_FILES)) {
+      const dir = "/lib/" + path.split("/").slice(0, -1).join("/");
+      if (path.includes("/")) { try { S.mp.FS.mkdir(dir); } catch (e) {} }
+      S.mp.FS.writeFile("/lib/" + path, src);
+    }
+    S.mp.runPython("import sys\nsys.path.insert(0, '/lib')\nimport _vboard\n");
+    return S;
+  })();
+  return SHARED;
+}
+
 export async function createVirtualBoard(opts = {}) {
   const board = opts.board || "tqt_pro";
   const onEvent = opts.onEvent || (() => {});
   const onState = opts.onState || (() => {});
-  const { loadMicroPython } = await import(new URL("./micropython.mjs", import.meta.url).href);
 
   const st = {
     board, status: "idle", file: null, led: false,
@@ -104,11 +131,7 @@ export async function createVirtualBoard(opts = {}) {
   const emit = (msg) => { try { onEvent(msg); } catch (e) {} };
   const changed = () => { try { onState(st); } catch (e) {} };
 
-  mp = await loadMicroPython({
-    stdout: (s) => emit({ t: "out", s: s + "\n" }),
-    stderr: (s) => emit({ t: "err", s: s + "\n" }),
-  });
-  mp.registerJsModule("labjs", {
+  const labjs = {
     emit: (json) => { try { emit(JSON.parse(json)); } catch (e) {} },
     show: () => { blitScreen(); },
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
@@ -139,14 +162,10 @@ export async function createVirtualBoard(opts = {}) {
     rmt: (gpio, n, bpp) => { let buf; try { buf = mp.FS.readFile("/rmt.bin"); } catch (e) { return; } hooks.rmt && hooks.rmt(gpio, buf.slice(0, n * bpp), bpp); },
     pulse_us: (gpio, level) => (hooks.pulse ? hooks.pulse(gpio, level) : null),
     sensor_value: (gpio) => { const v = hooks.sensor ? hooks.sensor(gpio) : null; return v == null ? null : JSON.stringify(v); },
-  });
-  try { mp.FS.mkdir("/lib"); } catch (e) {}
-  for (const [path, src] of Object.entries(PY_FILES)) {
-    const dir = "/lib/" + path.split("/").slice(0, -1).join("/");
-    if (path.includes("/")) { try { mp.FS.mkdir(dir); } catch (e) {} }
-    mp.FS.writeFile("/lib/" + path, src);
-  }
-  mp.runPython("import sys\nsys.path.insert(0, '/lib')\nimport _vboard\n_vboard.setup(" + JSON.stringify(board) + ")\n");
+  };
+  const S = await sharedRuntime(labjs);
+  mp = S.mp; S.cur = { emit, labjs };   // 之後 MicroPython 的輸出與 labjs 呼叫都轉給這塊板子
+  mp.runPython("import _vboard\n_vboard.clear_main(globals())\n_vboard.setup(" + JSON.stringify(board) + ")\n");
   const pyLab = mp.pyimport("lab");
   const pyVB = mp.pyimport("_vboard");
 
@@ -182,6 +201,10 @@ export async function createVirtualBoard(opts = {}) {
       if (st.status === "running") return { ok: false, msg: "busy", status: 409 };
       const chk = await api.check(code, name);
       if (!chk.ok) { emit({ t: "err", s: `${name} 第 ${chk.line ?? "?"} 行：${chk.msg}\n` }); return { ok: false, msg: chk.msg, line: chk.line }; }
+      // 新程式開跑＝板子重開機：上一支程式設的輸出、上拉、PWM、伺服全部清掉（以前會殘留，沒用到的腳還在輸出高電位；2026-11-09 Argon 審查抓到）
+      for (const o of [st.pins, st.pinModes, st.pinPulls, st.pwm, st.servos]) for (const k of Object.keys(o)) delete o[k];
+      for (const k of Object.keys(st.inputs)) if (!(k in st.buttons)) delete st.inputs[k];
+      st.led = false;
       st.status = "running"; st.file = name; st.startedAt = Date.now(); changed();
       mp.runPython("import _vboard\n_vboard.clear_main(globals())\n_vboard.begin(" + JSON.stringify(name) + ")");
       const transformed = transformCode(code);

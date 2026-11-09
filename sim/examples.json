@@ -5403,51 +5403,51 @@
   "parts": {
    "oled1": {
     "type": "ssd1306",
-    "x": 241.7,
-    "y": 57.7,
-    "rot": 180,
+    "x": 241.9,
+    "y": 110.3,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "DATA": "f13",
-     "CLK": "f12",
-     "DC": "f11",
-     "RST": "f10",
-     "CS": "f9",
-     "3V3": "f8",
-     "VIN": "f7",
-     "GND": "f6"
+     "DATA": "d5",
+     "CLK": "d6",
+     "DC": "d7",
+     "RST": "d8",
+     "CS": "d9",
+     "3V3": "d10",
+     "VIN": "d11",
+     "GND": "d12"
     }
    }
   },
   "wires": [
    {
     "a": "board:GND",
-    "b": "bb:bot-1",
+    "b": "bb:top-1",
     "color": "#1d1d1d"
    },
    {
     "a": "board:3V3",
-    "b": "bb:bot+1",
+    "b": "bb:top+1",
     "color": "#d32f2f"
    },
    {
-    "a": "bb:j6",
-    "b": "bb:bot-5",
+    "a": "bb:a12",
+    "b": "bb:top-10",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:j8",
-    "b": "bb:bot+7",
+    "a": "bb:a10",
+    "b": "bb:top+9",
     "color": "#d32f2f"
    },
    {
     "a": "board:D4",
-    "b": "bb:j13",
+    "b": "bb:a5",
     "color": "#ef6c00"
    },
    {
     "a": "board:D5",
-    "b": "bb:j12",
+    "b": "bb:a6",
     "color": "#1565c0"
    }
   ],
@@ -5464,7 +5464,7 @@
    },
    {
     "title": "電源軌",
-    "text": "黑線：板子 GND → 下方「−」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "text": "黑線：板子 GND → 上方「−」軌；紅線：板子 3V3 → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
     "wires": [
      0,
      1
@@ -5472,33 +5472,33 @@
    },
    {
     "title": "插元件",
-    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→f13、CLK→f12、DC→f11、RST→f10、CS→f9、3V3→f8、VIN→f7、GND→f6",
+    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→d5、CLK→d6、DC→d7、RST→d8、CS→d9、3V3→d10、VIN→d11、GND→d12",
     "wires": []
    },
    {
     "title": "接線",
-    "text": "黑線：j6（跟 oled1 的GND同一直排） → 下方「−」軌",
+    "text": "黑線：a12（跟 oled1 的GND同一直排） → 上方「−」軌",
     "wires": [
      2
     ]
    },
    {
     "title": "接線",
-    "text": "紅線：j8（跟 oled1 的3V3同一直排） → 下方「＋」軌",
+    "text": "紅線：a10（跟 oled1 的3V3同一直排） → 上方「＋」軌",
     "wires": [
      3
     ]
    },
    {
     "title": "接線",
-    "text": "橘線：板子 D4 → j13（跟 oled1 的DATA同一直排）",
+    "text": "橘線：板子 D4 → a5（跟 oled1 的DATA同一直排）",
     "wires": [
      4
     ]
    },
    {
     "title": "接線",
-    "text": "藍線：板子 D5 → j12（跟 oled1 的CLK同一直排）",
+    "text": "藍線：板子 D5 → a6（跟 oled1 的CLK同一直排）",
     "wires": [
      5
     ]
@@ -5528,7 +5528,7 @@
    "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
    "執行後按 B 鍵換表情"
   ],
-  "layout": "e8db50eef6d6"
+  "layout": "b26ac2810a4b"
  },
  {
   "id": "xi_clock@xiao_esp32s3",
@@ -5542,51 +5542,51 @@
   "parts": {
    "oled1": {
     "type": "ssd1306",
-    "x": 241.7,
-    "y": 57.7,
-    "rot": 180,
+    "x": 241.9,
+    "y": 110.3,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "DATA": "f13",
-     "CLK": "f12",
-     "DC": "f11",
-     "RST": "f10",
-     "CS": "f9",
-     "3V3": "f8",
-     "VIN": "f7",
-     "GND": "f6"
+     "DATA": "d5",
+     "CLK": "d6",
+     "DC": "d7",
+     "RST": "d8",
+     "CS": "d9",
+     "3V3": "d10",
+     "VIN": "d11",
+     "GND": "d12"
     }
    }
   },
   "wires": [
    {
     "a": "board:GND",
-    "b": "bb:bot-1",
+    "b": "bb:top-1",
     "color": "#1d1d1d"
    },
    {
     "a": "board:3V3",
-    "b": "bb:bot+1",
+    "b": "bb:top+1",
     "color": "#d32f2f"
    },
    {
-    "a": "bb:j6",
-    "b": "bb:bot-5",
+    "a": "bb:a12",
+    "b": "bb:top-10",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:j8",
-    "b": "bb:bot+7",
+    "a": "bb:a10",
+    "b": "bb:top+9",
     "color": "#d32f2f"
    },
    {
     "a": "board:D4",
-    "b": "bb:j13",
+    "b": "bb:a5",
     "color": "#ef6c00"
    },
    {
     "a": "board:D5",
-    "b": "bb:j12",
+    "b": "bb:a6",
     "color": "#1565c0"
    }
   ],
@@ -5603,7 +5603,7 @@
    },
    {
     "title": "電源軌",
-    "text": "黑線：板子 GND → 下方「−」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "text": "黑線：板子 GND → 上方「−」軌；紅線：板子 3V3 → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
     "wires": [
      0,
      1
@@ -5611,33 +5611,33 @@
    },
    {
     "title": "插元件",
-    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→f13、CLK→f12、DC→f11、RST→f10、CS→f9、3V3→f8、VIN→f7、GND→f6",
+    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→d5、CLK→d6、DC→d7、RST→d8、CS→d9、3V3→d10、VIN→d11、GND→d12",
     "wires": []
    },
    {
     "title": "接線",
-    "text": "黑線：j6（跟 oled1 的GND同一直排） → 下方「−」軌",
+    "text": "黑線：a12（跟 oled1 的GND同一直排） → 上方「−」軌",
     "wires": [
      2
     ]
    },
    {
     "title": "接線",
-    "text": "紅線：j8（跟 oled1 的3V3同一直排） → 下方「＋」軌",
+    "text": "紅線：a10（跟 oled1 的3V3同一直排） → 上方「＋」軌",
     "wires": [
      3
     ]
    },
    {
     "title": "接線",
-    "text": "橘線：板子 D4 → j13（跟 oled1 的DATA同一直排）",
+    "text": "橘線：板子 D4 → a5（跟 oled1 的DATA同一直排）",
     "wires": [
      4
     ]
    },
    {
     "title": "接線",
-    "text": "藍線：板子 D5 → j12（跟 oled1 的CLK同一直排）",
+    "text": "藍線：板子 D5 → a6（跟 oled1 的CLK同一直排）",
     "wires": [
      5
     ]
@@ -5664,7 +5664,7 @@
    "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
    "執行後 B 鍵加 1 小時"
   ],
-  "layout": "e8db50eef6d6"
+  "layout": "b26ac2810a4b"
  },
  {
   "id": "xi_dice@xiao_esp32s3",
@@ -5678,19 +5678,19 @@
   "parts": {
    "oled1": {
     "type": "ssd1306",
-    "x": 241.7,
-    "y": 57.7,
-    "rot": 180,
+    "x": 241.9,
+    "y": 110.3,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "DATA": "f13",
-     "CLK": "f12",
-     "DC": "f11",
-     "RST": "f10",
-     "CS": "f9",
-     "3V3": "f8",
-     "VIN": "f7",
-     "GND": "f6"
+     "DATA": "d5",
+     "CLK": "d6",
+     "DC": "d7",
+     "RST": "d8",
+     "CS": "d9",
+     "3V3": "d10",
+     "VIN": "d11",
+     "GND": "d12"
     }
    },
    "r1": {
@@ -5721,22 +5721,17 @@
   "wires": [
    {
     "a": "board:GND",
-    "b": "bb:top-15",
-    "color": "#1d1d1d"
-   },
-   {
-    "a": "board:GND",
-    "b": "bb:bot-1",
+    "b": "bb:top-1",
     "color": "#1d1d1d"
    },
    {
     "a": "board:3V3",
-    "b": "bb:bot+1",
+    "b": "bb:top+1",
     "color": "#d32f2f"
    },
    {
-    "a": "bb:j6",
-    "b": "bb:bot-5",
+    "a": "bb:a12",
+    "b": "bb:top-10",
     "color": "#1d1d1d"
    },
    {
@@ -5745,8 +5740,8 @@
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:j8",
-    "b": "bb:bot+7",
+    "a": "bb:a10",
+    "b": "bb:top+9",
     "color": "#d32f2f"
    },
    {
@@ -5756,19 +5751,19 @@
    },
    {
     "a": "board:D4",
-    "b": "bb:j13",
+    "b": "bb:a5",
     "color": "#1565c0"
    },
    {
     "a": "board:D5",
-    "b": "bb:j12",
+    "b": "bb:a6",
     "color": "#2e7d32"
    }
   ],
   "steps": [
    {
     "title": "材料",
-    "text": "・XIAO ESP32S3 ×1\n・OLED 0.96 吋（SSD1306，I2C） ×1\n・220 Ω 電阻 ×1\n・蜂鳴器 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×9",
+    "text": "・XIAO ESP32S3 ×1\n・OLED 0.96 吋（SSD1306，I2C） ×1\n・220 Ω 電阻 ×1\n・蜂鳴器 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×8",
     "wires": []
    },
    {
@@ -5778,16 +5773,15 @@
    },
    {
     "title": "電源軌",
-    "text": "黑線：板子 GND → 上方「−」軌；黑線：板子 GND → 下方「−」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "text": "黑線：板子 GND → 上方「−」軌；紅線：板子 3V3 → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
     "wires": [
      0,
-     1,
-     2
+     1
     ]
    },
    {
     "title": "插元件",
-    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→f13、CLK→f12、DC→f11、RST→f10、CS→f9、3V3→f8、VIN→f7、GND→f6",
+    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→d5、CLK→d6、DC→d7、RST→d8、CS→d9、3V3→d10、VIN→d11、GND→d12",
     "wires": []
    },
    {
@@ -5802,38 +5796,38 @@
    },
    {
     "title": "接線",
-    "text": "黑線：j6（跟 oled1 的GND同一直排） → 下方「−」軌\n黑線：a21（跟 bz1 的正極同一直排） → 上方「−」軌",
+    "text": "黑線：a12（跟 oled1 的GND同一直排） → 上方「−」軌\n黑線：a21（跟 bz1 的正極同一直排） → 上方「−」軌",
     "wires": [
-     3,
-     4
+     2,
+     3
     ]
    },
    {
     "title": "接線",
-    "text": "紅線：j8（跟 oled1 的3V3同一直排） → 下方「＋」軌",
+    "text": "紅線：a10（跟 oled1 的3V3同一直排） → 上方「＋」軌",
     "wires": [
-     5
+     4
     ]
    },
    {
     "title": "接線",
     "text": "橘線：板子 D1 → b28（跟 r1 的一腳同一直排）",
     "wires": [
+     5
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "藍線：板子 D4 → a5（跟 oled1 的DATA同一直排）",
+    "wires": [
      6
     ]
    },
    {
     "title": "接線",
-    "text": "藍線：板子 D4 → j13（跟 oled1 的DATA同一直排）",
+    "text": "綠線：板子 D5 → a6（跟 oled1 的CLK同一直排）",
     "wires": [
      7
-    ]
-   },
-   {
-    "title": "接線",
-    "text": "綠線：板子 D5 → j12（跟 oled1 的CLK同一直排）",
-    "wires": [
-     8
     ]
    }
   ],
@@ -5857,14 +5851,14 @@
    "220 Ω 電阻 ×1",
    "蜂鳴器 ×1",
    "麵包板（半尺寸）×1",
-   "杜邦線 ×9"
+   "杜邦線 ×8"
   ],
   "circuit": [
    "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
    "D1 → 220Ω → 蜂鳴器 → GND",
    "執行後按 B 鍵"
   ],
-  "layout": "f85b974fafbb"
+  "layout": "94e540b8c192"
  },
  {
   "id": "an_rc@xiao_esp32s3",
@@ -6991,84 +6985,84 @@
   "summary": "DHT22 溫濕度顯示在 OLED，依舒適度畫笑臉或皺眉。",
   "breadboard": {
    "x": 220,
-   "y": 50
+   "y": 119.4
   },
   "parts": {
    "oled1": {
     "type": "ssd1306",
-    "x": 241.7,
-    "y": 57.7,
-    "rot": 180,
+    "x": 241.9,
+    "y": 179.7,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "DATA": "f13",
-     "CLK": "f12",
-     "DC": "f11",
-     "RST": "f10",
-     "CS": "f9",
-     "3V3": "f8",
-     "VIN": "f7",
-     "GND": "f6"
+     "DATA": "d5",
+     "CLK": "d6",
+     "DC": "d7",
+     "RST": "d8",
+     "CS": "d9",
+     "3V3": "d10",
+     "VIN": "d11",
+     "GND": "d12"
     }
    },
    "dht1": {
     "type": "dht22",
-    "x": 236.3,
-    "y": 197.8,
-    "rot": 180,
+    "x": 388.2,
+    "y": 48.5,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "VCC": "j5",
-     "SDA": "j4",
-     "NC": "j3",
-     "GND": "j2"
+     "VCC": "a18",
+     "SDA": "a19",
+     "NC": "a20",
+     "GND": "a21"
     }
    }
   },
   "wires": [
    {
     "a": "board:GND",
-    "b": "bb:bot-6",
+    "b": "bb:top-1",
     "color": "#1d1d1d"
    },
    {
     "a": "board:3V3",
-    "b": "bb:bot+6",
+    "b": "bb:top+1",
     "color": "#d32f2f"
    },
    {
-    "a": "bb:i2",
-    "b": "bb:bot-7",
+    "a": "bb:a12",
+    "b": "bb:top-10",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:j6",
-    "b": "bb:bot-8",
+    "a": "bb:b21",
+    "b": "bb:top-19",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:i5",
-    "b": "bb:bot+7",
+    "a": "bb:a10",
+    "b": "bb:top+9",
     "color": "#d32f2f"
    },
    {
-    "a": "bb:j8",
-    "b": "bb:bot+8",
+    "a": "bb:b18",
+    "b": "bb:top+14",
     "color": "#d32f2f"
    },
    {
     "a": "board:D0",
-    "b": "bb:i4",
+    "b": "bb:b19",
     "color": "#ef6c00"
    },
    {
     "a": "board:D4",
-    "b": "bb:j13",
+    "b": "bb:a5",
     "color": "#1565c0"
    },
    {
     "a": "board:D5",
-    "b": "bb:j12",
+    "b": "bb:a6",
     "color": "#2e7d32"
    }
   ],
@@ -7085,7 +7079,7 @@
    },
    {
     "title": "電源軌",
-    "text": "黑線：板子 GND → 下方「−」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "text": "黑線：板子 GND → 上方「−」軌；紅線：板子 3V3 → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
     "wires": [
      0,
      1
@@ -7093,17 +7087,17 @@
    },
    {
     "title": "插元件",
-    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→f13、CLK→f12、DC→f11、RST→f10、CS→f9、3V3→f8、VIN→f7、GND→f6",
+    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→d5、CLK→d6、DC→d7、RST→d8、CS→d9、3V3→d10、VIN→d11、GND→d12",
     "wires": []
    },
    {
     "title": "插元件",
-    "text": "溫濕度感測器 DHT22（dht1）插上麵包板：VCC→j5、SDA→j4、NC→j3、GND→j2",
+    "text": "溫濕度感測器 DHT22（dht1）插上麵包板：VCC→a18、SDA→a19、NC→a20、GND→a21",
     "wires": []
    },
    {
     "title": "接線",
-    "text": "黑線：i2（跟 dht1 的GND同一直排） → 下方「−」軌\n黑線：j6（跟 oled1 的GND同一直排） → 下方「−」軌",
+    "text": "黑線：a12（跟 oled1 的GND同一直排） → 上方「−」軌\n黑線：b21（跟 dht1 的GND同一直排） → 上方「−」軌",
     "wires": [
      2,
      3
@@ -7111,7 +7105,7 @@
    },
    {
     "title": "接線",
-    "text": "紅線：i5（跟 dht1 的VCC同一直排） → 下方「＋」軌\n紅線：j8（跟 oled1 的3V3同一直排） → 下方「＋」軌",
+    "text": "紅線：a10（跟 oled1 的3V3同一直排） → 上方「＋」軌\n紅線：b18（跟 dht1 的VCC同一直排） → 上方「＋」軌",
     "wires": [
      4,
      5
@@ -7119,21 +7113,21 @@
    },
    {
     "title": "接線",
-    "text": "橘線：板子 D0 → i4（跟 dht1 的SDA同一直排）",
+    "text": "橘線：板子 D0 → b19（跟 dht1 的SDA同一直排）",
     "wires": [
      6
     ]
    },
    {
     "title": "接線",
-    "text": "藍線：板子 D4 → j13（跟 oled1 的DATA同一直排）",
+    "text": "藍線：板子 D4 → a5（跟 oled1 的DATA同一直排）",
     "wires": [
      7
     ]
    },
    {
     "title": "接線",
-    "text": "綠線：板子 D5 → j12（跟 oled1 的CLK同一直排）",
+    "text": "綠線：板子 D5 → a6（跟 oled1 的CLK同一直排）",
     "wires": [
      8
     ]
@@ -7162,7 +7156,7 @@
    "DHT22 VCC→3V3、GND→GND、SDA→D0",
    "執行後點 DHT22 用滑桿改溫濕度"
   ],
-  "layout": "51c18ee1ee44"
+  "layout": "a610d87b7ed5"
  },
  {
   "id": "xi_metronome@xiao_esp32s3",
@@ -7171,124 +7165,129 @@
   "summary": "旋鈕調 BPM，蜂鳴器打拍、OLED 擺針。",
   "breadboard": {
    "x": 220,
-   "y": 50
+   "y": 73.0
   },
   "parts": {
    "oled1": {
     "type": "ssd1306",
-    "x": 241.7,
-    "y": 57.7,
-    "rot": 180,
+    "x": 241.9,
+    "y": 133.3,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "DATA": "f13",
-     "CLK": "f12",
-     "DC": "f11",
-     "RST": "f10",
-     "CS": "f9",
-     "3V3": "f8",
-     "VIN": "f7",
-     "GND": "f6"
+     "DATA": "d5",
+     "CLK": "d6",
+     "DC": "d7",
+     "RST": "d8",
+     "CS": "d9",
+     "3V3": "d10",
+     "VIN": "d11",
+     "GND": "d12"
     }
    },
    "pot1": {
     "type": "potentiometer",
-    "x": 241.4,
-    "y": 192.5,
-    "rot": 180,
+    "x": 383.8,
+    "y": 48.5,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "GND": "j6",
-     "SIG": "j5",
-     "VCC": "j4"
+     "GND": "a19",
+     "SIG": "a20",
+     "VCC": "a21"
     }
    },
    "r1": {
     "type": "resistor",
-    "x": 440.1,
-    "y": 88.35,
-    "rot": 180,
+    "x": 431.25,
+    "y": 158.6,
+    "rot": 270,
     "attrs": {
      "value": "220"
     },
     "snaps": {
-     "1": "a28",
-     "2": "a22"
+     "1": "g24",
+     "2": "c24"
     }
    },
    "bz1": {
     "type": "buzzer",
-    "x": 404.3,
-    "y": 112.0,
+    "x": 471.5,
+    "y": 135.0,
     "rot": 180,
     "attrs": {},
     "snaps": {
-     "1": "b22",
-     "2": "b21"
+     "1": "b29",
+     "2": "b28"
     }
    }
   },
   "wires": [
    {
     "a": "board:GND",
-    "b": "bb:top-15",
-    "color": "#1d1d1d"
-   },
-   {
-    "a": "board:GND",
-    "b": "bb:bot-8",
+    "b": "bb:top-1",
     "color": "#1d1d1d"
    },
    {
     "a": "board:3V3",
-    "b": "bb:bot+8",
+    "b": "bb:top+1",
     "color": "#d32f2f"
    },
    {
-    "a": "bb:i6",
-    "b": "bb:bot-9",
+    "a": "bb:a12",
+    "b": "bb:top-10",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:a21",
-    "b": "bb:top-18",
+    "a": "bb:b19",
+    "b": "bb:top-13",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:i4",
-    "b": "bb:bot+9",
+    "a": "bb:a28",
+    "b": "bb:top-23",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:a10",
+    "b": "bb:top+9",
     "color": "#d32f2f"
    },
    {
-    "a": "bb:i8",
-    "b": "bb:bot+10",
+    "a": "bb:b21",
+    "b": "bb:top+21",
     "color": "#d32f2f"
    },
    {
     "a": "board:D0",
-    "b": "bb:i5",
+    "b": "bb:b20",
     "color": "#ef6c00"
    },
    {
     "a": "board:D1",
-    "b": "bb:b28",
+    "b": "bb:j24",
     "color": "#1565c0"
    },
    {
     "a": "board:D4",
-    "b": "bb:j13",
+    "b": "bb:a5",
     "color": "#2e7d32"
    },
    {
     "a": "board:D5",
-    "b": "bb:j12",
+    "b": "bb:a6",
     "color": "#f9a825"
+   },
+   {
+    "a": "bb:a24",
+    "b": "bb:a29",
+    "color": "#6a1b9a"
    }
   ],
   "steps": [
    {
     "title": "材料",
-    "text": "・XIAO ESP32S3 ×1\n・OLED 0.96 吋（SSD1306，I2C） ×1\n・可變電阻 ×1\n・220 Ω 電阻 ×1\n・蜂鳴器 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×11",
+    "text": "・XIAO ESP32S3 ×1\n・OLED 0.96 吋（SSD1306，I2C） ×1\n・可變電阻 ×1\n・220 Ω 電阻 ×1\n・蜂鳴器 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×12",
     "wires": []
    },
    {
@@ -7298,44 +7297,44 @@
    },
    {
     "title": "電源軌",
-    "text": "黑線：板子 GND → 上方「−」軌；黑線：板子 GND → 下方「−」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "text": "黑線：板子 GND → 上方「−」軌；紅線：板子 3V3 → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
     "wires": [
      0,
-     1,
-     2
+     1
     ]
    },
    {
     "title": "插元件",
-    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→f13、CLK→f12、DC→f11、RST→f10、CS→f9、3V3→f8、VIN→f7、GND→f6",
+    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→d5、CLK→d6、DC→d7、RST→d8、CS→d9、3V3→d10、VIN→d11、GND→d12",
     "wires": []
    },
    {
     "title": "插元件",
-    "text": "可變電阻（pot1）插上麵包板：GND→j6、SIG→j5、VCC→j4",
+    "text": "可變電阻（pot1）插上麵包板：GND→a19、SIG→a20、VCC→a21",
     "wires": []
    },
    {
     "title": "插元件",
-    "text": "蜂鳴器（bz1）插上麵包板：負極→b22、正極→b21",
+    "text": "蜂鳴器（bz1）插上麵包板：負極→b29、正極→b28",
     "wires": []
    },
    {
     "title": "插元件",
-    "text": "220 Ω 電阻（r1）插上麵包板：一腳→a28、另一腳→a22",
+    "text": "220 Ω 電阻（r1）插上麵包板（跨中央溝槽）：一腳→g24、另一腳→c24",
     "wires": []
    },
    {
     "title": "接線",
-    "text": "黑線：i6（跟 oled1 的GND、pot1 的GND同一直排） → 下方「−」軌\n黑線：a21（跟 bz1 的正極同一直排） → 上方「−」軌",
+    "text": "黑線：a12（跟 oled1 的GND同一直排） → 上方「−」軌\n黑線：b19（跟 pot1 的GND同一直排） → 上方「−」軌\n黑線：a28（跟 bz1 的正極同一直排） → 上方「−」軌",
     "wires": [
+     2,
      3,
      4
     ]
    },
    {
     "title": "接線",
-    "text": "紅線：i4（跟 pot1 的VCC同一直排） → 下方「＋」軌\n紅線：i8（跟 oled1 的3V3同一直排） → 下方「＋」軌",
+    "text": "紅線：a10（跟 oled1 的3V3同一直排） → 上方「＋」軌\n紅線：b21（跟 pot1 的VCC同一直排） → 上方「＋」軌",
     "wires": [
      5,
      6
@@ -7343,30 +7342,37 @@
    },
    {
     "title": "接線",
-    "text": "橘線：板子 D0 → i5（跟 pot1 的SIG同一直排）",
+    "text": "橘線：板子 D0 → b20（跟 pot1 的SIG同一直排）",
     "wires": [
      7
     ]
    },
    {
     "title": "接線",
-    "text": "藍線：板子 D1 → b28（跟 r1 的一腳同一直排）",
+    "text": "藍線：板子 D1 → j24（跟 r1 的一腳同一直排）",
     "wires": [
      8
     ]
    },
    {
     "title": "接線",
-    "text": "綠線：板子 D4 → j13（跟 oled1 的DATA同一直排）",
+    "text": "綠線：板子 D4 → a5（跟 oled1 的DATA同一直排）",
     "wires": [
      9
     ]
    },
    {
     "title": "接線",
-    "text": "黃線：板子 D5 → j12（跟 oled1 的CLK同一直排）",
+    "text": "黃線：板子 D5 → a6（跟 oled1 的CLK同一直排）",
     "wires": [
      10
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紫線：a24（跟 r1 的另一腳同一直排） → a29（跟 bz1 的負極同一直排）",
+    "wires": [
+     11
     ]
    }
   ],
@@ -7391,7 +7397,7 @@
    "220 Ω 電阻 ×1",
    "蜂鳴器 ×1",
    "麵包板（半尺寸）×1",
-   "杜邦線 ×11"
+   "杜邦線 ×12"
   ],
   "circuit": [
    "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
@@ -7399,7 +7405,7 @@
    "D1 → 220Ω → 蜂鳴器 → GND",
    "pot1 兩端接 3.3 V 與 GND，中間腳是分壓輸出：轉旋鈕電壓在 0～3.3 V 之間變，接到 D0 用類比讀取（讀數 0～4095）"
   ],
-  "layout": "6a76001c18aa"
+  "layout": "4fa9c2b3b450"
  },
  {
   "id": "xi_servo_finger@xiao_esp32s3",
@@ -7900,124 +7906,129 @@
   "summary": "可變電阻當脈搏感測，OLED 畫心電圖波形捲動，蜂鳴器跟著跳。",
   "breadboard": {
    "x": 220,
-   "y": 50
+   "y": 73.0
   },
   "parts": {
    "oled1": {
     "type": "ssd1306",
-    "x": 241.7,
-    "y": 57.7,
-    "rot": 180,
+    "x": 241.9,
+    "y": 133.3,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "DATA": "f13",
-     "CLK": "f12",
-     "DC": "f11",
-     "RST": "f10",
-     "CS": "f9",
-     "3V3": "f8",
-     "VIN": "f7",
-     "GND": "f6"
+     "DATA": "d5",
+     "CLK": "d6",
+     "DC": "d7",
+     "RST": "d8",
+     "CS": "d9",
+     "3V3": "d10",
+     "VIN": "d11",
+     "GND": "d12"
     }
    },
    "pot1": {
     "type": "potentiometer",
-    "x": 241.4,
-    "y": 192.5,
-    "rot": 180,
+    "x": 383.8,
+    "y": 48.5,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "GND": "j6",
-     "SIG": "j5",
-     "VCC": "j4"
+     "GND": "a19",
+     "SIG": "a20",
+     "VCC": "a21"
     }
    },
    "r1": {
     "type": "resistor",
-    "x": 440.1,
-    "y": 88.35,
-    "rot": 180,
+    "x": 431.25,
+    "y": 158.6,
+    "rot": 270,
     "attrs": {
      "value": "220"
     },
     "snaps": {
-     "1": "a28",
-     "2": "a22"
+     "1": "g24",
+     "2": "c24"
     }
    },
    "bz1": {
     "type": "buzzer",
-    "x": 404.3,
-    "y": 112.0,
+    "x": 471.5,
+    "y": 135.0,
     "rot": 180,
     "attrs": {},
     "snaps": {
-     "1": "b22",
-     "2": "b21"
+     "1": "b29",
+     "2": "b28"
     }
    }
   },
   "wires": [
    {
     "a": "board:GND",
-    "b": "bb:top-15",
-    "color": "#1d1d1d"
-   },
-   {
-    "a": "board:GND",
-    "b": "bb:bot-8",
+    "b": "bb:top-1",
     "color": "#1d1d1d"
    },
    {
     "a": "board:3V3",
-    "b": "bb:bot+8",
+    "b": "bb:top+1",
     "color": "#d32f2f"
    },
    {
-    "a": "bb:i6",
-    "b": "bb:bot-9",
+    "a": "bb:a12",
+    "b": "bb:top-10",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:a21",
-    "b": "bb:top-18",
+    "a": "bb:b19",
+    "b": "bb:top-13",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:i4",
-    "b": "bb:bot+9",
+    "a": "bb:a28",
+    "b": "bb:top-23",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:a10",
+    "b": "bb:top+9",
     "color": "#d32f2f"
    },
    {
-    "a": "bb:i8",
-    "b": "bb:bot+10",
+    "a": "bb:b21",
+    "b": "bb:top+21",
     "color": "#d32f2f"
    },
    {
     "a": "board:D0",
-    "b": "bb:i5",
+    "b": "bb:b20",
     "color": "#ef6c00"
    },
    {
     "a": "board:D1",
-    "b": "bb:b28",
+    "b": "bb:j24",
     "color": "#1565c0"
    },
    {
     "a": "board:D4",
-    "b": "bb:j13",
+    "b": "bb:a5",
     "color": "#2e7d32"
    },
    {
     "a": "board:D5",
-    "b": "bb:j12",
+    "b": "bb:a6",
     "color": "#f9a825"
+   },
+   {
+    "a": "bb:a24",
+    "b": "bb:a29",
+    "color": "#6a1b9a"
    }
   ],
   "steps": [
    {
     "title": "材料",
-    "text": "・XIAO ESP32S3 ×1\n・OLED 0.96 吋（SSD1306，I2C） ×1\n・可變電阻 ×1\n・220 Ω 電阻 ×1\n・蜂鳴器 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×11",
+    "text": "・XIAO ESP32S3 ×1\n・OLED 0.96 吋（SSD1306，I2C） ×1\n・可變電阻 ×1\n・220 Ω 電阻 ×1\n・蜂鳴器 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×12",
     "wires": []
    },
    {
@@ -8027,44 +8038,44 @@
    },
    {
     "title": "電源軌",
-    "text": "黑線：板子 GND → 上方「−」軌；黑線：板子 GND → 下方「−」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "text": "黑線：板子 GND → 上方「−」軌；紅線：板子 3V3 → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
     "wires": [
      0,
-     1,
-     2
+     1
     ]
    },
    {
     "title": "插元件",
-    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→f13、CLK→f12、DC→f11、RST→f10、CS→f9、3V3→f8、VIN→f7、GND→f6",
+    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→d5、CLK→d6、DC→d7、RST→d8、CS→d9、3V3→d10、VIN→d11、GND→d12",
     "wires": []
    },
    {
     "title": "插元件",
-    "text": "可變電阻（pot1）插上麵包板：GND→j6、SIG→j5、VCC→j4",
+    "text": "可變電阻（pot1）插上麵包板：GND→a19、SIG→a20、VCC→a21",
     "wires": []
    },
    {
     "title": "插元件",
-    "text": "蜂鳴器（bz1）插上麵包板：負極→b22、正極→b21",
+    "text": "蜂鳴器（bz1）插上麵包板：負極→b29、正極→b28",
     "wires": []
    },
    {
     "title": "插元件",
-    "text": "220 Ω 電阻（r1）插上麵包板：一腳→a28、另一腳→a22",
+    "text": "220 Ω 電阻（r1）插上麵包板（跨中央溝槽）：一腳→g24、另一腳→c24",
     "wires": []
    },
    {
     "title": "接線",
-    "text": "黑線：i6（跟 oled1 的GND、pot1 的GND同一直排） → 下方「−」軌\n黑線：a21（跟 bz1 的正極同一直排） → 上方「−」軌",
+    "text": "黑線：a12（跟 oled1 的GND同一直排） → 上方「−」軌\n黑線：b19（跟 pot1 的GND同一直排） → 上方「−」軌\n黑線：a28（跟 bz1 的正極同一直排） → 上方「−」軌",
     "wires": [
+     2,
      3,
      4
     ]
    },
    {
     "title": "接線",
-    "text": "紅線：i4（跟 pot1 的VCC同一直排） → 下方「＋」軌\n紅線：i8（跟 oled1 的3V3同一直排） → 下方「＋」軌",
+    "text": "紅線：a10（跟 oled1 的3V3同一直排） → 上方「＋」軌\n紅線：b21（跟 pot1 的VCC同一直排） → 上方「＋」軌",
     "wires": [
      5,
      6
@@ -8072,30 +8083,37 @@
    },
    {
     "title": "接線",
-    "text": "橘線：板子 D0 → i5（跟 pot1 的SIG同一直排）",
+    "text": "橘線：板子 D0 → b20（跟 pot1 的SIG同一直排）",
     "wires": [
      7
     ]
    },
    {
     "title": "接線",
-    "text": "藍線：板子 D1 → b28（跟 r1 的一腳同一直排）",
+    "text": "藍線：板子 D1 → j24（跟 r1 的一腳同一直排）",
     "wires": [
      8
     ]
    },
    {
     "title": "接線",
-    "text": "綠線：板子 D4 → j13（跟 oled1 的DATA同一直排）",
+    "text": "綠線：板子 D4 → a5（跟 oled1 的DATA同一直排）",
     "wires": [
      9
     ]
    },
    {
     "title": "接線",
-    "text": "黃線：板子 D5 → j12（跟 oled1 的CLK同一直排）",
+    "text": "黃線：板子 D5 → a6（跟 oled1 的CLK同一直排）",
     "wires": [
      10
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紫線：a24（跟 r1 的另一腳同一直排） → a29（跟 bz1 的負極同一直排）",
+    "wires": [
+     11
     ]
    }
   ],
@@ -8120,7 +8138,7 @@
    "220 Ω 電阻 ×1",
    "蜂鳴器 ×1",
    "麵包板（半尺寸）×1",
-   "杜邦線 ×11"
+   "杜邦線 ×12"
   ],
   "circuit": [
    "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
@@ -8128,7 +8146,7 @@
    "D1 → 220Ω → 蜂鳴器 → GND",
    "pot1 兩端接 3.3 V 與 GND，中間腳是分壓輸出：轉旋鈕電壓在 0～3.3 V 之間變，接到 D0 用類比讀取（讀數 0～4095）"
   ],
-  "layout": "6a76001c18aa"
+  "layout": "4fa9c2b3b450"
  },
  {
   "id": "an_npn_light@xiao_esp32s3",
@@ -9702,43 +9720,43 @@
   "summary": "DHT22＋光敏→OLED 顯示數據，NeoPixel 燈條顏色代表舒適度。",
   "breadboard": {
    "x": 220,
-   "y": 50
+   "y": 119.4
   },
   "parts": {
    "oled1": {
     "type": "ssd1306",
-    "x": 241.7,
-    "y": 57.7,
-    "rot": 180,
+    "x": 241.9,
+    "y": 179.7,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "DATA": "f13",
-     "CLK": "f12",
-     "DC": "f11",
-     "RST": "f10",
-     "CS": "f9",
-     "3V3": "f8",
-     "VIN": "f7",
-     "GND": "f6"
+     "DATA": "d5",
+     "CLK": "d6",
+     "DC": "d7",
+     "RST": "d8",
+     "CS": "d9",
+     "3V3": "d10",
+     "VIN": "d11",
+     "GND": "d12"
     }
    },
    "dht1": {
     "type": "dht22",
-    "x": 236.3,
-    "y": 197.8,
-    "rot": 180,
+    "x": 388.2,
+    "y": 48.5,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "VCC": "j5",
-     "SDA": "j4",
-     "NC": "j3",
-     "GND": "j2"
+     "VCC": "a18",
+     "SDA": "a19",
+     "NC": "a20",
+     "GND": "a21"
     }
    },
    "ldr1": {
     "type": "photoresistor-sensor",
     "x": 220,
-    "y": 353.0,
+    "y": 353.4,
     "rot": 0,
     "attrs": {},
     "snaps": {}
@@ -9746,7 +9764,7 @@
    "np1": {
     "type": "neopixel-strip",
     "x": 443.7,
-    "y": 353.0,
+    "y": 353.4,
     "rot": 0,
     "attrs": {},
     "snaps": {}
@@ -9755,57 +9773,47 @@
   "wires": [
    {
     "a": "board:GND",
-    "b": "bb:top-15",
-    "color": "#1d1d1d"
-   },
-   {
-    "a": "board:GND",
-    "b": "bb:bot-6",
+    "b": "bb:top-1",
     "color": "#1d1d1d"
    },
    {
     "a": "board:3V3",
-    "b": "bb:top+15",
+    "b": "bb:top+1",
     "color": "#d32f2f"
    },
    {
-    "a": "board:3V3",
-    "b": "bb:bot+6",
-    "color": "#d32f2f"
-   },
-   {
-    "a": "bb:i2",
-    "b": "bb:bot-7",
+    "a": "bb:a12",
+    "b": "bb:top-10",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:j6",
-    "b": "bb:bot-8",
+    "a": "bb:b21",
+    "b": "bb:top-19",
     "color": "#1d1d1d"
    },
    {
     "a": "ldr1:GND",
-    "b": "bb:top-16",
+    "b": "bb:top-2",
     "color": "#1d1d1d"
    },
    {
     "a": "np1:GND",
-    "b": "bb:top-17",
+    "b": "bb:top-3",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:i5",
-    "b": "bb:bot+7",
+    "a": "bb:a10",
+    "b": "bb:top+9",
     "color": "#d32f2f"
    },
    {
-    "a": "bb:j8",
-    "b": "bb:bot+8",
+    "a": "bb:b18",
+    "b": "bb:top+14",
     "color": "#d32f2f"
    },
    {
     "a": "ldr1:VCC",
-    "b": "bb:top+16",
+    "b": "bb:top+2",
     "color": "#d32f2f"
    },
    {
@@ -9815,7 +9823,7 @@
    },
    {
     "a": "board:D0",
-    "b": "bb:i4",
+    "b": "bb:b19",
     "color": "#ef6c00"
    },
    {
@@ -9830,19 +9838,19 @@
    },
    {
     "a": "board:D4",
-    "b": "bb:j13",
+    "b": "bb:a5",
     "color": "#f9a825"
    },
    {
     "a": "board:D5",
-    "b": "bb:j12",
+    "b": "bb:a6",
     "color": "#6a1b9a"
    }
   ],
   "steps": [
    {
     "title": "材料",
-    "text": "・XIAO ESP32S3 ×1\n・OLED 0.96 吋（SSD1306，I2C） ×1\n・溫濕度感測器 DHT22 ×1\n・光敏電阻模組 ×1\n・NeoPixel 燈條（8 顆） ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×17",
+    "text": "・XIAO ESP32S3 ×1\n・OLED 0.96 吋（SSD1306，I2C） ×1\n・溫濕度感測器 DHT22 ×1\n・光敏電阻模組 ×1\n・NeoPixel 燈條（8 顆） ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×15",
     "wires": []
    },
    {
@@ -9852,22 +9860,20 @@
    },
    {
     "title": "電源軌",
-    "text": "黑線：板子 GND → 上方「−」軌；黑線：板子 GND → 下方「−」軌；紅線：板子 3V3 → 上方「＋」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "text": "黑線：板子 GND → 上方「−」軌；紅線：板子 3V3 → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
     "wires": [
      0,
-     1,
-     2,
-     3
+     1
     ]
    },
    {
     "title": "插元件",
-    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→f13、CLK→f12、DC→f11、RST→f10、CS→f9、3V3→f8、VIN→f7、GND→f6",
+    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→d5、CLK→d6、DC→d7、RST→d8、CS→d9、3V3→d10、VIN→d11、GND→d12",
     "wires": []
    },
    {
     "title": "插元件",
-    "text": "溫濕度感測器 DHT22（dht1）插上麵包板：VCC→j5、SDA→j4、NC→j3、GND→j2",
+    "text": "溫濕度感測器 DHT22（dht1）插上麵包板：VCC→a18、SDA→a19、NC→a20、GND→a21",
     "wires": []
    },
    {
@@ -9882,57 +9888,57 @@
    },
    {
     "title": "接線",
-    "text": "黑線：i2（跟 dht1 的GND同一直排） → 下方「−」軌\n黑線：j6（跟 oled1 的GND同一直排） → 下方「−」軌\n黑線：ldr1 的 GND → 上方「−」軌\n黑線：np1 的 GND → 上方「−」軌",
+    "text": "黑線：a12（跟 oled1 的GND同一直排） → 上方「−」軌\n黑線：b21（跟 dht1 的GND同一直排） → 上方「−」軌\n黑線：ldr1 的 GND → 上方「−」軌\n黑線：np1 的 GND → 上方「−」軌",
     "wires": [
+     2,
+     3,
      4,
-     5,
+     5
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紅線：a10（跟 oled1 的3V3同一直排） → 上方「＋」軌\n紅線：b18（跟 dht1 的VCC同一直排） → 上方「＋」軌\n紅線：ldr1 的 VCC → 上方「＋」軌\n紅線：板子 5V → np1 的 VCC",
+    "wires": [
      6,
-     7
-    ]
-   },
-   {
-    "title": "接線",
-    "text": "紅線：i5（跟 dht1 的VCC同一直排） → 下方「＋」軌\n紅線：j8（跟 oled1 的3V3同一直排） → 下方「＋」軌\n紅線：ldr1 的 VCC → 上方「＋」軌\n紅線：板子 5V → np1 的 VCC",
-    "wires": [
+     7,
      8,
-     9,
-     10,
-     11
+     9
     ]
    },
    {
     "title": "接線",
-    "text": "橘線：板子 D0 → i4（跟 dht1 的SDA同一直排）",
+    "text": "橘線：板子 D0 → b19（跟 dht1 的SDA同一直排）",
     "wires": [
-     12
+     10
     ]
    },
    {
     "title": "接線",
     "text": "藍線：板子 D1 → ldr1 的 AO",
     "wires": [
-     13
+     11
     ]
    },
    {
     "title": "接線",
     "text": "綠線：板子 D2 → np1 的 DIN",
     "wires": [
+     12
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "黃線：板子 D4 → a5（跟 oled1 的DATA同一直排）",
+    "wires": [
+     13
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "紫線：板子 D5 → a6（跟 oled1 的CLK同一直排）",
+    "wires": [
      14
-    ]
-   },
-   {
-    "title": "接線",
-    "text": "黃線：板子 D4 → j13（跟 oled1 的DATA同一直排）",
-    "wires": [
-     15
-    ]
-   },
-   {
-    "title": "接線",
-    "text": "紫線：板子 D5 → j12（跟 oled1 的CLK同一直排）",
-    "wires": [
-     16
     ]
    }
   ],
@@ -9954,7 +9960,7 @@
    "光敏電阻模組 ×1",
    "NeoPixel 燈條（8 顆） ×1",
    "麵包板（半尺寸）×1",
-   "杜邦線 ×17"
+   "杜邦線 ×15"
   ],
   "circuit": [
    "OLED 3V3→3V3、GND→GND、DATA（SDA）→D4、CLK（SCL）→D5",
@@ -9962,7 +9968,7 @@
    "光敏 AO→D1",
    "NeoPixel VCC→5V、GND→GND、DIN→D2"
   ],
-  "layout": "e0d5ef2bc5e7"
+  "layout": "b47afb52e4aa"
  },
  {
   "id": "an_npn_flyback@xiao_esp32s3",
@@ -16968,19 +16974,19 @@
   "parts": {
    "oled1": {
     "type": "ssd1306",
-    "x": 258.3,
-    "y": 57.7,
-    "rot": 180,
+    "x": 258.5,
+    "y": 110.3,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "DATA": "f13",
-     "CLK": "f12",
-     "DC": "f11",
-     "RST": "f10",
-     "CS": "f9",
-     "3V3": "f8",
-     "VIN": "f7",
-     "GND": "f6"
+     "DATA": "d5",
+     "CLK": "d6",
+     "DC": "d7",
+     "RST": "d8",
+     "CS": "d9",
+     "3V3": "d10",
+     "VIN": "d11",
+     "GND": "d12"
     }
    },
    "btn1": {
@@ -17000,37 +17006,42 @@
   "wires": [
    {
     "a": "board:GND.1",
-    "b": "bb:bot-1",
+    "b": "bb:top-1",
     "color": "#1d1d1d"
    },
    {
-    "a": "board:3V3",
-    "b": "bb:bot+1",
-    "color": "#d32f2f"
-   },
-   {
-    "a": "bb:j6",
-    "b": "bb:bot-5",
-    "color": "#1d1d1d"
-   },
-   {
-    "a": "bb:j18",
+    "a": "board:GND.1",
     "b": "bb:bot-15",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:j8",
-    "b": "bb:bot+7",
+    "a": "board:3V3",
+    "b": "bb:top+1",
+    "color": "#d32f2f"
+   },
+   {
+    "a": "bb:j18",
+    "b": "bb:bot-16",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:a12",
+    "b": "bb:top-10",
+    "color": "#1d1d1d"
+   },
+   {
+    "a": "bb:a10",
+    "b": "bb:top+9",
     "color": "#d32f2f"
    },
    {
     "a": "board:D21",
-    "b": "bb:j13",
+    "b": "bb:a5",
     "color": "#ef6c00"
    },
    {
     "a": "board:D22",
-    "b": "bb:j12",
+    "b": "bb:a6",
     "color": "#1565c0"
    },
    {
@@ -17042,7 +17053,7 @@
   "steps": [
    {
     "title": "材料",
-    "text": "・ESP32 DevKit ×1\n・OLED 0.96 吋（SSD1306，I2C） ×1\n・按鍵 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×8",
+    "text": "・ESP32 DevKit ×1\n・OLED 0.96 吋（SSD1306，I2C） ×1\n・按鍵 ×1\n・麵包板（半尺寸）×1\n・杜邦線 ×9",
     "wires": []
    },
    {
@@ -17052,15 +17063,16 @@
    },
    {
     "title": "電源軌",
-    "text": "黑線：板子 GND.1 → 下方「−」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "text": "黑線：板子 GND.1 → 上方「−」軌；黑線：板子 GND.1 → 下方「−」軌；紅線：板子 3V3 → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
     "wires": [
      0,
-     1
+     1,
+     2
     ]
    },
    {
     "title": "插元件",
-    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→f13、CLK→f12、DC→f11、RST→f10、CS→f9、3V3→f8、VIN→f7、GND→f6",
+    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→d5、CLK→d6、DC→d7、RST→d8、CS→d9、3V3→d10、VIN→d11、GND→d12",
     "wires": []
    },
    {
@@ -17070,38 +17082,38 @@
    },
    {
     "title": "接線",
-    "text": "黑線：j6（跟 oled1 的GND同一直排） → 下方「−」軌\n黑線：j18（跟 btn1 的腳 2'同一直排） → 下方「−」軌",
+    "text": "黑線：j18（跟 btn1 的腳 2'同一直排） → 下方「−」軌\n黑線：a12（跟 oled1 的GND同一直排） → 上方「−」軌",
     "wires": [
-     2,
-     3
-    ]
-   },
-   {
-    "title": "接線",
-    "text": "紅線：j8（跟 oled1 的3V3同一直排） → 下方「＋」軌",
-    "wires": [
+     3,
      4
     ]
    },
    {
     "title": "接線",
-    "text": "橘線：板子 D21 → j13（跟 oled1 的DATA同一直排）",
+    "text": "紅線：a10（跟 oled1 的3V3同一直排） → 上方「＋」軌",
     "wires": [
      5
     ]
    },
    {
     "title": "接線",
-    "text": "藍線：板子 D22 → j12（跟 oled1 的CLK同一直排）",
+    "text": "橘線：板子 D21 → a5（跟 oled1 的DATA同一直排）",
     "wires": [
      6
     ]
    },
    {
     "title": "接線",
-    "text": "綠線：板子 D5 → j20（跟 btn1 的腳 1'同一直排）",
+    "text": "藍線：板子 D22 → a6（跟 oled1 的CLK同一直排）",
     "wires": [
      7
+    ]
+   },
+   {
+    "title": "接線",
+    "text": "綠線：板子 D5 → j20（跟 btn1 的腳 1'同一直排）",
+    "wires": [
+     8
     ]
    }
   ],
@@ -17121,7 +17133,7 @@
    "OLED 0.96 吋（SSD1306，I2C） ×1",
    "按鍵 ×1",
    "麵包板（半尺寸）×1",
-   "杜邦線 ×8"
+   "杜邦線 ×9"
   ],
   "circuit": [
    "OLED 3V3→3V3、GND→GND",
@@ -17129,7 +17141,7 @@
    "按鍵接 D5 與 GND（按一下加 1 小時）",
    "btn1 一腳接 D5、另一腳接 GND，程式開了內建上拉電阻：沒按讀到 1、按下讀到 0，所以不用外加電阻"
   ],
-  "layout": "5b249902ccbf"
+  "layout": "3c0cebf34e17"
  },
  {
   "id": "dk_water_level@devkit",
@@ -21986,19 +21998,19 @@
    },
    "oled1": {
     "type": "ssd1306",
-    "x": 258.3,
-    "y": 57.7,
-    "rot": 180,
+    "x": 258.5,
+    "y": 110.3,
+    "rot": 0,
     "attrs": {},
     "snaps": {
-     "DATA": "f13",
-     "CLK": "f12",
-     "DC": "f11",
-     "RST": "f10",
-     "CS": "f9",
-     "3V3": "f8",
-     "VIN": "f7",
-     "GND": "f6"
+     "DATA": "d5",
+     "CLK": "d6",
+     "DC": "d7",
+     "RST": "d8",
+     "CS": "d9",
+     "3V3": "d10",
+     "VIN": "d11",
+     "GND": "d12"
     }
    },
    "r1": {
@@ -22029,27 +22041,27 @@
   "wires": [
    {
     "a": "board:GND.1",
-    "b": "bb:top-15",
+    "b": "bb:top-1",
     "color": "#1d1d1d"
    },
    {
     "a": "board:GND.1",
-    "b": "bb:bot-1",
+    "b": "bb:bot-15",
     "color": "#1d1d1d"
    },
    {
     "a": "board:3V3",
-    "b": "bb:bot+1",
+    "b": "bb:top+1",
     "color": "#d32f2f"
    },
    {
-    "a": "bb:j6",
-    "b": "bb:bot-5",
+    "a": "bb:j18",
+    "b": "bb:bot-16",
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:j18",
-    "b": "bb:bot-15",
+    "a": "bb:a12",
+    "b": "bb:top-10",
     "color": "#1d1d1d"
    },
    {
@@ -22058,18 +22070,18 @@
     "color": "#1d1d1d"
    },
    {
-    "a": "bb:j8",
-    "b": "bb:bot+7",
+    "a": "bb:a10",
+    "b": "bb:top+9",
     "color": "#d32f2f"
    },
    {
     "a": "board:D21",
-    "b": "bb:j13",
+    "b": "bb:a5",
     "color": "#ef6c00"
    },
    {
     "a": "board:D22",
-    "b": "bb:j12",
+    "b": "bb:a6",
     "color": "#1565c0"
    },
    {
@@ -22096,7 +22108,7 @@
    },
    {
     "title": "電源軌",
-    "text": "黑線：板子 GND.1 → 上方「−」軌；黑線：板子 GND.1 → 下方「−」軌；紅線：板子 3V3 → 下方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
+    "text": "黑線：板子 GND.1 → 上方「−」軌；黑線：板子 GND.1 → 下方「−」軌；紅線：板子 3V3 → 上方「＋」軌\n（軌道整排相通，之後元件的電源與地線就近接軌）",
     "wires": [
      0,
      1,
@@ -22105,7 +22117,7 @@
    },
    {
     "title": "插元件",
-    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→f13、CLK→f12、DC→f11、RST→f10、CS→f9、3V3→f8、VIN→f7、GND→f6",
+    "text": "OLED 0.96 吋（SSD1306，I2C）（oled1）插上麵包板：DATA→d5、CLK→d6、DC→d7、RST→d8、CS→d9、3V3→d10、VIN→d11、GND→d12",
     "wires": []
    },
    {
@@ -22125,7 +22137,7 @@
    },
    {
     "title": "接線",
-    "text": "黑線：j6（跟 oled1 的GND同一直排） → 下方「−」軌\n黑線：j18（跟 btn1 的腳 2'同一直排） → 下方「−」軌\n黑線：c26（跟 bz1 的正極同一直排） → 上方「−」軌",
+    "text": "黑線：j18（跟 btn1 的腳 2'同一直排） → 下方「−」軌\n黑線：a12（跟 oled1 的GND同一直排） → 上方「−」軌\n黑線：c26（跟 bz1 的正極同一直排） → 上方「−」軌",
     "wires": [
      3,
      4,
@@ -22134,21 +22146,21 @@
    },
    {
     "title": "接線",
-    "text": "紅線：j8（跟 oled1 的3V3同一直排） → 下方「＋」軌",
+    "text": "紅線：a10（跟 oled1 的3V3同一直排） → 上方「＋」軌",
     "wires": [
      6
     ]
    },
    {
     "title": "接線",
-    "text": "橘線：板子 D21 → j13（跟 oled1 的DATA同一直排）",
+    "text": "橘線：板子 D21 → a5（跟 oled1 的DATA同一直排）",
     "wires": [
      7
     ]
    },
    {
     "title": "接線",
-    "text": "藍線：板子 D22 → j12（跟 oled1 的CLK同一直排）",
+    "text": "藍線：板子 D22 → a6（跟 oled1 的CLK同一直排）",
     "wires": [
      8
     ]
@@ -22192,7 +22204,7 @@
    "D4 → 220Ω → 蜂鳴器 → GND",
    "btn1 一腳接 D5、另一腳接 GND，程式開了內建上拉電阻：沒按讀到 1、按下讀到 0，所以不用外加電阻"
   ],
-  "layout": "5b5efa91a97a"
+  "layout": "5965f9ab3075"
  },
  {
   "id": "an_npn_flyback@devkit",
@@ -29672,6 +29684,13 @@
    }
   },
   "probes": [],
+  "check": [
+   {
+    "leds": {
+     "led1": true
+    }
+   }
+  ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",
   "hardware": [
@@ -29842,6 +29861,17 @@
   },
   "probes": [
    "c1:+"
+  ],
+  "check": [
+   {
+    "at": 3,
+    "volt": {
+     "c1:+": [
+      7,
+      9.1
+     ]
+    }
+   }
   ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",
@@ -30046,6 +30076,33 @@
   "verify": {},
   "init": {},
   "probes": [],
+  "check": [
+   {
+    "leds": {
+     "led1": false
+    }
+   },
+   {
+    "ui": {
+     "btn1": {
+      "pressed": true
+     }
+    },
+    "leds": {
+     "led1": true
+    }
+   },
+   {
+    "ui": {
+     "btn1": {
+      "pressed": false
+     }
+    },
+    "leds": {
+     "led1": false
+    }
+   }
+  ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",
   "hardware": [
@@ -30315,6 +30372,24 @@
   "probes": [
    "u1:OUT",
    "c1:+"
+  ],
+  "check": [
+   {
+    "at": 3,
+    "freq": {
+     "u1:OUT": [
+      1.2,
+      1.8
+     ]
+    },
+    "range": {
+     "c1:+": [
+      2.5,
+      6.5
+     ]
+    },
+    "spread": 2
+   }
   ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",
@@ -30648,6 +30723,17 @@
   "probes": [
    "u1:OUT"
   ],
+  "check": [
+   {
+    "at": 1
+   },
+   {
+    "alternate": [
+     "led1",
+     "led2"
+    ]
+   }
+  ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",
   "hardware": [
@@ -30964,6 +31050,34 @@
    "u1:OUT",
    "c1:+"
   ],
+  "check": [
+   {
+    "at": 3,
+    "freq": {
+     "u1:OUT": [
+      0.8,
+      1.5
+     ]
+    }
+   },
+   {
+    "ui": {
+     "pot1": {
+      "value": 1
+     }
+    },
+    "rebase": true
+   },
+   {
+    "at": 2.5,
+    "freq": {
+     "u1:OUT": [
+      3.5,
+      6
+     ]
+    }
+   }
+  ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",
   "hardware": [
@@ -31227,6 +31341,17 @@
   "probes": [
    "u1:OUT",
    "c1:+"
+  ],
+  "check": [
+   {
+    "at": 1.5,
+    "freq": {
+     "u1:OUT": [
+      115,
+      150
+     ]
+    }
+   }
   ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",
@@ -31555,6 +31680,53 @@
    "u1:OUT",
    "c1:+"
   ],
+  "check": [
+   {
+    "at": 0.5,
+    "volt": {
+     "u1:OUT": [
+      0,
+      0.5
+     ]
+    }
+   },
+   {
+    "ui": {
+     "btn1": {
+      "pressed": true
+     }
+    },
+    "rebase": true
+   },
+   {
+    "at": 0.2
+   },
+   {
+    "ui": {
+     "btn1": {
+      "pressed": false
+     }
+    }
+   },
+   {
+    "at": 0.5,
+    "volt": {
+     "u1:OUT": [
+      6,
+      9
+     ]
+    }
+   },
+   {
+    "at": 1.7,
+    "volt": {
+     "u1:OUT": [
+      0,
+      0.5
+     ]
+    }
+   }
+  ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",
   "hardware": [
@@ -31717,6 +31889,18 @@
   "probes": [
    "g1:+",
    "r1:1"
+  ],
+  "check": [
+   {
+    "at": 2,
+    "range": {
+     "r1:1": [
+      -0.3,
+      4.8
+     ]
+    },
+    "spread": 3.5
+   }
   ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",
@@ -31937,6 +32121,17 @@
   "probes": [
    "g1:+",
    "u1:OUT"
+  ],
+  "check": [
+   {
+    "at": 3,
+    "freq": {
+     "u1:OUT": [
+      1.6,
+      2.4
+     ]
+    }
+   }
   ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",
@@ -32161,6 +32356,24 @@
    "g1:+",
    "u1:OUT",
    "c1:+"
+  ],
+  "check": [
+   {
+    "at": 3,
+    "freq": {
+     "u1:OUT": [
+      4,
+      6
+     ]
+    },
+    "range": {
+     "c1:+": [
+      1,
+      7
+     ]
+    },
+    "spread": 2
+   }
   ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",
@@ -32434,6 +32647,17 @@
   "probes": [
    "g1:+",
    "c1:+"
+  ],
+  "check": [
+   {
+    "at": 2.5,
+    "volt": {
+     "c1:+": [
+      3.5,
+      5.3
+     ]
+    }
+   }
   ],
   "board": "power",
   "boardName": "電源供應器（無開發板）",

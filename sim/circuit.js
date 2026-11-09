@@ -110,16 +110,22 @@ function parseR(v) { const s = String(v ?? "220").toLowerCase().replace(/ω|ohm|
 
 /** 主解法。回傳每個網路電壓與每個元件狀態；LED／電源短路／腳位過流以迭代與事後檢查判定。 */
 export function solve(circuit, io = {}, extraLinks = []) {
-  // PWM：LED 不是吃平均電壓，而是「全亮 × 工作比」。有 PWM 腳時解「全高」與「全低」兩次，依工作比混合亮度。
+  // PWM：LED 不是吃平均電壓，而是「全亮 × 工作比」。解「全低」一次、每支有工作比的腳「只有它高」各一次，
+  // 各元件亮度 = 全低 + Σ 工作比 ×（只有該腳高 − 全低）；每顆 LED 接自己那支腳時是精確的。
+  // 以前所有 PWM 腳一起拉高、工作比取平均：RGB 只開紅色會三色都亮，0% 的蜂鳴器也會響（2026-11-09 Argon 審查抓到）
   const pwmPins = Object.keys(io.modes || {}).filter((g) => io.modes[g] === "pwm" && io.pwm && io.pwm[g]);
   if (pwmPins.length) {
-    const mk = (level) => { const pins = { ...(io.pins || {}) }, modes = { ...io.modes }; for (const g of pwmPins) { pins[g] = level; modes[g] = "out"; } return { ...io, pins, modes, _pwmInner: true }; };
-    const H = solveOnce(circuit, mk(1), extraLinks), L = solveOnce(circuit, mk(0), extraLinks);
-    const d = pwmPins.reduce((s, g) => s + io.pwm[g].duty16 / 65535, 0) / pwmPins.length;
+    const duty = (g) => Math.max(0, Math.min(1, io.pwm[g].duty16 / 65535));
+    const act = pwmPins.filter((g) => duty(g) > 0);
+    const mk = (hi, inner) => { const pins = { ...(io.pins || {}) }, modes = { ...io.modes }; for (const g of pwmPins) { pins[g] = hi.includes(g) ? 1 : 0; modes[g] = "out"; } return { ...io, pins, modes, _pwmInner: inner }; };
+    const L = solveOnce(circuit, mk([], true), extraLinks);
+    const H = solveOnce(circuit, mk(act, false), extraLinks);   // 有工作比的腳全高：節點電壓、警告（含 PIN_UNWIRED）、燒毀判定用這份
+    const Hs = {}; for (const g of act) Hs[g] = act.length === 1 ? H : solveOnce(circuit, mk([g], true), extraLinks);
+    const mix = (id, k) => { const l = (L.parts[id] && L.parts[id][k]) || 0; let v = l; for (const g of act) v += duty(g) * (((Hs[g].parts[id] && Hs[g].parts[id][k]) || 0) - l); return Math.max(0, Math.min(1, v)); };
     for (const id of Object.keys(H.parts)) {
       const h = H.parts[id], l = L.parts[id] || {};
-      if ("brightness" in h) { h.brightness = d * h.brightness + (1 - d) * (l.brightness || 0); h.on = h.brightness > 0.005 || !!l.on; }
-      if ("r" in h) { for (const k of ["r", "g", "b"]) h[k] = d * h[k] + (1 - d) * (l[k] || 0); }
+      if ("brightness" in h) { h.brightness = mix(id, "brightness"); h.on = h.brightness > 0.005 || !!l.on; }
+      if ("r" in h) { for (const k of ["r", "g", "b"]) h[k] = mix(id, k); }
       if ("values" in h) h.values = h.values.map((v, i) => (v || (l.values && l.values[i]) ? 1 : 0));
       if ("on" in h && !("brightness" in h)) h.on = h.on || !!l.on;
     }
@@ -163,14 +169,15 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
   for (const g of B.gpios) {
     const nd = node("board:" + g);
     const mode = modes[g] || (pins[g] !== undefined ? "out" : "in");
-    if (mode === "out" || mode === "pwm") {
+    if (io.unpowered) {}   // 未通電：GPIO 不輸出也沒有上拉（只剩下面的 1 MΩ）；以前停止後輸出腳還在 3.3 V，LED 不會熄（2026-11-09 全系統檢查抓到）
+    else if (mode === "out" || mode === "pwm") {
       const v = pins[g] ? VL : 0;
       const e = { type: "V", a: nd, b: -1, v, g: 1 / R_OUT, tag: "gpio:" + g }; elems.push(e); gpioElems[g] = e;
     } else if (pulls[g]) {
       addV(nd, -1, VL, PULLUP_R, "pull:" + g);
     }
-    // 純輸入／ADC：高阻抗（1 MΩ 到地讓浮接節點有定義）
-    addR(nd, -1, 1e6);
+    // 純輸入／ADC：高阻抗（100 MΩ 到地讓浮接節點有定義；原本 1 MΩ 會把 100k 以上的分壓拉低一成，2026-11-09 Argon 對帳抓到）
+    addR(nd, -1, 1e8);
   }
 
   // 上一輪的節點電壓（繼電器、感測模組要看 IN／VCC 有沒有電，差一個 tick 可接受）
@@ -219,7 +226,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       case "npn": { const m = NPNS[p.attrs?.model] || NPNS["2N2222"]; nonlin.push({ type: "npn", c: a("C"), b: a("B"), e: a("E"), Is: m.Is, bf: m.bf, br: m.br, part: id }); break; }
       case "acsource": {   // 訊號產生器：v = 偏壓 + Vpk·波形(ft)，波形＝正弦／方波／三角波（±1），內阻 1Ω；dt=0（直流）時只剩偏壓
         const vpk = parseFloat(p.attrs?.vpk ?? 5) || 5, f = parseFloat(p.attrs?.freq ?? 50) || 50, t = (dyn && dyn.t) || 0, off = parseFloat(p.attrs?.offset ?? 0) || 0;
-        addV(a("+"), a("-"), off + (dt > 0 ? vpk * waveform(p.attrs?.wave, f * t) : 0), 1, "ac:" + id); nextState[id] = { t }; break;
+        addV(a("+"), a("-"), io.unpowered ? 0 : off + (dt > 0 ? vpk * waveform(p.attrs?.wave, f * t) : 0), 1, "ac:" + id);   // 未通電＝儀器也關著 nextState[id] = { t }; break;
       }
       case "lm358": {   // 雙運放：VCC／GND 供電，OUT = clamp(A·(IN+ − IN−))，在迭代裡以鬆弛收斂（可做比較器也可做負回授放大）
         addR(a("VCC"), a("GND"), 5000);
@@ -238,7 +245,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
         let q = dstate[id]?.q ?? 0;
         if (vcc < 2) q = 0; else if (reset < 0.7) q = 0; else if (trig < vcc / 3) q = 1; else if (thr > vcc * 2 / 3) q = 0;
         addR(a("VCC"), a("GND"), 1500); addR(a("VCC"), a("CTRL"), 5000); addR(a("CTRL"), a("GND"), 10000);
-        addR(a("THR"), -1, 1e6); addR(a("TRIG"), -1, 1e6); addR(a("RESET"), -1, 1e6);
+        addR(a("THR"), -1, 1e7); addR(a("TRIG"), -1, 1e7); addR(a("RESET"), -1, 1e7);   // NE555 輸入電流 < 0.5 µA
         addV(a("OUT"), a("GND"), q && vcc >= 2 ? Math.max(0, vcc - 1.5) : 0, 10, "ic:" + id);
         if (!q) addR(a("DIS"), a("GND"), 1); else addR(a("DIS"), -1, 1e9);
         nextState[id] = { q, vcc }; break;
@@ -360,14 +367,15 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       if (["DC", "RST", "CS", "VIN", "NC", "DOUT", "NO", "NC"].includes(pin) || (p.type === "ssd1306" && pin === "3V3" && (N.nets[N.find(id + ":VIN")] || []).length > 1)) continue;
       if (p.type === "relay" && (pin === "NO" || pin === "NC")) continue;
       if (p.type === "joystick" && pin === "SEL") continue;
+      if (p.type === "gate" && pin === "B" && (p.attrs?.kind || "AND") === "NOT") continue;   // 反相器只有 A 輸入
       const members = N.nets[N.find(id + ":" + pin)] || [];
       const others = members.filter((m) => !m.startsWith(id + ":") && !m.startsWith("bb:"));
       if (others.length === 0) warn("OPEN", id, `${id} 的 ${pin} 沒接到東西`, "為什麼：電流要有完整回路，一隻腳懸空等於斷路，整個元件不會動作。", "怎麼改：把這隻腳接線到板子腳位或其他元件（插麵包板時，同一欄的 5 個孔是相通的）。");
     }
   }
-  if (Object.keys(N.nets[gndRoot] || {}).length <= 1 && Object.keys(circuit.parts).length) {
+  {   // 麵包板孔不算：GND 只拉到麵包板負極軌、元件卻沒接上，一樣沒共地
     const gndMembers = (N.nets[gndRoot] || []).filter((m) => !m.startsWith("bb:"));
-    if (gndMembers.length <= 1) warn("NO_GND", "board", "沒有任何東西接到 GND", "為什麼：所有電壓都是相對 GND 量的，電流也要從 GND 回到板子；沒共地就沒有回路，元件不會動、讀值會亂跳。", "怎麼改：把電路的負極那一側（LED 短腳、按鍵另一側、感測器 GND）接到板子的 GND 腳。");
+    if (gndMembers.length <= 1 && Object.keys(circuit.parts).length) warn("NO_GND", "board", "沒有任何東西接到 GND", "為什麼：所有電壓都是相對 GND 量的，電流也要從 GND 回到板子；沒共地就沒有回路，元件不會動、讀值會亂跳。", "怎麼改：把電路的負極那一側（LED 短腳、按鍵另一側、感測器 GND）接到板子的 GND 腳。");
   }
 
   // 元件輸出狀態（給畫面）
@@ -386,7 +394,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
           const ms = (pwm[g].duty16 / 65535) * (1000 / pwm[g].freq); angle = Math.max(0, Math.min(180, Math.round((ms - 0.5) / 2.0 * 180)));
         }
         st.powered = powered; st.angle = powered && angle !== null ? angle : (st.angle ?? 90);
-        if (!powered && angle !== null) warn("SERVO_NO_POWER", id, `${id} 沒有供電`, "為什麼：PWM 訊號只是「叫它轉到幾度」的指令，馬達本身要另外從 V+／GND 吃電才能動。", "怎麼改：V+ 接板子 5V（3V3 也能動但沒力），GND 接 GND，PWM 線接 GPIO。");
+        if (!powered && angle !== null && !io.unpowered) warn("SERVO_NO_POWER", id, `${id} 沒有供電`, "為什麼：PWM 訊號只是「叫它轉到幾度」的指令，馬達本身要另外從 V+／GND 吃電才能動。", "怎麼改：V+ 接板子 5V（3V3 也能動但沒力），GND 接 GND，PWM 線接 GPIO。");
         break;
       }
       case "led-bar-graph": st.values = Array.from({ length: 10 }, (_, i) => (st.leds?.[id + ":" + (i + 1)]?.on ? 1 : 0)); break;
@@ -407,7 +415,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       case "lm358": st.powered = vp("VCC") - vp("GND") > 2.5; st.out1 = vp("OUT1") - vp("GND"); st.out2 = vp("OUT2") - vp("GND"); break;
       case "gate": { const q = nonlin.find((x) => x.type === "gate" && x.part === id); st.y = !!(q && q.y); st.powered = vp("VCC") - vp("GND") > 2.5; break; }
     }
-    if (st.powered === false && ["ssd1306", "lcd1602", "hc-sr04", "dht22", "neopixel-strip", "pir", "relay", "joystick"].includes(p.type)) {
+    if (st.powered === false && !io.unpowered && ["ssd1306", "lcd1602", "hc-sr04", "dht22", "neopixel-strip", "pir", "relay", "joystick"].includes(p.type)) {
       const hasAnyWire = PARTS[p.type].pins.some((pin) => (N.nets[N.find(id + ":" + pin)] || []).some((m) => !m.startsWith(id + ":") && !m.startsWith("bb:")));
       if (hasAnyWire) warn("MODULE_NO_POWER", id, `${id} 沒有供電`, "為什麼：這類模組要有 VCC（3.3 V 或 5 V，看模組）和 GND 才會動，只接訊號線程式會讀不到或畫面不亮。", `怎麼改：${p.type === "hc-sr04" || p.type === "relay" || circuit.board === "uno" ? "VCC 接 5V" : "VCC 接 3V3"}、GND 接 GND，再接訊號線。`);
     }
