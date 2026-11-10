@@ -307,11 +307,15 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     const Vt = 0.02585, VLIM = 0.85;
     const Vn = (nd) => (nd === undefined || nd < 0 ? 0 : nodeV[nd]);
     const dio = (va, vb, Is, nn) => { const vd = Math.min(VLIM, va - vb); const ex = Math.exp(vd / (nn * Vt)); const g = Is * ex / (nn * Vt) + 1e-9; const i = Is * (ex - 1); return { g, v: vd - i / g }; };
+    let gateFlipped = false;
     for (const q of nonlin) {
       if (q.type === "gate") {
-        const vcc = Vn(q.vcc) - Vn(q.gnd), hi = (nd) => Vn(nd) - Vn(q.gnd) > vcc / 2;
-        const y = vcc > 2 ? !!q.fn(hi(q.a), hi(q.b)) : false; q.y = y;
-        E.push({ type: "V", a: q.yn, b: q.gnd, v: y ? vcc - 0.1 : 0, g: 1 / 50, tag: "gate:" + q.part }); continue;
+        // 輸出狀態跨迭代保留（起點＝上一步的輸出電壓），一輪最多讓一顆閘翻轉：有回授的電路（SR 鎖存器、正反器）才記得住，
+        // 也不會兩顆同時翻來翻去到迭代上限、停在哪算哪（2026-11-11，電路檢查 #7）。沒有回授的組合邏輯結果不變，只是多迭代幾輪。
+        const vcc = iter === 0 ? V0(q.vcc) - V0(q.gnd) : Vn(q.vcc) - Vn(q.gnd), hi = (nd) => Vn(nd) - Vn(q.gnd) > vcc / 2;
+        if (iter === 0) q.y = vcc > 2 && V0(q.yn) - V0(q.gnd) > vcc / 2;
+        else { const want = vcc > 2 ? !!q.fn(hi(q.a), hi(q.b)) : false; if (want !== q.y && (vcc <= 2 || !gateFlipped)) { q.y = want; gateFlipped = true; } }
+        E.push({ type: "V", a: q.yn, b: q.gnd, v: q.y ? Math.max(0, vcc - 0.1) : 0, g: 1 / 50, tag: "gate:" + q.part }); continue;
       }
       if (q.type === "relay") {
         const powered = Vn(q.vcc) - Vn(q.gnd) > 2.5, en = powered && (Vn(q.in) - Vn(q.gnd) > 1.5); q.en = en;
@@ -417,6 +421,11 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     for (let k = 0; k < 2; k++) {
       const g = gp(sides[k]); const other = sides[1 - k];
       if (g.length && !toPower(other) && !gp(other).length && !pulls[g[0]]) warn("BTN_FLOAT", id, `${id} 讀值會亂跳（浮接）`, "為什麼：按鍵沒按下時 GPIO 哪裡都沒接，電位不定（浮接），程式讀到的 0／1 會隨機變化。", "怎麼改：按鍵另一側接 GND，程式用 Pin(n, Pin.IN, Pin.PULL_UP)（內部上拉：沒按＝1、按下＝0）；或另一側接 3V3 並外加 10 kΩ 下拉電阻到 GND。");
+      // #8（2026-11-11）：另一側有接 GND／電源，但 GPIO 是輸入、沒開內部上下拉、這條線上也沒有別的元件（外接上拉／下拉電阻）→ 沒按時一樣浮接
+      else if (g.length && toPower(other) && modes[g[0]] === "in" && !pulls[g[0]] && !sides[k].some((m) => !m.startsWith("board:") && !m.startsWith("bb:") && !m.startsWith(id + ":"))) {
+        const toGnd = other.includes("board:GND");
+        warn("BTN_FLOAT", id, `${id} 沒按時讀值會亂跳（少了${toGnd ? "上拉" : "下拉"}）`, `為什麼：按鍵按下時 ${gpioName(circuit.board, g[0])} 接到${toGnd ? " GND" : "電源"}，但放開時這支腳哪裡都沒接（浮接），讀到的 0／1 不固定。`, toGnd ? "怎麼改：程式改用 Pin(n, Pin.IN, Pin.PULL_UP)（Arduino：pinMode(n, INPUT_PULLUP)），沒按＝1、按下＝0；或外加 10 kΩ 電阻從這支腳接到 3V3。" : "怎麼改：外加 10 kΩ 下拉電阻從這支腳接到 GND（沒按＝0、按下＝1）；或程式改用 Pin(n, Pin.IN, Pin.PULL_DOWN)。");
+      }
     }
   }
   // 浮接／未共地：元件有腳位所在網路只有自己一個端點

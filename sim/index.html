@@ -494,7 +494,7 @@ window.sim = sim;
 fetch("part_cards.json").then((r) => (r.ok ? r.json() : null)).then((c) => { if (c) { cards = c; sim.setCards(c); } }).catch(() => {});
 
 $("board").value = sim.doc.board;
-$("board").addEventListener("change", function() { const from = sim.doc.board, to = this.value; sim.setBoard(to); swapCodeForBoard(from, to); buildPalette($("search").value.trim()); });
+$("board").addEventListener("change", function() { const from = sim.doc.board, to = this.value; sim.setBoard(to); swapCodeForBoard(from, to); buildPalette($("search").value.trim()); if (stepState && stepState.ex.board !== to) { stepState = null; renderStep(); } });
 $("engine").addEventListener("change", async function() {
   const kind = this.value; engineChosen = true; if (sim.engine && sim.engine.kind === kind) return;
   $("engine").disabled = true; $("btn-run").disabled = true;
@@ -1052,7 +1052,7 @@ function scopePinsUI() {
   if (!gpios.length) el.innerHTML = '<span class="muted">執行程式後這裡會列出用到的腳位</span>';
 }
 function drawScope() {
-  const cv = $("scope"); if (!$("pane-scope").classList.contains("active")) return; const W = cv.clientWidth, H = cv.clientHeight; if (cv.width !== W * 2) { cv.width = W * 2; cv.height = H * 2; }
+  const cv = $("scope"); if (!$("pane-scope").classList.contains("active")) return; const W = cv.clientWidth, H = cv.clientHeight; if (cv.width !== W * 2 || cv.height !== H * 2) { cv.width = W * 2; cv.height = H * 2; }
   const ctx = cv.getContext("2d"); ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, W, H);
   const win = Number($("scope-win").value) * 1000, now = sim.engine ? sim.engine.time() / 1000 : 0; const t0 = now - win;
   const n = Math.max(1, scope.pins.length), rowH = H / n;

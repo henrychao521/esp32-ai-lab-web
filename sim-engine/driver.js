@@ -146,6 +146,7 @@ export class LabDriver {
     const r = await this.rawCommand(`lab._stop=False\n_r=runner.start(${pyLiteral(program)},${pyLiteral(name)})\nif not _r[0]: print(_r)\n`);   // 成功時不印（否則 "(True, 'started')" 會進學生的主控台）
     if (r.err) return { ok: false, msg: parseError(r.err, name).msg, line: parseError(r.err, name).line };
     if (/\(False/.test(r.out)) return { ok: false, msg: r.out.trim(), line: null };
+    if (this.halted) return { ok: true, msg: 'started', halted: true };   // 程式第一行就 deepsleep／reset：停機事件比這裡早到，不能再把狀態改回執行中
     this.programName = name; this.setStatus('running');
     return { ok: true, msg: 'started' };
   }
@@ -314,6 +315,10 @@ export class LabDriver {
     let nl;
     while ((nl = this.lineBuf.indexOf('\n')) >= 0) {
       const line = this.lineBuf.slice(0, nl + 1); this.lineBuf = this.lineBuf.slice(nl + 1);
+      // 開機完成後又出現 ROM 的開機訊息＝晶片自己重開了（看門狗、當機）：開機訊息不進主控台，當成停機
+      if (this.booted && !this.halted && ROM_BANNER.test(line)) {
+        this.lineBuf = ''; this.flushOut(); this.emit('console', { t: 'out', s: '板子自己重新開機了（看門狗或程式當掉）。模擬器在這裡停下來，按 ▶ 再執行一次。\n' }); this.onHalt(93); return;
+      }
       const m = line.indexOf(LAB_MARK);
       if (m >= 0) {
         if (m > 0) this.outBatch += line.slice(0, m);
@@ -325,6 +330,14 @@ export class LabDriver {
   }
   flushOut() { if (this.outBatch) { this.emit('console', { t: 'out', s: this.outBatch }); this.outBatch = ''; } }
   labEvent(o) {
+    // 學生程式呼叫 machine.deepsleep()／machine.reset()（prelude 把它們換成發這個事件）：模擬的晶片不會真的睡著或重開，
+    // 以前畫面一直停在「執行中」（2026-11-11）。這裡當成板子自己停機：畫布會斷電，按 ▶ 重新開機。
+    if (o.t === 'halt') {
+      const msg = o.why === 'reset' ? '板子重新開機（machine.reset）。模擬器在這裡停下來，按 ▶ 再執行一次。'
+        : o.why === 'lightsleep' ? '板子進入淺睡眠、沒有設定喚醒時間。模擬器在這裡停下來，按 ▶ 再執行一次。'
+        : `板子進入深度睡眠${o.ms ? `（實機會在 ${o.ms} 毫秒後醒來並重新開機、程式從頭跑）` : ''}。模擬器在這裡停下來，按 ▶ 再執行一次。`;
+      this.flushOut(); this.emit('console', { t: 'out', s: msg + '\n' }); this.onHalt(o.why === 'reset' ? 94 : 95); return;
+    }
     this.emit('console', o);
     if (o.t === 'done') { this.setStatus('idle'); }
     if (o.t === 'start') { this.setStatus('running'); }
@@ -440,6 +453,8 @@ export class LabDriver {
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
+const ROM_BANNER = /^(ets [A-Z][a-z]{2} +\d+ \d{4} |ESP-ROM:esp32|rst:0x[0-9a-f]+ \()/;
+
 /// The Python run after the lab files are in place: `lab` wired like the agent does it, `lab.emit`
 /// turned into console marker lines, the runner's print going to stdout only.
 export function prelude(board, chip, when = new Date()) {
@@ -467,6 +482,21 @@ lab.emit = _emit
 def _print(*a, sep=" ", end="\\n", **k):
     sys.stdout.write(sep.join(str(x) for x in a) + end)
 runner._print = _print
+def _halt(why, ms=0):
+    _emit("halt", why=why, ms=ms)
+    import time
+    while True:
+        time.sleep(1)
+def _lightsleep(ms=0, *a):
+    import time
+    if ms:
+        time.sleep_ms(ms)
+    else:
+        _halt("lightsleep")
+machine.deepsleep = lambda ms=0, *a: _halt("deepsleep", ms)
+machine.reset = lambda: _halt("reset")
+machine.soft_reset = lambda: _halt("reset")
+machine.lightsleep = _lightsleep
 print("lab ready", lab.board)
 `;
 }

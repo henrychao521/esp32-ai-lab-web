@@ -692,7 +692,7 @@ export function createSimulator(opts) {
       engine.on("pwm", (g, hz, duty) => { touch(g).pwm = hz > 0 ? { freq: hz, duty16: Math.round(duty * 65535) } : null; tick(); });
       engine.on("state", (st) => { if (engine !== me) return; running = st === "running"; emitStatus({ engineState: st }); });
       let bootQuiet = engine.kind === "esp32sim";   // 真韌體開機期間（ROM 訊息、raw REPL 回應）不進主控台，第一個 start 之後才顯示
-      engine.on("halt", () => { if (engine !== me || !powered) return; powerDown(); onEvent({ t: "done", ok: true, halted: true }); });   /* 深度睡眠、machine.reset()：板子自己停機＝斷電，介面要跟著回到未通電 */
+      engine.on("halt", () => { if (engine !== me || !powered) return; powerDown(); });   /* 深度睡眠、machine.reset()：板子自己停機＝斷電，介面要跟著回到未通電 */
       engine.on("console", (m) => { if (engine !== me) return; if (m.t === "start") bootQuiet = false; if (bootQuiet && m.t === "out") return; onEvent(m); });
       engine._setBootQuiet = (v) => { bootQuiet = v && engine.kind === "esp32sim"; };
       engine.on("screen", () => { screenDirty = true; applyState(); });

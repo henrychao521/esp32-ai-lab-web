@@ -35,6 +35,8 @@ export function transformCode(src) {
     });
     if (code.includes("await lab.sleep(0.000001*(")) code = balanceExtraParen(code, "await lab.sleep(0.000001*(");
     if (fromTimeSleep) code = code.replace(/(?<![\w.])(?<!await\s)sleep\s*\(/g, "await lab.sleep(");
+    // 裸 except:／except BaseException: 會把停止用的 StopRequested 也吃掉，按停止停不下來、之後再執行回 busy（2026-11-11）；模擬器裡改成只接一般例外，行數不變
+    code = code.replace(/^(\s*)except\s*:/, "$1except Exception:").replace(/^(\s*)except\s+BaseException\b/, "$1except Exception");
     lines[i] = code + rest;
   }
   // 第二步：含 await 的 def → async def；呼叫處加 await（重複到不再變動）
