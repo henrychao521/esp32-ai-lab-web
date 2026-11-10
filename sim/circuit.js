@@ -98,6 +98,21 @@ export function parseC(v) { const s = String(v ?? "100u").toLowerCase().replace(
 const DIODES = { "1N4007": { Is: 7e-9, n: 1.8 }, "1N4148": { Is: 2.5e-9, n: 1.75 }, "1N5819": { Is: 3e-6, n: 1.1 } };
 const NPNS = { "2N2222": { Is: 1e-14, bf: 200, br: 3 }, "2N3904": { Is: 1e-14, bf: 150, br: 3 }, "8050": { Is: 1e-14, bf: 120, br: 3 } };
 export const DYNAMIC_TYPES = new Set(["capacitor", "ne555", "acsource"]);
+const OPAMP_A = 1e5;   // LM358 開迴路增益約 100 dB
+// 暫態步長（sim.js 每一幀問一次）：只有電容 1 ms 就很準；交流電源每週期 50 步；555 先用 0.2 ms，量到它在振盪之後改成「較短的半週期切 40 步」（後向尤拉的頻率誤差約 0.35／步數，40 步不到 1%）。
+// 以前固定 0.2 ms，音頻 555 一個週期只有幾步，頻率低 6%～54%（2026-11-10 審查抓到）。下限 20 µs：再小即時跑不動，模擬會變成慢動作
+export function dynDt(parts, state = {}, t = 0) {
+  let dt = 1e-3;
+  for (const [id, p] of Object.entries(parts || {})) {
+    if (p.type === "acsource") dt = Math.min(dt, 1 / ((parseFloat(p.attrs?.freq) || 50) * 50));
+    if (p.type !== "ne555") continue;
+    const s = state[id] || {}; let d = 2e-4;
+    if (s.h1 != null && s.h2 != null) { let h = Math.min(s.h1, s.h2); if (t - s.tf > 200 * h) h = (t - s.tf) / 200;   // 很久沒翻＝不振盪了，步長慢慢放回來
+      d = Math.min(d, h / 40); }
+    dt = Math.min(dt, d);
+  }
+  return Math.max(2e-5, dt);
+}
 /** 訊號產生器的波形（相位 cycles＝f·t），回傳 −1～1：sine 正弦、square 方波、triangle 三角波 */
 export function waveform(kind, cycles) {
   const ph = cycles - Math.floor(cycles);
@@ -110,27 +125,38 @@ function parseR(v) { const s = String(v ?? "220").toLowerCase().replace(/ω|ohm|
 
 /** 主解法。回傳每個網路電壓與每個元件狀態；LED／電源短路／腳位過流以迭代與事後檢查判定。 */
 export function solve(circuit, io = {}, extraLinks = []) {
-  // PWM：LED 不是吃平均電壓，而是「全亮 × 工作比」。解「全低」一次、每支有工作比的腳「只有它高」各一次，
-  // 各元件亮度 = 全低 + Σ 工作比 ×（只有該腳高 − 全低）；每顆 LED 接自己那支腳時是精確的。
-  // 以前所有 PWM 腳一起拉高、工作比取平均：RGB 只開紅色會三色都亮，0% 的蜂鳴器也會響（2026-11-09 Argon 審查抓到）
+  // PWM：LED 不是吃平均電壓，而是「全亮 × 工作比」。同一組 PWM 腳都在週期起點一起拉高、各自到工作比才拉低，
+  // 所以一個週期切成幾段（工作比由小排到大：全部高 → 最短的先低 → … → 全低），每段各解一次，再照時間比例加權。
+  // 以前是「全低」加上「每支腳單獨高」線性疊加：幾支腳共用一顆限流電阻（共陰 RGB）或一起推一顆 LED 時會算錯，
+  // 接了濾波電容的類比讀值也只看全高那一份（25% 讀到 4095）（2026-11-10 審查抓到）
   const pwmPins = Object.keys(io.modes || {}).filter((g) => io.modes[g] === "pwm" && io.pwm && io.pwm[g]);
   if (pwmPins.length) {
     const duty = (g) => Math.max(0, Math.min(1, io.pwm[g].duty16 / 65535));
-    const act = pwmPins.filter((g) => duty(g) > 0);
+    const act = pwmPins.filter((g) => duty(g) > 0).sort((x, y) => duty(x) - duty(y));
+    const segs = []; let t0 = 0;
+    act.forEach((g, i) => { const w = duty(g) - t0; if (w > 1e-9) segs.push({ hi: act.slice(i), w }); t0 = duty(g); });
+    if (1 - t0 > 1e-9) segs.push({ hi: [], w: 1 - t0 });
     const mk = (hi, inner) => { const pins = { ...(io.pins || {}) }, modes = { ...io.modes }; for (const g of pwmPins) { pins[g] = hi.includes(g) ? 1 : 0; modes[g] = "out"; } return { ...io, pins, modes, _pwmInner: inner }; };
-    const L = solveOnce(circuit, mk([], true), extraLinks);
-    const H = solveOnce(circuit, mk(act, false), extraLinks);   // 有工作比的腳全高：節點電壓、警告（含 PIN_UNWIRED）、燒毀判定用這份
-    const Hs = {}; for (const g of act) Hs[g] = act.length === 1 ? H : solveOnce(circuit, mk([g], true), extraLinks);
-    const mix = (id, k) => { const l = (L.parts[id] && L.parts[id][k]) || 0; let v = l; for (const g of act) v += duty(g) * (((Hs[g].parts[id] && Hs[g].parts[id][k]) || 0) - l); return Math.max(0, Math.min(1, v)); };
+    segs.forEach((x, i) => { x.r = solveOnce(circuit, mk(x.hi, i > 0), extraLinks); });
+    const H = segs[0].r;   // 第一段當底：元件的其他欄位、PIN_UNWIRED 用這份
+    if (segs.length === 1) return H;
+    const avg = (get) => segs.reduce((sum, x) => sum + x.w * (Number(get(x.r)) || 0), 0), c01 = (v) => Math.max(0, Math.min(1, v));
     for (const id of Object.keys(H.parts)) {
-      const h = H.parts[id], l = L.parts[id] || {};
-      if ("brightness" in h) { h.brightness = mix(id, "brightness"); h.on = h.brightness > 0.005 || !!l.on; }
-      if ("r" in h) { for (const k of ["r", "g", "b"]) h[k] = mix(id, k); }
-      if ("values" in h) h.values = h.values.map((v, i) => (v || (l.values && l.values[i]) ? 1 : 0));
-      if ("on" in h && !("brightness" in h)) h.on = h.on || !!l.on;
+      const h = H.parts[id], P = (k) => avg((r) => r.parts[id] && r.parts[id][k]), any = (f) => segs.some((x) => x.r.parts[id] && f(x.r.parts[id]));
+      if ("brightness" in h) { h.brightness = c01(P("brightness")); h.on = h.brightness > 0.005; }
+      else if ("on" in h) h.on = any((p) => p.on);   // 蜂鳴器、電晶體：任何一段有動作就算有
+      if ("r" in h) for (const k of ["r", "g", "b"]) h[k] = c01(P(k));
+      if ("values" in h) h.values = h.values.map((_, i) => (any((p) => p.values && p.values[i]) ? 1 : 0));
+      if ("burned" in h) h.burned = any((p) => p.burned);
+      if (typeof h.v === "number") h.v = P("v");
     }
-    for (const w of L.warnings) if (!H.warnings.some((x) => x.code === w.code && x.part === w.part)) H.warnings.push(w);
-    H.burned = [...new Set([...H.burned, ...L.burned])];
+    for (const x of segs.slice(1)) for (const w of x.r.warnings) if (!H.warnings.some((y) => y.code === w.code && y.part === w.part)) H.warnings.push(w);
+    H.burned = [...new Set(segs.flatMap((x) => x.r.burned))];
+    // 電壓、類比讀值、電容的下一步電壓取時間平均（電表量 PWM 腳看到的就是平均值；後向尤拉對電源是線性的，平均後等於用平均電壓走一步）
+    for (const k of Object.keys(H.nodeV)) H.nodeV[k] = avg((r) => r.nodeV[k]);
+    for (const g of Object.keys(H.adc)) H.adc[g] = Math.round(avg((r) => r.adc[g]));
+    for (const g of Object.keys(H.inputs)) H.inputs[g] = avg((r) => r.inputs[g]) >= 0.5 ? 1 : 0;
+    for (const [id, st] of Object.entries(H.dynState || {})) if (typeof st.v === "number") st.v = avg((r) => r.dynState[id] && r.dynState[id].v);
     return H;
   }
   return solveOnce(circuit, io, extraLinks);
@@ -226,11 +252,18 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       case "npn": { const m = NPNS[p.attrs?.model] || NPNS["2N2222"]; nonlin.push({ type: "npn", c: a("C"), b: a("B"), e: a("E"), Is: m.Is, bf: m.bf, br: m.br, part: id }); break; }
       case "acsource": {   // 訊號產生器：v = 偏壓 + Vpk·波形(ft)，波形＝正弦／方波／三角波（±1），內阻 1Ω；dt=0（直流）時只剩偏壓
         const vpk = parseFloat(p.attrs?.vpk ?? 5) || 5, f = parseFloat(p.attrs?.freq ?? 50) || 50, t = (dyn && dyn.t) || 0, off = parseFloat(p.attrs?.offset ?? 0) || 0;
-        addV(a("+"), a("-"), io.unpowered ? 0 : off + (dt > 0 ? vpk * waveform(p.attrs?.wave, f * t) : 0), 1, "ac:" + id);   // 未通電＝儀器也關著 nextState[id] = { t }; break;
+        addV(a("+"), a("-"), io.unpowered ? 0 : off + (dt > 0 ? vpk * waveform(p.attrs?.wave, f * t) : 0), 1, "ac:" + id);   // 未通電＝儀器也關著
+        nextState[id] = { t }; break;
       }
-      case "lm358": {   // 雙運放：VCC／GND 供電，OUT = clamp(A·(IN+ − IN−))，在迭代裡以鬆弛收斂（可做比較器也可做負回授放大）
+      case "lm358": {   // 雙運放：VCC／GND 供電，OUT = clamp(A·(IN+ − IN−))，在迭代裡分「線性／頂到上限／頂到下限」三區求解（可做比較器也可做負回授放大）
         addR(a("VCC"), a("GND"), 5000);
-        for (const k of ["1", "2"]) { addR(a("IN" + k + "+"), -1, 1e7); addR(a("IN" + k + "-"), -1, 1e7); nonlin.push({ type: "opamp", p: a("IN" + k + "+"), n: a("IN" + k + "-"), o: a("OUT" + k), vcc: a("VCC"), gnd: a("GND"), part: id, ch: k }); }
+        const vc0 = V0(a("VCC")) - V0(a("GND"));
+        for (const k of ["1", "2"]) {
+          addR(a("IN" + k + "+"), -1, 1e7); addR(a("IN" + k + "-"), -1, 1e7);
+          // 起始分區看上一步的輸出：正回授（史密特觸發）兩邊都站得住時要留在原來那一邊，才有遲滯
+          const reg = vc0 > 2 && V0(a("OUT" + k)) - V0(a("GND")) > (vc0 - 1.5) / 2 ? "hi" : "lo";
+          nonlin.push({ type: "opamp", p: a("IN" + k + "+"), n: a("IN" + k + "-"), o: a("OUT" + k), vcc: a("VCC"), gnd: a("GND"), part: id, ch: k, reg, tried: {} });
+        }
         break;
       }
       case "gate": {   // 邏輯閘（74HC 系列行為模型）：輸入門檻 Vcc/2，輸出推挽 50Ω；在同一次求解的迭代裡判斷（按鍵一按馬上反應）
@@ -245,10 +278,10 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
         let q = dstate[id]?.q ?? 0;
         if (vcc < 2) q = 0; else if (reset < 0.7) q = 0; else if (trig < vcc / 3) q = 1; else if (thr > vcc * 2 / 3) q = 0;
         addR(a("VCC"), a("GND"), 1500); addR(a("VCC"), a("CTRL"), 5000); addR(a("CTRL"), a("GND"), 10000);
-        addR(a("THR"), -1, 1e7); addR(a("TRIG"), -1, 1e7); addR(a("RESET"), -1, 1e7);   // NE555 輸入電流 < 0.5 µA
-        addV(a("OUT"), a("GND"), q && vcc >= 2 ? Math.max(0, vcc - 1.5) : 0, 10, "ic:" + id);
-        if (!q) addR(a("DIS"), a("GND"), 1); else addR(a("DIS"), -1, 1e9);
-        nextState[id] = { q, vcc }; break;
+        addR(a("THR"), -1, 1e8); addR(a("TRIG"), -1, 1e8); addR(a("RESET"), -1, 1e8);   // NE555 門檻電流典型 30 nA（約 100 MΩ）；以前 10 MΩ 會把 1 MΩ 的定時電阻拉偏 9%
+        // 輸出與放電開關放進迭代：這一步解完發現跨過門檻就當步翻轉重解（以前下一步才翻，每個半週期多拖一步，音頻 555 頻率偏低）
+        nonlin.push({ type: "ne555", part: id, out: a("OUT"), gnd: a("GND"), dis: a("DIS"), vccN: a("VCC"), trig: a("TRIG"), thr: a("THR"), rst: floating("RESET") ? null : a("RESET"), q, vcc, flips: 0 });
+        break;
       }
       case "joystick": {
         const total = 10000; const fx = Math.max(0, Math.min(1, (u.x ?? 0) * 0.5 + 0.5)), fy = Math.max(0, Math.min(1, (u.y ?? 0) * 0.5 + 0.5));
@@ -260,9 +293,10 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
   }
 
   // 逐次線性化：LED 先全開路；解；電壓超過 Vf 的改成「Vf 源＋10Ω」；重解直到穩定
-  const ledOn = new Map(); const opPrev = new Map();
+  const ledOn = new Map();
   let nodeV = new Float64Array(n);
-  for (let iter = 0; iter < 25; iter++) {
+  const maxIter = nonlin.some((q) => q.type === "opamp") ? 40 : 25;   // 運放換分區要多幾輪
+  for (let iter = 0; iter < maxIter; iter++) {
     const E = elems.slice();
     for (const L of ledList) {
       if (burned.has(L.key)) continue;
@@ -283,10 +317,14 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
         const powered = Vn(q.vcc) - Vn(q.gnd) > 2.5, en = powered && (Vn(q.in) - Vn(q.gnd) > 1.5); q.en = en;
         E.push({ type: "R", a: q.com, b: en ? q.no : q.nc, g: 10 }); continue;
       }
-      if (q.type === "opamp") {   // 理想運放＋輸出夾在 0.05～Vcc−1.5；鬆弛 0.4 讓負回授收斂
-        const vcc = Vn(q.vcc) - Vn(q.gnd), target = Math.max(0.05, Math.min(Math.max(0.1, vcc - 1.5), 1e4 * (Vn(q.p) - Vn(q.n)) + (vcc - 1.5) / 2 * 0));
-        const prev = opPrev.get(q.part + q.ch); const vo = prev === undefined ? target : prev + 0.4 * (target - prev); opPrev.set(q.part + q.ch, vo);
-        E.push({ type: "V", a: q.o, b: q.gnd, v: vo, g: 1 / 50, tag: "op:" + q.part }); continue;
+      if (q.type === "ne555") {
+        E.push({ type: "V", a: q.out, b: q.gnd, v: q.q && q.vcc >= 2 ? Math.max(0, q.vcc - 1.5) : 0, g: 1 / 10, tag: "ic:" + q.part });
+        E.push(q.q ? { type: "R", a: q.dis, b: -1, g: 1e-9 } : { type: "R", a: q.dis, b: q.gnd, g: 1 }); continue;
+      }
+      if (q.type === "opamp") {   // 線性區＝增益 OPAMP_A 的壓控源＋50 Ω（負回授一次就解到位）；飽和區＝夾在 0.05 或 Vcc−1.5 的電壓源。分區對不對在解完後檢查
+        if (q.reg === "lin") { E.push({ type: "R", a: q.o, b: q.gnd, g: 1 / 50 }); E.push({ type: "G4", a: q.gnd, b: q.o, c: q.p, d: q.n, g: OPAMP_A / 50 }); }
+        else E.push({ type: "V", a: q.o, b: q.gnd, v: q.reg === "hi" ? Math.max(0.1, Vn(q.vcc) - Vn(q.gnd) - 1.5) : 0.05, g: 1 / 50, tag: "op:" + q.part });
+        continue;
       }
       if (q.type === "diode") { const d = dio(Vn(q.a), Vn(q.b), q.Is, q.n); E.push({ type: "V", a: q.a, b: q.b, v: d.v, g: d.g, tag: "dio:" + q.part }); }
       else {   // Ebers–Moll 傳輸模型：IF（B→E）、IR（B→C）、集極電流 IF−IR
@@ -304,6 +342,24 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     nodeV = solveMNA(n, E);
     let changed = false;
     if (nonlin.length) { let dmax = 0; for (let k = 0; k < n; k++) dmax = Math.max(dmax, Math.abs(nodeV[k] - prevNode[k])); if (dmax > 1e-3) changed = true; }
+    if (dt > 0) for (const q of nonlin) {   // 555：用這一步解出來的電壓再判一次。跨過門檻的時間點落在這一步的前半就當步翻、後半留給下一步開頭翻
+      if (q.type !== "ne555" || q.flips) continue;   // （等於四捨五入到最近的步界，平均不偏早也不偏晚；一步最多翻一次，免得來回跳）
+      const g = Vn(q.gnd), vcc = Vn(q.vccN) - g, trig = Vn(q.trig) - g, thr = Vn(q.thr) - g, reset = q.rst === null ? vcc : Vn(q.rst) - g;
+      const nq = vcc < 2 || reset < 0.7 ? 0 : trig < vcc / 3 ? 1 : thr > vcc * 2 / 3 ? 0 : q.q;
+      if (nq === q.q) continue;
+      const was = nq ? V0(q.trig) - V0(q.gnd) : V0(q.thr) - V0(q.gnd), now = nq ? trig : thr, lvl = nq ? vcc / 3 : vcc * 2 / 3;
+      const frac = vcc < 2 || reset < 0.7 || was === now ? 0 : (lvl - was) / (now - was);   // 門檻在這一步的哪個位置（0＝開頭、1＝結尾）
+      if (frac < 0.5) { q.q = nq; q.flips = 1; changed = true; }
+    }
+    for (const q of nonlin) {   // 運放分區檢查：飽和區要「開迴路想輸出的電壓」真的超過那一邊才站得住；站不住先試另一邊，兩邊都不行就是線性區
+      if (q.type !== "opamp") continue;
+      const lo = 0.05, hi = Math.max(0.1, Vn(q.vcc) - Vn(q.gnd) - 1.5), want = OPAMP_A * (Vn(q.p) - Vn(q.n)), vo = Vn(q.o) - Vn(q.gnd);
+      let next = q.reg;
+      if (q.reg === "lin") next = vo > hi + 1e-3 ? "hi" : vo < lo - 1e-3 ? "lo" : "lin";   // 1 mV 容差：剛好在邊界時不要在線性／飽和之間來回跳
+      else if (q.reg === "hi") { if (want < hi) next = q.tried.lo ? "lin" : "lo"; }
+      else if (want > lo) next = q.tried.hi ? "lin" : "hi";
+      if (next !== q.reg) { q.tried[q.reg] = 1; q.reg = next; changed = true; }
+    }
     for (const L of ledList) {
       if (burned.has(L.key)) continue;
       const vA = L.A < 0 ? 0 : nodeV[L.A], vC = L.C < 0 ? 0 : nodeV[L.C];
@@ -315,6 +371,11 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     if (!changed) break;
   }
   const V = (nd) => (nd === undefined || nd < 0 ? 0 : nodeV[nd]);
+  for (const q of nonlin) {   // 555 狀態：q、上次翻轉的時間 tf、最近兩個半週期的長度 h1／h2（dynDt 用來決定步長）
+    if (q.type !== "ne555") continue;
+    const ps = dstate[q.part] || {}, t = (dyn && dyn.t || 0) + dt, flip = dt > 0 && q.q !== (ps.q ?? 0), had = ps.tf != null;
+    nextState[q.part] = { q: q.q, vcc: q.vcc, tf: flip ? t : ps.tf ?? null, h1: flip && had ? t - ps.tf : ps.h1 ?? null, h2: flip && had ? ps.h1 ?? null : ps.h2 ?? null };
+  }
   for (const [id, p] of Object.entries(circuit.parts || {})) {
     if (p.type !== "capacitor") continue; const a = (pin) => node(id + ":" + pin);
     nextState[id] = { v: dt > 0 ? V(a("+")) - V(a("-")) : (dstate[id]?.v ?? 0) };
@@ -385,7 +446,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     const vp = (pin) => V(node(id + ":" + pin));
     switch (p.type) {
       case "led": { const l = st.leds?.[id]; st.on = !!l?.on; st.brightness = l ? Math.min(1, l.i / 0.006) : 0; st.burned = !!l?.burned; break; }
-      case "buzzer": st.on = Math.abs(vp("1") - vp("2")) > 1.0; break;
+      case "buzzer": st.on = Math.abs(vp("1") - vp("2")) > 0.08; break;   // 16 Ω 流過 5 mA 以上就算有聲音（以前要 1 V＝62 mA，555 串電阻推的蜂鳴器永遠不響）
       case "servo": {
         const powered = vp("V+") - vp("GND") > 4.0 || vp("V+") - vp("GND") > 3.0;
         const pwmNet = N.find(id + ":PWM");

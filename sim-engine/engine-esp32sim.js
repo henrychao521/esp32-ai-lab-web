@@ -77,7 +77,8 @@ export async function createEsp32simEngine(opts = {}) {
       case 'state': state.status = d.status; state.running = d.status === 'running'; state.info.status = d.status === 'running' ? 'running' : 'idle'; emit('state', d.status); break;
       case 'time': noteTime(d.tUs); emit('time', d.tUs); break;
       case 'deadline': noteTime(d.tUs); fireSchedules(d.tUs); break;
-      case 'halt': state.running = false; emit('halt', d.code); emit('state', 'idle'); break;
+      case 'halt': state.running = false; state.booted = false; state.bootedWith = null; emit('halt', d.code); emit('state', 'idle'); break;
+      case 'off': state.running = false; state.booted = false; state.bootedWith = null; break;   // 硬停止：下一次執行要重新開機
       case 'log': emit('log', d.msg); if (opts.log) opts.log(d.msg); break;
     }
   };
@@ -108,7 +109,12 @@ export async function createEsp32simEngine(opts = {}) {
     if (id.startsWith('arduino:')) return { key: id, bin: await loadBytes(url.arduino(id.slice(8))), rom: await loadBytes(url.rom(cfg.chip)), flashAt: 0, raw: true };
     return { key: id, bin: await loadBytes(url.firmware(id)), rom: await loadBytes(url.rom(cfg.chip)), flashAt: cfg.flashAt ?? 0, raw: false };
   };
-  const bootMachine = async (board, firmware, program, name) => {
+  /// One boot at a time: a second boot started while the first is still coming up would leave the first
+  /// without an answer (the host has one machine).
+  let bootTail = Promise.resolve();
+  const bootMachine = (...a) => { const p = bootTail.then(() => bootMachineNow(...a)); bootTail = p.catch(() => {}); return p; };
+  const bootMachineNow = async (board, firmware, program, name) => {
+    state.booted = false; state.bootedWith = null;
     const fw = await resolveFirmware(firmware, board);
     state.board = board; state.cfg = BOARDS[board]; state.info.board = board; state.pins = {}; state.screen = null; state.leds = null; state.schedules = []; state.deadlineSent = null;
     const r = await call('boot', { board, firmware: fw.bin, rom: fw.rom, flashAt: fw.flashAt, raw: fw.raw, program: program ?? null, name, i2c: opts.i2c ?? null });
@@ -131,10 +137,11 @@ export async function createEsp32simEngine(opts = {}) {
       if (!IS_NODE && b !== state.board) { /* layout change on the page side */ }
       const fw = firmware || opts.firmware || cfg.firmware;
       const key = `${b}|${typeof fw === 'object' ? 'custom' : fw}`;
+      await bootTail;
       if (fresh || opts.freshBoot || !state.booted || state.bootedWith !== key || (typeof fw === 'object')) return bootMachine(b, fw, program, name);
       if (program == null) return { ok: true, msg: 'already booted' };
       if (state.running) await engine.stop();
-      const r = await call('start', { program, name });
+      let r; try { r = await call('start', { program, name }); } catch (e) { return bootMachine(b, fw, program, name); }   /* 機器其實已經停了（重置、深度睡眠）：重新開機 */
       if (r.ok) refreshPins();
       return r;
     },
@@ -142,11 +149,11 @@ export async function createEsp32simEngine(opts = {}) {
     pause() { call('pause'); state.running = false; emit('state', 'paused'); },
     step(ms = 1) { return call('step', { ms }); },
     async reset() { const r = await bootMachine(state.board, opts.firmware, null); state.running = false; return r.ok; },
-    async stop() { if (!state.booted) return true; return call('stop'); },
-    async check(program, name = 'main.py') { await ensureBooted(); return call('check', { program, name }); },
+    async stop() { await bootTail; if (!state.booted) return true; try { return await call('stop'); } catch (e) { return true; } },
+    async check(program, name = 'main.py') { await bootTail; await ensureBooted(); try { return await call('check', { program, name }); } catch (e) { state.booted = false; await ensureBooted(); return call('check', { program, name }); } },
     time() { const extra = state.running ? (performance.now() - state.tWall) * 1000 * state.speed : 0; return Math.round(state.tUs + extra); },
     setSpeed(x) { state.speed = Math.max(0.25, Math.min(1, Number(x) || 1)); call('speed', { x: state.speed }); },
-    info() { call('info').then((i) => Object.assign(state.info, i)).catch(() => {}); return { ...state.info }; },
+    info() { if (state.booted) call('info').then((i) => Object.assign(state.info, i)).catch(() => {}); return { ...state.info }; },
     pins() { const out = {}; for (const [g, st] of Object.entries(state.pins)) out[g] = { ...st }; return out; },
     screenRGBA() { return state.screen ? state.screen.rgba : null; },
     leds() { return state.leds; },
@@ -156,7 +163,7 @@ export async function createEsp32simEngine(opts = {}) {
     setAnalog(gpio, volts) { call('setAnalog', { gpio, volts: Number(volts) || 0 }); },
     pressButton(which, ms) { call('press', { which, ms: ms == null ? null : Number(ms) }); },
     releaseButton(which) { call('release', { which }); },
-    cmd(obj) { if (!state.booted) return false; call('cmd', { obj }); return true; },
+    cmd(obj) { if (!state.booted) return false; call('cmd', { obj }).catch(() => {}); return true; },
     uartWrite(text) { call('uart', { text }); },
     schedule(tUs, fn) { if (tUs <= engine.time()) { queueMicrotask(() => fn(engine.time())); return; } state.schedules.push({ tUs, fn }); sendDeadline(); },
     /// Canvas-registered I2C addresses: kept in `opts.i2c` so every boot attaches exactly those (scan() then

@@ -14,7 +14,7 @@ export class DriverHost {
     this.post = post; this.core = null; this.driver = null;
     this.running = false; this.turbo = false; this.speed = 1; this.t0 = 0; this.cycles0 = 0;
     this.timer = null; this.busy = false; this.lastTime = 0;
-    this.pendingDeadline = null;
+    this.pendingDeadline = null; this.bootGen = 0;
   }
   emit(type, data) {
     if (type === 'screen') { const copy = data.rgba.slice(); this.post({ ev: type, data: { w: data.w, h: data.h, rgba: copy } }, [copy.buffer]); }
@@ -33,14 +33,19 @@ export class DriverHost {
         }
         case 'boot': {
           this.stop();
+          const gen = ++this.bootGen;   // a later boot supersedes this one: it must not touch the loop flags any more
           this.turbo = true; this.startLoop();
           let r;
           try { r = await this.driver.boot({ board: m.board, firmware: new Uint8Array(m.firmware), rom: new Uint8Array(m.rom), flashAt: m.flashAt, i2c: m.i2c, raw: !!m.raw }); }
-          catch (e) { this.turbo = false; this.running = false; return reply({ ok: false, msg: String(e.message || e) }); }
+          catch (e) { if (gen === this.bootGen) { this.turbo = false; this.running = false; } return reply({ ok: false, msg: String(e.message || e) }); }
+          if (gen !== this.bootGen) return reply({ ok: false, msg: 'superseded' });
           this.turbo = false;
           // the board stays on (real time) once booted: the REPL must keep running for commands
           this.resync(); this.running = true; this.startLoop();
-          if (m.program != null) { const s = await this.driver.start(m.program, m.name || 'main.py'); r = { ...r, ...s, msg: s.ok ? r.msg : s.msg }; }
+          if (m.program != null) {
+            let s; try { s = await this.driver.start(m.program, m.name || 'main.py'); } catch (e) { s = { ok: false, msg: String(e.message || e) }; }
+            r = { ...r, ...s, msg: s.ok ? r.msg : s.msg };
+          }
           return reply(r);
         }
         case 'start': return reply(await this.withMachine(() => this.driver.start(m.program, m.name || 'main.py')));
@@ -48,9 +53,21 @@ export class DriverHost {
         case 'run': this.resync(); this.running = true; this.startLoop(); return reply(true);
         case 'pause': this.running = false; return reply(true);
         case 'step': { this.running = false; this.driver.advance(Math.round(this.core.cpuHz * (m.ms ?? 1) / 1000)); this.post({ ev: 'time', data: { tUs: this.driver.timeUs } }); return reply(this.driver.timeUs); }
-        case 'stop': return reply(await this.withMachine(() => this.driver.stop()));
+        case 'stop': {
+          const d = this.driver;
+          if (!d.booted || d.halted) { d.setStatus('idle'); return reply(true); }
+          // The driver's own timeouts are counted in simulated time; a machine that stands still never
+          // reaches them, so a wall clock backs them up.
+          let wall; const late = new Promise((res) => { wall = setTimeout(() => res('wall'), 8000); });
+          const r = await Promise.race([this.withMachine(() => d.stop()).catch(() => 'err'), late]);
+          clearTimeout(wall);
+          if ((r === 'wall' || r === 'err') && d.booted) d.powerOff('stop timed out');
+          if (!d.booted) this.stop();
+          return reply(true);
+        }
         case 'cmd': return reply(await this.withMachine(() => this.driver.cmd(m.obj)));
-        case 'info': return reply(await this.withMachine(() => this.driver.info()));
+        case 'info': if (!this.driver.booted) return reply({ name: 'esp32sim', board: this.driver.board, status: 'idle' });   // 未開機：不要為了問版本讓迴圈空轉
+          return reply(await this.withMachine(() => this.driver.info()));
         case 'setPin': return reply(this.driver.setPin(m.gpio, m.level));
         case 'releasePin': this.driver.releasePin(m.gpio); return reply(true);
         case 'setAnalog': return reply(this.driver.setAnalog(m.gpio, m.volts));
@@ -73,9 +90,10 @@ export class DriverHost {
   stop() { this.running = false; this.turbo = false; }
   /// Run `fn` (which awaits the machine's REPL) with the machine advancing, even while paused.
   async withMachine(fn) {
-    const wasRunning = this.running;
+    if (!this.driver.booted || this.driver.halted) throw new Error('not booted');
+    const wasRunning = this.running, gen = this.bootGen;
     if (!wasRunning) { this.resync(); this.running = true; this.startLoop(); }
-    try { return await fn(); } finally { if (!wasRunning) this.running = false; }
+    try { return await fn(); } finally { if (!wasRunning && gen === this.bootGen) this.running = false; }
   }
   resync() { this.t0 = now(); this.cycles0 = this.core.cycles(); }
   startLoop() { if (!this.timer) this.timer = setTimeout(() => this.loop(), 0); }
@@ -83,7 +101,7 @@ export class DriverHost {
   loop() {
     this.timer = null;
     if (DEBUG) process.stderr.write(`[host] loop turbo=${this.turbo} running=${this.running} cycles=${this.core && this.core.cycles()} mode=${this.driver && this.driver.mode}\n`);
-    if (!this.driver || (!this.running && !this.turbo)) return;
+    if (!this.driver || !this.core || !this.core.emu || (!this.running && !this.turbo)) { this.running = this.running && !!(this.core && this.core.emu); return; }
     const d = this.driver, hz = this.core.cpuHz;
     const t = now();
     if (this.turbo) {

@@ -2,7 +2,7 @@
 // 畫布：拖放元件、腳位拉線（可加轉折點、選色、標籤）、麵包板吸附與導通提示、格線吸附、平移縮放（滾輪／兩指）、多選、對齊、復原重做。
 // 執行：透過 engine.js 的共用介面（docs/sim-engine-api.md），腳位事件 → 電路解法（circuit.js）→ 元件畫面與回灌輸入。
 import { CATALOG, PIN_TABLE, DEVKIT_PINMAP, DEVKIT_PINS, BOARD_ART } from "./catalog.js";
-import { solve, BOARDS, PARTS, DYNAMIC_TYPES, gpioName, vLogic } from "./circuit.js";
+import { solve, dynDt, BOARDS, PARTS, DYNAMIC_TYPES, gpioName, vLogic } from "./circuit.js";
 import { BREADBOARD, holeAt } from "./breadboard.js";
 import { toWokwiDiagram, fromWokwiDiagram } from "./diagram.js";
 import { createEngine, engineForBoard } from "./engine.js";
@@ -32,7 +32,10 @@ export function createSimulator(opts) {
   let engineBoard = null;
   let inputSent = {}, analogSent = {}, syncingIO = false, runGen = 0, bootInFlight = null;
   /* 一次只能有一個開機：真韌體開機約 2 秒，開機中又按執行（或換範例）時兩次開機交疊，舊的那次完成時會把新程式停掉（2026-11-09 第 2 輪抓到） */
-  async function oneBoot(fn) { while (bootInFlight) { try { await bootInFlight; } catch (e) {} } const p = fn(); bootInFlight = p; try { return await p; } finally { if (bootInFlight === p) bootInFlight = null; } }   // 上次送給引擎的輸入電位；不能拿引擎回報的 pinState.level 判斷（真韌體回報可能是舊值，會漏送，2026-11-09）   // 使用者為 ESP32 板子選的引擎（UNO 一律用引擎 C）
+  async function oneBoot(fn) { while (bootInFlight) { try { await bootInFlight; } catch (e) {} } const p = Promise.resolve().then(fn); bootInFlight = p; emitStatus(); try { return await p; } finally { if (bootInFlight === p) { bootInFlight = null; emitStatus(); } } }
+  function emitStatus(extra) { onStatus({ running, powered, booting: !!bootInFlight, ...(extra || {}) }); }   /* 介面的執行／停止鈕、狀態文字都看這三個旗標；每次都三個一起送，不會只更新一半 */
+  async function stopEngine(e) { if (!e) return true; let t; try { return await Promise.race([Promise.resolve().then(() => e.stop()), new Promise((r) => { t = setTimeout(() => r(false), 12000); })]); } catch (err) { return false; } finally { clearTimeout(t); } }   /* 引擎停不下來（丟例外、不回覆）也不能把介面卡住 */
+  function powerDown() { runGen++; powered = false; running = false; stepV = {}; dynState = {}; tick(); emitStatus(); }   /* 不是使用者按停止的斷電（換板子、換引擎、載入別的電路、重置） */   // 上次送給引擎的輸入電位；不能拿引擎回報的 pinState.level 判斷（真韌體回報可能是舊值，會漏送，2026-11-09）   // 使用者為 ESP32 板子選的引擎（UNO 一律用引擎 C）
   let hlWires = new Set();          // 步驟提示：高亮的線
   let cards = null;                 // part_cards.json（說明小卡與腳位說明）
   const partRuntime = {};           // 元件層的執行期狀態（解碼器畫面、燈條顏色、步進角度）
@@ -236,8 +239,8 @@ export function createSimulator(opts) {
   let lastStructure = "";
   // ---------- 暫態時間步進（電容、555）：有這類元件時每一幀走好幾個 dt，探針記錄節點電壓給示波器 ----------
   let dynState = {}, dynLoop = null, simT = 0, dynLastReal = 0, dynLag = 0; const PROBE_MAX = 4000, FRAME_BUDGET_MS = 10;
-  // 步長：只有電容（RC）用 1 ms 就很準；有 555 用 0.2 ms（音頻 555 追不上即時就放慢，不會卡住畫面）
-  const dtFor = () => { let dt = 1e-3; for (const p of Object.values(doc.parts)) { if (p.type === "ne555") dt = Math.min(dt, 2e-4); if (p.type === "acsource") dt = Math.min(dt, 1 / ((parseFloat(p.attrs?.freq) || 50) * 50)); } return Math.max(2e-5, dt); };
+  // 步長由 circuit.js 的 dynDt 決定（電容 1 ms、交流電源每週期 50 步、555 依量到的半週期自動調；追不上即時就放慢，不會卡住畫面）
+  const dtFor = () => dynDt(doc.parts, dynState, simT);
   let netsCache = null, netsKey = "", stepV = null;
   let powered = false;   // 按 ▶ 執行（電源供應器：通電）才供電；停止＝斷電
   const probes = [];            // 節點參考（例如 "c1:+"、"board:4"）
@@ -301,7 +304,7 @@ export function createSimulator(opts) {
       for (const [g, lv] of Object.entries(r.inputs)) { if (boardButtons().includes(Number(g))) continue; const ps = pinState[g]; const isIn = ps ? ps.mode === "in" : engine.kind === "esp32sim" && wiredG.has(Number(g)); /* 真韌體不回報哪些腳是輸入（ESP32 每支腳輸入功能都開著）：沒設成輸出／PWM 的腳一律當輸入同步，否則電路電位永遠送不進去（2026-11-09） */ if (isIn && (inputSent[g] !== lv || (ps && ps.level === -1))) { inputSent[g] = lv; if (ps) ps.level = lv; engine.setPin(Number(g), lv); } }
       const VL = vLogic(doc.board);
       for (const [g, raw] of Object.entries(r.adc)) { const ps = pinState[g]; const isAdc = ps ? ps.mode === "adc" || (engine.kind === "esp32sim" && ps.mode === "in" && wiredG.has(Number(g))) : engine.kind === "esp32sim" && wiredG.has(Number(g)); /* 真韌體不一定回報 ADC 模式（T-Display S3 的 GPIO1）：沒設成輸出的腳類比電壓也照送 */ if (!isAdc) continue; const v = raw / 4095 * VL; if (Math.abs((analogSent[g] ?? -1) - v) > 0.002) { analogSent[g] = v; if (ps) ps.analog = v; engine.setAnalog(Number(g), v); } }
-      if (shortNets.length && running && !stoppedForShort) { stoppedForShort = true; engine.stop(); onEvent({ t: "err", s: "⚠ 短路：模擬已暫停，畫紅的線就是直通的路徑。修好接線再按執行。\n" }); }
+      if (shortNets.length && running && !stoppedForShort) { stoppedForShort = true; stopEngine(engine).then(() => emitStatus()); onEvent({ t: "err", s: "⚠ 短路：模擬已暫停，畫紅的線就是直通的路徑。修好接線再按執行。\n" }); }
       if (!shortNets.length) stoppedForShort = false;
       } finally { syncingIO = false; }
     }
@@ -398,7 +401,7 @@ export function createSimulator(opts) {
         if (running && c.interact && !wireMode) { interactStart(id, ev); select(id); return; }
         select(id, ev.shiftKey);
       } else select(id, ev.shiftKey);
-      if (t.closest && t.closest(".bbtn")) { const g = Number(t.closest(".bbtn").dataset.gpio); pressedButtons.add(g); if (engine) engine.pressButton(g); applyState(); drag = { kind: "bbtn", gpio: g }; viewport.setPointerCapture(ev.pointerId); return; }
+      if (t.closest && t.closest(".bbtn")) { const g = Number(t.closest(".bbtn").dataset.gpio); pressedButtons.add(g); if (engine && powered) engine.pressButton(g); /* 沒通電時按板上的鍵（UNO 的 RESET）不會把程式跑起來 */ applyState(); drag = { kind: "bbtn", gpio: g }; viewport.setPointerCapture(ev.pointerId); return; }
       if (running && id !== "board" && id !== "bb") return;
       ev.preventDefault(); viewport.setPointerCapture(ev.pointerId);
       const [wx, wy] = toWorld(...evPt(ev));
@@ -501,7 +504,7 @@ export function createSimulator(opts) {
   function snapshot() { return JSON.stringify({ board: doc.board, boardAttrs: doc.boardAttrs || null, parts: doc.parts, wires: doc.wires, boardPos: doc.boardPos, breadboard: doc.breadboard, schematic: doc.schematic || null, perfboard: doc.perfboard || null }); }
   let lastSnap = snapshot();
   function pushUndo() { const s = snapshot(); if (s === lastSnap) return; undoStack.push(lastSnap); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; lastSnap = s; onStatus({ undo: undoStack.length, redo: redoStack.length }); }
-  function restore(s) { resetDynamic(); const d = JSON.parse(s); doc.board = d.board; doc.boardAttrs = d.boardAttrs || null; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] });  if (engine && (engineForBoard(doc.board, lastEngineKind) !== engine.kind || engineBoard !== doc.board)) { api._attaching = api.attach(doc.board, lastEngineKind).catch((e) => console.error("換板子重接引擎失敗", e)).finally(() => { api._attaching = null; }); } }
+  function restore(s) { resetDynamic(); const d = JSON.parse(s); doc.board = d.board; doc.boardAttrs = d.boardAttrs || null; doc.parts = d.parts; doc.wires = d.wires; doc.boardPos = d.boardPos; doc.breadboard = d.breadboard; doc.schematic = d.schematic || null; doc.perfboard = d.perfboard || null; lastSnap = s; selection = new Set(); render(); tick(); onStatus({ undo: undoStack.length, redo: redoStack.length, board: doc.board, selected: null, selection: [] });  if (engine && (engineForBoard(doc.board, lastEngineKind) !== engine.kind || engineBoard !== doc.board)) { api.attach(doc.board, lastEngineKind).catch((e) => console.error("換板子重接引擎失敗", e)); } }
   // ---------- 自動整線（router.js）：直角、避開元件、並行線錯開 ----------
   let autoWire = (() => { try { return localStorage.getItem("sim.autowire") !== "0"; } catch { return true; } })();
   function obstacles() { return bounds().items.map((it) => ({ id: it.id, x: it.x, y: it.y, w: it.w, h: it.h, soft: it.id === "board" || it.id === "bb" })); }   // soft＝板子／麵包板：腳位在本體裡面，線可以穿；元件本體則要繞
@@ -624,7 +627,7 @@ export function createSimulator(opts) {
     redo() { if (!redoStack.length) return; undoStack.push(lastSnap); restore(redoStack.pop()); },
     clear() { pushUndo(); doc.parts = {}; doc.wires = []; doc.breadboard = null; burned = new Set(); pushUndo(); render(); tick(); select(null); },
     async setBoard(kind) { if (!BOARDS[kind]) return; pushUndo(); doc.board = kind; doc.wires = doc.wires.filter((w) => !w.a.startsWith("board:") && !w.b.startsWith("board:")); clearOfBoard(); pushUndo(); render(); if (engine) await api.attach(kind, engineForBoard(kind, lastEngineKind)); tick(); onStatus({ board: kind }); },
-    load(d) { powered = false; restore(JSON.stringify({ board: d.board || "tqt_pro", boardAttrs: d.boardAttrs || null, parts: d.parts || {}, wires: (d.wires || []).map((w) => ({ pts: [], ...w })), boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null, schematic: d.schematic || null, perfboard: d.perfboard || null })); burned = new Set(); undoStack.length = 0; redoStack.length = 0; for (const k of Object.keys(ui)) delete ui[k]; },
+    load(d) { if (running || powered || bootInFlight) api.stop().catch(() => {}); /* 執行中載入別的電路：舊程式要停，不能在背後繼續跑 */ powered = false; restore(JSON.stringify({ board: d.board || "tqt_pro", boardAttrs: d.boardAttrs || null, parts: d.parts || {}, wires: (d.wires || []).map((w) => ({ pts: [], ...w })), boardPos: d.boardPos || { x: 60, y: 40 }, breadboard: d.breadboard ?? null, schematic: d.schematic || null, perfboard: d.perfboard || null })); burned = new Set(); undoStack.length = 0; redoStack.length = 0; for (const k of Object.keys(ui)) delete ui[k]; },
     save() { return JSON.parse(snapshot()); },
     exportWokwi() { return toWokwiDiagram(api.save()); },
     importWokwi(json) { api.load(fromWokwiDiagram(json)); },
@@ -656,40 +659,54 @@ export function createSimulator(opts) {
     // ---------- 執行 ----------
     get engine() { return engine; }, get vb() { return engine && engine._vb; },
     async attach(kind, engineKind) {
-      api.attachLog.push(`attach ${kind || doc.board} busy=${api._attachBusy} running=${!!(engine && engine.running)}`); api._attachBusy++;
-      try { return await api._attachBody(kind, engineKind); } finally { api._attachBusy--; }
+      /* 一次只做一個：兩個 attach 交錯會各建一個引擎、其中一個沒人釋放，畫面接到的可能是舊的那個 */
+      const seq = ++api._attachSeq, prev = api._attachTail || Promise.resolve();
+      const p = prev.then(async () => {
+        const boardAtStart = doc.board;
+        api.attachLog.push(`attach ${kind || doc.board} busy=${api._attachBusy} running=${!!(engine && engine.running)}`); api._attachBusy++;
+        try {
+          let e = await api._attachBody(kind, engineKind);
+          /* 建引擎的期間電路又換了板子（復原、載入範例）而且後面沒有排隊的 attach：照現在的板子再接一次 */
+          if (seq === api._attachSeq && doc.board !== boardAtStart && (engineBoard !== doc.board || engineForBoard(doc.board, lastEngineKind) !== engine.kind)) e = await api._attachBody(doc.board, lastEngineKind);
+          return e;
+        } finally { api._attachBusy--; }
+      });
+      const tail = p.then(() => {}, () => {}); api._attachTail = tail;
+      const done = tail.then(() => { if (api._attaching === done) api._attaching = null; }); api._attaching = done;
+      return p;
     },
-    attachLog: [], _attachBusy: 0,
+    attachLog: [], _attachBusy: 0, _attachSeq: 0, _attachTail: null, _attaching: null,
     async _attachBody(kind, engineKind) {
-      if (bootInFlight) { try { await bootInFlight; } catch (e) {} }   /* 開機中不能拆引擎 */
-      if (engine) { try { await engine.stop(); } catch (e) {} try { if (engine.dispose) await engine.dispose(); } catch (e) {} }   /* 舊引擎要釋放：真韌體引擎每個實體有自己的 wasm 記憶體（模擬 flash＋PSRAM），不釋放換幾次板子 App 的 WebView 就崩潰重載（2026-11-09） */
+      if (powered || running || bootInFlight) powerDown();   /* 換板子／換引擎＝斷電；開機到一半的那次執行也作廢 */
+      if (engine) { const old = engine; await oneBoot(() => stopEngine(old));   /* 開機中不能拆引擎：排在開機後面 */ try { if (engine.dispose) await engine.dispose(); } catch (e) {} }   /* 舊引擎要釋放：真韌體引擎每個實體有自己的 wasm 記憶體（模擬 flash＋PSRAM），不釋放換幾次板子 App 的 WebView 就崩潰重載（2026-11-09） */
       for (const id of Object.keys(attached)) { attached[id](); delete attached[id]; delete partRuntime[id]; }   // 換引擎：元件層全部重新登記到新引擎
       const want = engineKind || opts.engine || "micropython-wasm";
       if (!engineForBoard(kind || doc.board, want).startsWith("arduino")) lastEngineKind = want;   // UNO 用的引擎 C 不算使用者選的；換回 ESP32 板子時用回原本的
       const ek = engineForBoard(kind || doc.board, want);
-      engine = await createEngine(ek, { board: kind || doc.board, onProgress: opts.onProgress });
+      engine = await createEngine(ek, { board: kind || doc.board, onProgress: opts.onProgress }); const me = engine;   /* 舊引擎晚到的事件不能改到新引擎的狀態 */
       engineBoard = kind || doc.board; inputSent = {}; analogSent = {};   // 引擎是照哪塊板子建的；載入別塊板子的範例時要重建
       pinState = engine.pins();
       const touch = (g) => (pinState[g] = pinState[g] || { mode: "in", level: 0, pull: 0, pwm: null });
       engine.on("pinmode", (g, mode, pull) => { const s = touch(g); s.mode = mode; s.pull = pull; s.idle = false; if (mode === "in") s.level = -1; /* 下一次求解一定回灌輸入電位（引擎 C 的上拉預設讀 1） */ tick(); });
       engine.on("pin", (g, level) => { const s = touch(g); s.level = level; s.idle = false; tick(); });
       engine.on("pwm", (g, hz, duty) => { touch(g).pwm = hz > 0 ? { freq: hz, duty16: Math.round(duty * 65535) } : null; tick(); });
-      engine.on("state", (st) => { running = st === "running"; onStatus({ running, engineState: st }); });
+      engine.on("state", (st) => { if (engine !== me) return; running = st === "running"; emitStatus({ engineState: st }); });
       let bootQuiet = engine.kind === "esp32sim";   // 真韌體開機期間（ROM 訊息、raw REPL 回應）不進主控台，第一個 start 之後才顯示
-      engine.on("console", (m) => { if (m.t === "start") bootQuiet = false; if (bootQuiet && m.t === "out") return; onEvent(m); });
+      engine.on("halt", () => { if (engine !== me || !powered) return; powerDown(); onEvent({ t: "done", ok: true, halted: true }); });   /* 深度睡眠、machine.reset()：板子自己停機＝斷電，介面要跟著回到未通電 */
+      engine.on("console", (m) => { if (engine !== me) return; if (m.t === "start") bootQuiet = false; if (bootQuiet && m.t === "out") return; onEvent(m); });
       engine._setBootQuiet = (v) => { bootQuiet = v && engine.kind === "esp32sim"; };
       engine.on("screen", () => { screenDirty = true; applyState(); });
       onStatus({ engine: engine.kind, capabilities: engine.capabilities, engineKind: ek }); syncAttachments(); tick(); return engine;
     },
-    async run(code, name) { if (api._attaching) await api._attaching; if (!engine) await api.attach(); powered = true; burned = new Set(); stoppedForShort = false; tick(); if (shortNets.length) { powered = false; tick(); toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } ensureDynLoop(); if (engine._setBootQuiet) engine._setBootQuiet(true); const gen = ++runGen; const r = await oneBoot(() => engine.boot({ program: code, name: name || "main.py", board: doc.board, fresh: engine.kind === "esp32sim" })); if (gen !== runGen || !powered) { try { await engine.stop(); } catch (e) {} return { ok: false, msg: "stopped" }; } /* 開機中（真韌體約 2 秒）就按了停止：開機完成後程式不能照跑 */ /* 真韌體：▶＝通電＝重開機，否則上一支程式的腳位、PWM 通道、I2C 都留著（2026-11-09 真韌體全範例檢查抓到） */ pinState = engine.pins(); inputSent = {}; analogSent = {}; tick();   /* 新程式：上一支程式用過的腳回到「沒碰過」，輸入電位全部重送 */ if (r.ok) { running = true; onStatus({ running, powered }); } return r; },
+    async run(code, name) { while (api._attaching) await api._attaching; if (!engine) await api.attach(); powered = true; burned = new Set(); stoppedForShort = false; tick(); if (shortNets.length) { powered = false; tick(); toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } ensureDynLoop(); if (engine._setBootQuiet) engine._setBootQuiet(true); const gen = ++runGen; const r = await oneBoot(() => engine.boot({ program: code, name: name || "main.py", board: doc.board, fresh: engine.kind === "esp32sim" })); if (gen !== runGen || !powered) { emitStatus(); return { ok: false, msg: "stopped" }; } /* 開機中（真韌體約 2 秒）就按了停止：開機完成後程式不能照跑 */ /* 真韌體：▶＝通電＝重開機，否則上一支程式的腳位、PWM 通道、I2C 都留著（2026-11-09 真韌體全範例檢查抓到） */ pinState = engine.pins(); inputSent = {}; analogSent = {}; tick();   /* 新程式：上一支程式用過的腳回到「沒碰過」，輸入電位全部重送 */ if (r.ok) { running = true; emitStatus(); } else { powered = false; running = false; tick(); emitStatus(); } /* 沒跑起來（語法錯誤、開機失敗）就不算通電 */ return r; },
     /** Arduino UNO（引擎 C）：開機跑一份 Intel HEX（範例預編譯的或使用者匯入的）。hex＝文字；name＝顯示用檔名 */
-    async runHex(hex, name) { if (api._attaching) await api._attaching; if (!engine || !engine.capabilities.hex) await api.attach(doc.board); if (!engine.capabilities.hex) return { ok: false, msg: "這塊板子不能跑 .hex" }; powered = true; burned = new Set(); stoppedForShort = false; tick(); if (shortNets.length) { powered = false; tick(); toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } ensureDynLoop(); const r = await engine.boot({ hex, name: name || "sketch.hex", board: doc.board }); pinState = engine.pins(); inputSent = {}; analogSent = {}; tick(); /* 新開機：上一份程式用過的腳全部回到「沒碰過」 */ if (r.ok) { running = true; onStatus({ running }); } return r; },
+    async runHex(hex, name) { while (api._attaching) await api._attaching; if (!engine || !engine.capabilities.hex) await api.attach(doc.board); if (!engine.capabilities.hex) return { ok: false, msg: "這塊板子不能跑 .hex" }; powered = true; burned = new Set(); stoppedForShort = false; tick(); if (shortNets.length) { powered = false; tick(); toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } ensureDynLoop(); const gen = ++runGen; const r = await oneBoot(() => engine.boot({ hex, name: name || "sketch.hex", board: doc.board })); if (gen !== runGen || !powered) { emitStatus(); return { ok: false, msg: "stopped" }; } pinState = engine.pins(); inputSent = {}; analogSent = {}; tick(); /* 新開機：上一份程式用過的腳全部回到「沒碰過」 */ if (r.ok) { running = true; emitStatus(); } else { powered = false; running = false; tick(); emitStatus(); } return r; },
     /** 直接開機跑一個韌體映像（Arduino 合併 bin；只有引擎 B）：id 相對 sim-engine/，例如 "arduino/t_qt_weather_clock.bin" */
-    async runFirmware(id) { if (api._attaching) await api._attaching; if (!engine) await api.attach(); if (!engine.capabilities.arduino) { toast("快速引擎不能跑 Arduino 映像，請切到真韌體引擎", "warn"); return { ok: false, msg: "engine" }; } powered = true; burned = new Set(); stoppedForShort = false; tick(); if (shortNets.length) { powered = false; tick(); toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } ensureDynLoop(); if (engine._setBootQuiet) engine._setBootQuiet(false); const gen = ++runGen; const r = await oneBoot(() => engine.boot({ firmware: "arduino:" + id, board: doc.board, fresh: true })); if (gen !== runGen || !powered) { try { await engine.stop(); } catch (e) {} return { ok: false, msg: "stopped" }; } inputSent = {}; analogSent = {}; tick(); if (r.ok) { running = true; onStatus({ running }); } return r; },
-    async stop() { runGen++; powered = false; stepV = {}; dynState = {}; tick();   /* 斷電：不沿用斷電前的電壓／555 狀態，電容也放掉 */ if (engine && engine.kind === "none") { running = false; onStatus({ running, powered }); return true; } if (!engine) return true; if (bootInFlight) { try { await bootInFlight; } catch (e) {} }   /* 開機中按停止：等開機完成再停，舊程式不會趁空檔跑起來、把「執行」鈕卡成反灰（2026-11-09 第 2 輪） */ const ok = await engine.stop(); running = false; if (engine.capabilities.hex) { pinState = engine.pins(); tick(); } onStatus({ running }); return ok; },
+    async runFirmware(id) { while (api._attaching) await api._attaching; if (!engine) await api.attach(); if (!engine.capabilities.arduino) { toast("快速引擎不能跑 Arduino 映像，請切到真韌體引擎", "warn"); return { ok: false, msg: "engine" }; } powered = true; burned = new Set(); stoppedForShort = false; tick(); if (shortNets.length) { powered = false; tick(); toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } ensureDynLoop(); if (engine._setBootQuiet) engine._setBootQuiet(false); const gen = ++runGen; const r = await oneBoot(() => engine.boot({ firmware: "arduino:" + id, board: doc.board, fresh: true })); if (gen !== runGen || !powered) { emitStatus(); return { ok: false, msg: "stopped" }; } inputSent = {}; analogSent = {}; tick(); if (r.ok) { running = true; emitStatus(); } else { powered = false; running = false; tick(); emitStatus(); } return r; },
+    async stop() { runGen++; powered = false; stepV = {}; dynState = {}; tick();   /* 斷電：不沿用斷電前的電壓／555 狀態，電容也放掉 */ if (!engine || engine.kind === "none") { running = false; emitStatus(); return true; } const e = engine; let ok = false; try {   /* 開機中按停止：等開機完成再停，舊程式不會趁空檔跑起來、把「執行」鈕卡成反灰（2026-11-09 第 2 輪） */ ok = await oneBoot(() => stopEngine(e)); /* 停止也排進同一條隊伍：開機中按停止要等開機完，停到一半又按執行要等停完，兩個不能同時進引擎 */ } finally { if (engine === e && !powered) { running = false; if (e.capabilities.hex) { try { pinState = e.pins(); } catch (err) {} tick(); } } emitStatus(); } /* 引擎停不下來也要把介面還給使用者 */ return ok; },
     pause() { if (engine) engine.pause(); },
     step() { if (engine) engine.step(); },
-    async reset() { if (engine) await engine.reset(); for (const k of Object.keys(ui)) delete ui[k]; burned = new Set(); pinState = engine ? engine.pins() : {}; for (const id of Object.keys(partRuntime)) { const rt = partRuntime[id]; if (rt.decoder) { const T = rt.decoder.constructor; partRuntime[id] = {}; } else partRuntime[id] = {}; } for (const id of Object.keys(attached)) { attached[id](); delete attached[id]; } syncAttachments(); tick(); },
+    async reset() { runGen++; powered = false; stepV = {}; dynState = {}; if (engine) { const e = engine; try { await oneBoot(() => e.reset()); } catch (err) {} } running = false; /* 重置＝板子回到沒有程式在跑的狀態，要按 ▶ 才會再通電；開機中按重置要排在開機後面，不能兩個同時進引擎 */ for (const k of Object.keys(ui)) delete ui[k]; burned = new Set(); pinState = engine ? engine.pins() : {}; for (const id of Object.keys(partRuntime)) { const rt = partRuntime[id]; if (rt.decoder) { const T = rt.decoder.constructor; partRuntime[id] = {}; } else partRuntime[id] = {}; } for (const id of Object.keys(attached)) { attached[id](); delete attached[id]; } syncAttachments(); tick(); emitStatus(); },
     partRuntime, ui,
     // 探針（示波器用）：節點參考，例如 "c1:+"、"u1:OUT"、"board:4"
     get probes() { return probes.slice(); },
@@ -698,7 +715,7 @@ export function createSimulator(opts) {
     clearProbes() { for (const k of Object.keys(probeData)) probeData[k] = []; },
     get probeData() { return probeData; }, get simTime() { return simT; }, get hasDynamic() { return hasDyn(); },
     /** 節點目前電壓（對 GND） */
-    async check(code) { if (!engine) await api.attach(); return engine.check(code); },
+    async check(code) { while (api._attaching) await api._attaching; if (!engine) await api.attach(); const e = engine; return oneBoot(() => e.check(code)); },   /* 開機中按檢查要排隊 */
     cmd(c) { if (engine) engine.cmd(c); },
   };
   applyView(); render();

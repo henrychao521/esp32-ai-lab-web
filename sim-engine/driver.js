@@ -72,6 +72,7 @@ export class LabDriver {
   /// `firmware`/`rom` are Uint8Arrays; `i2c` the addresses to answer on both buses (null = DEFAULT_I2C).
   async boot({ board = 'tqt_pro', firmware, rom, flashAt, i2c = null, raw = false, promptTimeoutS = 25 }) {
     const cfg = BOARDS[board]; if (!cfg) throw new Error(`unknown board ${board}`);
+    this.failPending(new Error('superseded by a new boot'));   // 上一次開機／指令還在等的全部退回，否則永遠不回覆（重疊開機卡死，2026-11-10）
     this.cfg = cfg; this.board = board; this.booted = false; this.rawMode = false; this.mode = 'normal';
     this.uartQ = []; this.cmdQ = []; this.cur = null; this.waiters = []; this.inputs = []; this.rawBuf = ''; this.lineBuf = ''; this.outBatch = '';
     this.deadlineCycle = Infinity; this.atDeadline = false; this.halted = 0; this.pinState = {}; this.screen = null; this.leds = null;
@@ -148,14 +149,44 @@ export class LabDriver {
     this.programName = name; this.setStatus('running');
     return { ok: true, msg: 'started' };
   }
-  /// Cooperative stop through `lab._stop`; true when the runner reported `done` within `timeoutUs`.
+  /// Cooperative stop through `lab._stop` first; a program that does not report `done` within
+  /// `timeoutUs` (busy loop, time.sleep, IRQs off) gets the power cut. Always ends stopped.
   async stop(timeoutUs = 3e6) {
+    if (this.halted || !this.booted) { this.setStatus('idle'); return true; }
     if (this.status !== 'running') return true;
     const done = this.waitLab((o) => o.t === 'done', timeoutUs).then(() => true, () => false);
-    await this.rawCommand('runner.stop()\n');
-    const ok = await done;
-    if (ok) this.setStatus('idle');
-    return ok;
+    this.rawCommand('runner.stop()\n', 2e6).catch(() => {});
+    if (await done) { this.setStatus('idle'); return true; }
+    if (this.booted && !this.halted) this.powerOff('program did not stop');
+    return true;
+  }
+  /// Reject everything still waiting on the machine (waiters, the command in flight, queued commands).
+  failPending(err) {
+    const ws = this.waiters, c = this.cur, q = this.cmdQ;
+    this.waiters = []; this.cur = null; this.cmdQ = [];
+    for (const w of ws) if (!w.done) { w.done = true; w.reject(err); }
+    if (c) c.reject(err);
+    for (const x of q) x.reject(err);
+  }
+  /// Hard stop: the machine is switched off where it stands; the next boot starts it again.
+  powerOff(reason = 'power off') {
+    const wasRunning = this.status === 'running';
+    this.booted = false; this.rawMode = false; this.mode = 'normal'; this.inputs = []; this.uartQ = [];
+    this.halted = 97;                                  // advance() does nothing from here on
+    this.failPending(new Error(reason));
+    this.log(`[driver] power off: ${reason}`);
+    if (wasRunning) this.emit('console', { t: 'done', ok: true, stopped: true });
+    this.setStatus('idle');
+    this.emit('off', { reason });
+  }
+  /// The chip stopped by itself (machine.reset(), deep sleep, a fault): nothing will answer any more.
+  onHalt(code) {
+    const wasRunning = this.status === 'running';
+    this.halted = code; this.booted = false; this.rawMode = false;
+    this.failPending(new Error(`machine halted (code ${code})`));
+    this.emit('halt', { code });
+    if (wasRunning) this.emit('console', { t: 'done', ok: true, halted: true });
+    this.setStatus('idle');
   }
   /// A remote-control / vision command for `lab.on_cmd`.
   async cmd(obj) {
@@ -176,7 +207,7 @@ export class LabDriver {
     if (st && (st.mode === 'out' || st.mode === 'pwm')) return false;     // the chip drives it
     this.core.gpio(gpio, level ? 1 : 0); return true;
   }
-  releasePin(gpio) { this.core.gpio(gpio, 2); }
+  releasePin(gpio) { if (!this.core || !this.core.emu) return false; this.core.gpio(gpio, 2); return true; }
   /// The canvas convention (engine A): raw = 4095 * V / 3.3; the firmware's read_uv applies the S3 curve to that count.
   setAnalog(gpio, volts) {
     if (!this.core || !this.core.emu) return false;   // 還沒開機：emu=0 傳進 wasm 會卡死（App 主執行緒整頁凍住，2026-11-09）
@@ -192,11 +223,12 @@ export class LabDriver {
   }
   pressButton(nameOrGpio, ms) {
     const gpio = this.buttonPin(nameOrGpio); if (gpio === null) return false;
+    if (!this.core || !this.core.emu) return false;   // 還沒開機
     this.core.gpio(gpio, 0);
     if (ms !== undefined && ms !== null) this.inputs.push({ atCycle: this.cycles + this.usToCycles(ms * 1000), fn: () => this.core.gpio(gpio, 1) });
     return true;
   }
-  releaseButton(nameOrGpio) { const gpio = this.buttonPin(nameOrGpio); if (gpio === null) return false; this.core.gpio(gpio, 1); return true; }
+  releaseButton(nameOrGpio) { const gpio = this.buttonPin(nameOrGpio); if (gpio === null) return false; if (!this.core || !this.core.emu) return false; this.core.gpio(gpio, 1); return true; }
   /// Bytes straight into UART0 (serial-monitor input, or a raw firmware's console).
   uartWrite(text) { this.sendBytes(typeof text === 'string' ? enc.encode(text) : text); }
   i2cRegister(bus, addr) { return this.core.i2cAttach(bus, addr); }
@@ -216,6 +248,7 @@ export class LabDriver {
   }
   /// Run one raw-REPL command (Python source without the trailing Ctrl-D); resolves `{ out, err }`.
   rawCommand(code, timeoutUs = 30e6, quiet = false) {
+    if (this.halted || !this.core || !this.core.emu) return Promise.reject(new Error('machine is off'));
     return new Promise((resolve, reject) => { this.cmdQ.push({ code, resolve, reject, timeoutUs, quiet }); this.pumpCmd(); });
   }
   pumpCmd() {
@@ -322,9 +355,9 @@ export class LabDriver {
       const want = Math.max(1, Math.floor(Math.min(next - cur, 4_000_000)));
       const rc = this.core.run(want);
       const before = cur; cur = this.cycles;
-      if (cur === before) { if (++this.stalls > 100) { this.halted = 98; this.log(`[driver] machine makes no progress (run ${want} at cycle ${cur}, rc ${rc})`); this.emit('halt', { code: 98 }); break; } } else this.stalls = 0;
+      if (cur === before) { if (++this.stalls > 100) { this.log(`[driver] machine makes no progress (run ${want} at cycle ${cur}, rc ${rc})`); this.onHalt(98); break; } } else this.stalls = 0;
       this.drain();
-      if (rc !== 0) { this.halted = rc; this.emit('halt', { code: rc }); this.log(`[driver] machine stopped: code ${rc}`); break; }
+      if (rc !== 0) { this.log(`[driver] machine stopped: code ${rc}`); this.onHalt(rc); break; }
       this.checkWaiters(cur);
     }
     this.deliverDue(cur);

@@ -470,14 +470,14 @@ const sim = createSimulator({
     if (m.t === "out") { log(m.s.replace(/\n$/, "")); serialLog(m.s.replace(/\n$/, "")); }
     else if (m.t === "err") { log(m.s.replace(/\n$/, ""), "err"); showPane("console"); }
     else if (m.t === "start") log("▶ 開始執行 " + m.file, "sys");
-    else if (m.t === "done") log(m.stopped ? "■ 已停止" : (m.ok ? "✓ 程式結束" : "✗ 程式因錯誤結束"), "sys");
+    else if (m.t === "done") log(m.stopped ? "■ 已停止" : m.halted ? "■ 板子停機（深度睡眠或重新開機）；按 ▶ 執行重新開機" : (m.ok ? "✓ 程式結束" : "✗ 程式因錯誤結束"), "sys");
     else if (m.t === "sensor") { Object.assign(sensors, m.v); $("sensors").textContent = Object.entries(sensors).map(([k, v]) => k + "=" + v).join("  "); log("感測值 " + JSON.stringify(m.v), "sen"); }
     else if (m.t === "display") log("🖥 " + (m.lines || []).join(" / "), "disp");
   },
   onWarnings: (ws) => { renderIssues(ws); updatePower(); },
   onHover: showTooltip,
   onStatus: (s) => {
-    if ("running" in s) { $("btn-run").disabled = s.running; $("btn-pause").disabled = !s.running; $("dot").classList.toggle("on", s.running); $("status-text").textContent = sim.doc.board === "power" ? (s.running ? "通電中（可操作開關、按鍵、旋鈕）" : "未通電：按 ▶ 通電") : s.running ? "執行中（可操作按鍵、旋鈕）" : "未通電：按 ▶ 執行開始模擬"; $("status-text").title = s.running ? "" : "按 ▶ 執行才會通電、跑程式；按停止就斷電。"; }
+    if ("running" in s) { const pw = sim.doc.board === "power", live = s.running || !!s.powered, boot = !!s.booting && !s.running; /* 三種狀態：執行中／程式結束但仍通電／未通電；開機中不能再按執行 */ $("btn-run").disabled = s.running || boot; $("btn-pause").disabled = !(live || boot); $("dot").classList.toggle("on", live); const txt = boot ? "開機中…" : pw ? (s.running ? "通電中（可操作開關、按鍵、旋鈕）" : live ? "已暫停，仍通電：按停止斷電" : "未通電：按 ▶ 通電") : s.running ? "執行中（可操作按鍵、旋鈕）" : live ? "程式已結束，仍通電：按停止斷電" : "未通電：按 ▶ 執行開始模擬"; $("status-text").textContent = txt; $("status-text").title = live || boot ? txt : "按 ▶ 執行才會通電、跑程式；按停止就斷電。"; }
     if ("selected" in s || "selection" in s) { renderProps(s); renderQuickEdit(); }
     if ("undo" in s) { $("btn-undo").disabled = !s.undo; $("btn-redo").disabled = !s.redo; }
     if ("toast" in s) toast(s.toast.text, s.toast.kind);
