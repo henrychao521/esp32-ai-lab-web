@@ -162,7 +162,18 @@ export function solve(circuit, io = {}, extraLinks = []) {
   return solveOnce(circuit, io, extraLinks);
 }
 
+// 暫態的一步若 Newton 沒收斂（電晶體翻轉的那一瞬間，正回授讓解跳很遠），把這一步切成 8 小步重算：
+// 小步之間電容電壓變化小，每一小步都接著上一小步的解走，就不會掉到不合理的解（基極 −700 V 那種）。
 function solveOnce(circuit, io = {}, extraLinks = []) {
+  const r = solveStep(circuit, io, extraLinks);
+  const dt = io.dyn && io.dyn.dt;
+  if (!r.unconverged || !(dt > 0) || io._sub) return r;
+  const K = 8; let st = io.dyn.state, pv = io.prevV, t = io.dyn.t || 0, out = r;
+  for (let k = 0; k < K; k++) { out = solveStep(circuit, { ...io, _sub: true, prevV: pv, dyn: { ...io.dyn, dt: dt / K, state: st, t } }, extraLinks); st = out.dynState; pv = out.nodeV; t += dt / K; }
+  return out;
+}
+
+function solveStep(circuit, io = {}, extraLinks = []) {
   const B = BOARDS[circuit.board] || BOARDS.devkit;
   const VL = B.vlogic || V_SUPPLY, R_OUT = B.gpioROut || GPIO_R_OUT;   // 邏輯高電壓、腳位輸出內阻（UNO 5 V／約 25 Ω）
   const N = io.nets || buildNets(circuit, extraLinks);   // 暫態每步呼叫：結構沒變就沿用上一步的網路表
@@ -295,7 +306,13 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
   // 逐次線性化：LED 先全開路；解；電壓超過 Vf 的改成「Vf 源＋10Ω」；重解直到穩定
   const ledOn = new Map();
   let nodeV = new Float64Array(n);
-  const maxIter = nonlin.some((q) => q.type === "opamp") ? 40 : 25;   // 運放換分區要多幾輪
+  // 暫態且有電晶體／二極體：Newton 從上一步的電壓出發，而不是每步都從 0 重新找解。
+  // 有正回授的電路（雙電晶體非穩態、史密特觸發）同一步可能有兩個以上的解，從 0 出發會隨機掉進其中一個（翻轉時間亂跳、隨步長變）；
+  // 接著上一步的狀態走，才是實際電路會走的那一條（2026-11-11）。
+  const hasJunction = nonlin.some((q) => q.type === "npn" || q.type === "diode");
+  if (dt > 0 && hasJunction) for (const [r, i] of idx) nodeV[i] = prevV[r] ?? 0;
+  const maxIter = nonlin.some((q) => q.type === "opamp") ? 40 : dt > 0 && hasJunction ? 60 : 25;   // 運放換分區要多幾輪；暫態的電晶體翻轉要多幾輪才收斂
+  let converged = false;
   for (let iter = 0; iter < maxIter; iter++) {
     const E = elems.slice();
     for (const L of ledList) {
@@ -306,6 +323,8 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     // 二極體／電晶體：以上一輪電壓線性化（Newton），限制一步最多跳 Vlim 以免爆炸
     const Vt = 0.02585, VLIM = 0.85;
     const Vn = (nd) => (nd === undefined || nd < 0 ? 0 : nodeV[nd]);
+    // 接面電壓限制（SPICE 的 pnjlim）：指數太陡，Newton 一步跨太大會來回震盪不收斂；新電壓超過臨界值時，改成沿對數走一小段
+    const pnj = (vnew, vold, Is, nn) => { const vt = nn * Vt, vcrit = vt * Math.log(vt / (Math.SQRT2 * Is)); if (vold === undefined || vnew <= vcrit || Math.abs(vnew - vold) <= 2 * vt) return Math.min(VLIM, vnew); if (vold > 0) { const arg = 1 + (vnew - vold) / vt; return Math.min(VLIM, arg > 0 ? vold + vt * Math.log(arg) : vcrit); } return Math.min(VLIM, vt * Math.log(vnew / vt)); };
     const dio = (va, vb, Is, nn) => { const vd = Math.min(VLIM, va - vb); const ex = Math.exp(vd / (nn * Vt)); const g = Is * ex / (nn * Vt) + 1e-9; const i = Is * (ex - 1); return { g, v: vd - i / g }; };
     let gateFlipped = false;
     for (const q of nonlin) {
@@ -332,7 +351,8 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       }
       if (q.type === "diode") { const d = dio(Vn(q.a), Vn(q.b), q.Is, q.n); E.push({ type: "V", a: q.a, b: q.b, v: d.v, g: d.g, tag: "dio:" + q.part }); }
       else {   // Ebers–Moll 傳輸模型：IF（B→E）、IR（B→C）、集極電流 IF−IR
-        const vbe = Math.min(VLIM, Vn(q.b) - Vn(q.e)), vbc = Math.min(VLIM, Vn(q.b) - Vn(q.c));
+        const vbe = dt > 0 ? pnj(Vn(q.b) - Vn(q.e), q.vbeL, q.Is, 1) : Math.min(VLIM, Vn(q.b) - Vn(q.e)), vbc = dt > 0 ? pnj(Vn(q.b) - Vn(q.c), q.vbcL, q.Is, 1) : Math.min(VLIM, Vn(q.b) - Vn(q.c));
+        q.vbeL = vbe; q.vbcL = vbc;
         const eF = Math.exp(vbe / Vt), eR = Math.exp(vbc / Vt);
         const gF = q.Is * eF / Vt + 1e-9, IF = q.Is * (eF - 1), gR = q.Is * eR / Vt + 1e-9, IR = q.Is * (eR - 1);
         E.push({ type: "V", a: q.b, b: q.e, v: vbe - IF / gF, g: gF / q.bf });   // 基極－射極二極體（除以 βF）
@@ -372,7 +392,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
       if (!on && vA - vC > vf + 0.02) { ledOn.set(L.key, true); changed = true; }
       else if (on) { const i = ((vA - vC) - vf) / 10; if (i < -1e-6) { ledOn.set(L.key, false); changed = true; } }
     }
-    if (!changed) break;
+    if (!changed) { converged = true; break; }
   }
   const V = (nd) => (nd === undefined || nd < 0 ? 0 : nodeV[nd]);
   for (const q of nonlin) {   // 555 狀態：q、上次翻轉的時間 tf、最近兩個半週期的長度 h1／h2（dynDt 用來決定步長）
@@ -499,6 +519,10 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     if (mode === "in") inputs[g] = v > VL / 2 ? 1 : 0;
     if (mode === "adc" || mode === "in") adc[g] = Math.max(0, Math.min(4095, Math.round(v / VL * 4095)));   // 0～4095 對應 0～邏輯電壓（ESP32 3.3 V、UNO 5 V）
   }
+  // 開汲極匯流排腳（I2C 的 SDA／SCL、DHT22 的資料線）：線上的電位由韌體和模組輪流拉，畫布不該把它當一般輸入硬送 0
+  const busPins = [];
+  const BUS = { ssd1306: ["DATA", "CLK"], lcd1602: ["SDA", "SCL"], dht22: ["SDA"] };
+  for (const g of B.gpios) { const mem = N.nets[N.find("board:" + g)] || []; if (mem.some((m) => { const i = m.indexOf(":"); const pt = circuit.parts[m.slice(0, i)]; return pt && BUS[pt.type] && BUS[pt.type].includes(m.slice(i + 1)); })) busPins.push(Number(g)); }
   const nodeVolt = {};
   for (const r of netIds) nodeVolt[r] = r === gndRoot ? 0 : nodeV[idx.get(r)];
   // 程式用了某支 GPIO（設成輸出／輸入／PWM／ADC），板子上那支腳卻沒接任何線：十之八九是腳位編號對錯（XIAO 的 D9 是 GPIO8）
@@ -511,7 +535,7 @@ function solveOnce(circuit, io = {}, extraLinks = []) {
     if (miss.length && circuit.board === "uno") warn("PIN_UNWIRED", "board", `程式用了 ${miss.map((n) => gpioName("uno", n)).join("、")}，但板子上這${miss.length > 1 ? "幾" : ""}支腳沒接線`, "為什麼：pinMode／digitalWrite／analogRead 用到的腳，板子上要有線接到元件，不然元件收不到訊號。", "怎麼改：把線接到板子上印著同樣名字的腳（數字 13 就是 D13、A0 就是 A0），或把程式的腳號改成你接線的那支。");
     else if (miss.length) warn("PIN_UNWIRED", "board", `程式用了 GPIO${miss.join("、GPIO")}，但板子上這${miss.length > 1 ? "幾" : ""}支腳沒接線`, "為什麼：程式裡 Pin(編號) 的編號是晶片的 GPIO 號碼，不一定等於板子上印的字（XIAO 的 D9 是 GPIO8、D10 是 GPIO9）。", "怎麼改：把線接到板子上對應這個 GPIO 的腳，或把程式的編號改成你接線那支腳的 GPIO（滑到板子腳位上可看對應）。");
   }
-  return { nets: N, nodeV: nodeVolt, parts: partState, warnings, inputs, adc, burned: [...burned], dynState: nextState };
+  return { nets: N, nodeV: nodeVolt, parts: partState, warnings, inputs, adc, busPins, burned: [...burned], dynState: nextState, unconverged: dt > 0 && hasJunction && !converged };
 }
 
 /** 修正節點分析（Norton 形式：每個電壓源＝電流源 v·g 並聯電導 g），高斯消去。a／b 為 -1 表示 GND。 */

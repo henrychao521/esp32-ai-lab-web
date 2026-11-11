@@ -57,7 +57,7 @@ export async function createEsp32simEngine(opts = {}) {
   let seq = 0; const pending = new Map();
   const state = { board: opts.board || 'tqt_pro', booted: false, bootedWith: null, status: 'idle', running: false, speed: 1,
                   tUs: 0, tWall: 0, pins: {}, screen: null, leds: null, info: { name: 'esp32sim', board: opts.board || 'tqt_pro', version: null, status: 'idle', file: null, free: null },
-                  schedules: [], deadlineSent: null, disposed: false, cfg: BOARDS[opts.board || 'tqt_pro'] };
+                  schedules: [], sensors: {}, deadlineSent: null, disposed: false, cfg: BOARDS[opts.board || 'tqt_pro'] };
   if (!state.cfg) throw new Error('unknown board ' + state.board);
 
   const onMessage = (m) => {
@@ -156,6 +156,8 @@ export async function createEsp32simEngine(opts = {}) {
     info() { if (state.booted) call('info').then((i) => Object.assign(state.info, i)).catch(() => {}); return { ...state.info }; },
     pins() { const out = {}; for (const [g, st] of Object.entries(state.pins)) out[g] = { ...st }; return out; },
     screenRGBA() { return state.screen ? state.screen.rgba : null; },
+    /// [width, height] of the board's screen: what the machine last reported, else the board's glass.
+    screenSize() { return state.screen ? [state.screen.w, state.screen.h] : state.board === 'tdisplay_s3' ? [170, 320] : state.cfg && state.cfg.screen ? [128, 128] : null; },
     leds() { return state.leds; },
 
     setPin(gpio, level) { call('setPin', { gpio, level: level ? 1 : 0 }); },
@@ -178,10 +180,20 @@ export async function createEsp32simEngine(opts = {}) {
     },
     i2cReply(bus, addr, bytes) { call('i2cReply', { bus, addr, bytes: Array.from(bytes) }); return true; },
     registerPulseSource() { return null; },
-    registerSensor() { return null; },
+    /// A DHT22 on `gpio`: `fn()` returns {temperature, humidity} or null (unpowered). The driver answers the
+    /// firmware's start signal itself (cycle-timed, in the worker), so the reading is pushed ahead of time:
+    /// at registration and every 200 ms while it stays registered. `fn` null removes the sensor.
+    registerSensor(gpio, fn) {
+      const old = state.sensors[gpio]; if (old) { clearInterval(old.timer); delete state.sensors[gpio]; }
+      if (!fn) { if (old) call('dhtSet', { gpio }).catch(() => {}); return null; }
+      const s = state.sensors[gpio] = { fn, last: undefined, timer: null };
+      const push = () => { let v = null; try { v = fn(); } catch { v = null; } const k = JSON.stringify(v); if (k !== s.last || s.fresh) { s.last = k; s.fresh = false; call('dhtSet', { gpio, data: v }).catch(() => {}); } };
+      s.timer = setInterval(push, 200); if (s.timer.unref) s.timer.unref(); push();
+      return null;
+    },
     sensorValue() { return null; },
     on(name, cb) { (subs[name] = subs[name] || []).push(cb); return () => { const a = subs[name] || []; const i = a.indexOf(cb); if (i >= 0) a.splice(i, 1); }; },
-    async dispose() { state.disposed = true; try { await call('delete'); } catch {} transport.close(); },
+    async dispose() { state.disposed = true; for (const g in state.sensors) clearInterval(state.sensors[g].timer); state.sensors = {}; try { await call('delete'); } catch {} transport.close(); },
   };
   return engine;
 }

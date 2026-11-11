@@ -9,15 +9,11 @@ export const ENGINES = {
   "arduino-avr8js": { label: "Arduino UNO（avr8js）", note: "ATmega328P 16 MHz 逐指令模擬，跑預先編譯的 .hex；時序精確、可單步；App 內不編譯 C++", module: "./engine-avr.js", boards: ["uno"] },
 };
 /** 這塊板子該用哪個引擎：UNO 一律 avr8js；ESP32 系列不能用 avr8js（退回快速引擎） */
-/** 引擎還不支援的功能（2026-11-09 真韌體全範例檢查）：回傳說明字串陣列，空陣列＝都支援。
- *  真韌體引擎（esp32sim）：經典 ESP32（DevKit）晶片沒有 I2C 模型、DHT22 感測器沒接、T-Display S3 彩色螢幕沒有驅動。 */
+/** 引擎還不支援的功能：回傳說明字串陣列，空陣列＝都支援。
+ *  真韌體引擎（esp32sim）原本缺的三項（經典 ESP32 的 I2C、DHT22、T-Display S3 螢幕）已在 2026-11-11 補上，目前沒有已知缺口；
+ *  這個函式留著當掛鉤，之後發現新的缺口再加回來。 */
 export function engineLimits(kind, board, parts, code) {
-  if (kind !== "esp32sim") return [];
-  const types = new Set(Object.values(parts || {}).map((p) => p.type)); const out = [];
-  if (types.has("dht22")) out.push("DHT22 溫濕度感測器（讀不到值）");
-  if (board === "devkit" && (types.has("ssd1306") || types.has("lcd1602"))) out.push("ESP32 DevKit 上的 I2C 螢幕（OLED、LCD1602 會出現 ENODEV）");
-  if (board === "tdisplay_s3" && /lab\.display/.test(code || "")) out.push("T-Display S3 的彩色螢幕");
-  return out;
+  return [];
 }
 
 export function engineForBoard(board, kind) {

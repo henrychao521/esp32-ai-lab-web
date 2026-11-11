@@ -14,9 +14,9 @@ export const BOARDS = {
                      buttons: { boot: 0, btn1: 0, btn_l: 0, left: 0 } },
   esp32s3_devkitc: { chip: 'esp32s3', board: 'esp32s3_devkitc', firmware: 'micropython-esp32s3', flashMb: 8,  psramMb: 2, screen: false,
                      buttons: { boot: 0, btn1: 0, btn_l: 0, left: 0 } },
-  tdisplay_s3:     { chip: 'esp32s3', board: 'tdisplay_s3',     firmware: 'micropython-esp32s3', flashMb: 16, psramMb: 8, screen: false,
+  tdisplay_s3:     { chip: 'esp32s3', board: 'tdisplay_s3',     firmware: 'micropython-esp32s3', flashMb: 16, psramMb: 8, screen: true,
                      buttons: { btn_l: 0, left: 0, boot: 0, btn1: 0, btn_r: 14, right: 14, btn2: 14, key: 14 }, battery: { gpio: 4, volts: 2.1 },
-                     note: 'octal PSRAM 與 i8080 螢幕未模擬：用四線版韌體開機，lab.display 只送文字' },
+                     note: 'octal PSRAM 與 LCD_CAM（i8080）未模擬：用四線版韌體開機；螢幕的 ST7789 改由 lab/board_tds3.py 經序列方式餵資料（170×320）' },
   devkit:          { chip: 'esp32',   board: 'devkit',          firmware: 'micropython-esp32',   flashMb: 4,  psramMb: 0, screen: false, flashAt: 0x1000,
                      buttons: { boot: 0, btn1: 0, btn_l: 0, left: 0 } },
   lab_generic:     { chip: 'esp32s3', board: 'lab_generic',     firmware: 'micropython-esp32s3', flashMb: 8,  psramMb: 2, screen: false, buttons: {} },
@@ -57,6 +57,7 @@ export class LabDriver {
     this.rawBuf = ''; this.lineBuf = ''; this.outBatch = '';
     this.waiters = [];          // [{ test(text) | lab(obj), resolve, reject, deadline }]
     this.inputs = [];           // scheduled host drives [{ atCycle, fn }]
+    this.dht = {};              // DHT22 sensors the canvas stands in for: gpio -> { data: {temperature, humidity} | null, lowAt, armedUntil }
     this.deadlineCycle = Infinity; this.atDeadline = false;
     this.screen = null; this.leds = null; this.pinState = {};
     this.halted = 0;
@@ -82,8 +83,9 @@ export class LabDriver {
     this.core.load(KIND.rom, rom);
     this.core.loadAt(flashAt ?? cfg.flashAt ?? 0, firmware);
     if (cfg.battery) this.core.analog(cfg.battery.gpio, cfg.battery.volts);
-    if (cfg.chip === 'esp32s3') for (const bus of [0, 1]) for (const a of (i2c || DEFAULT_I2C)) this.core.i2cAttach(bus, a);
+    if (cfg.chip === 'esp32s3' || cfg.chip === 'esp32') for (const bus of [0, 1]) for (const a of (i2c || DEFAULT_I2C)) this.core.i2cAttach(bus, a);
     this.core.boot();
+    for (const g in this.dht) { this.dht[g].lowAt = null; this.dht[g].armedUntil = 0; this.core.gpio(Number(g), 1); }   // DHT22 modules pull their data line up
     this.setStatus('booting');
     if (raw) { this.booted = true; this.stats.bootCycles = this.cycles; this.stats.bootWallMs = now() - t0; this.setStatus('running'); return { ok: true, msg: 'raw firmware' }; }
     await this.waitText('>>> ', promptTimeoutS * 1e6);
@@ -103,6 +105,7 @@ export class LabDriver {
     const r0 = await this.rawCommand("import os\ntry:\n os.mkdir('lab')\nexcept OSError:\n pass\n");
     if (r0.err) throw new Error('mkdir lab: ' + r0.err);
     for (const [name, src] of Object.entries(LAB_FILES)) {
+      if (name === 'lab/board_tds3.py' && this.board !== 'tdisplay_s3') continue;   // 只有 T-Display S3 用得到，其他板子不必多寫 3 KB
       const want = enc.encode(src).length;
       for (let attempt = 0; attempt < 3; attempt++) {
         const r = await this.rawCommand(`f=open(${pyLiteral(name)},'w')\nf.write(${pyLiteral(src)})\nf.close()\nprint(os.stat(${pyLiteral(name)})[6])\n`);
@@ -346,6 +349,32 @@ export class LabDriver {
   }
   setStatus(s) { if (this.status !== s) { this.status = s; this.emit('state', { status: s }); } }
 
+  // ---------------------------------------------------------------- DHT22 (single-wire, open drain)
+  /// The canvas' DHT22 on `gpio`: `data` {temperature, humidity} answers the next start signal, null = no
+  /// answer (unpowered: the firmware's dht.measure() times out like the real thing); undefined removes it.
+  dhtSet(gpio, data) {
+    if (data === undefined) { delete this.dht[gpio]; return true; }
+    const d = this.dht[gpio] = this.dht[gpio] || { data: null, lowAt: null, armedUntil: 0 };
+    d.data = data;
+    if (this.core && this.core.emu && d.lowAt === null) this.core.gpio(gpio, 1);   // the module's pull-up: the idle line is high
+    return true;
+  }
+  /// Host start signal: the firmware holds the line low (>= 0.8 ms; MicroPython's dht.c uses 18 ms) and
+  /// releases it. The sensor answers 80 us low, 80 us high, then 40 bits (50 us low + 26 us "0" / 70 us "1").
+  /// While the line is low the run loop takes 20 us steps so the release is seen in time (dht.c waits 110 us).
+  dhtEdge(gpio, level, cycle) {
+    const d = this.dht[gpio]; const us = (n) => this.usToCycles(n);
+    if (!level) { d.lowAt = cycle; d.armedUntil = cycle + us(40000); return; }
+    const lowFor = d.lowAt === null ? 0 : cycle - d.lowAt; d.lowAt = null; d.armedUntil = 0;
+    if (lowFor < us(800) || !d.data) return;
+    const t10 = Math.round(Math.abs(d.data.temperature) * 10), h10 = Math.round(Math.max(0, Math.min(100, d.data.humidity)) * 10);
+    const b = [h10 >> 8, h10 & 255, ((t10 >> 8) & 0x7f) | (d.data.temperature < 0 ? 0x80 : 0), t10 & 255]; b.push((b[0] + b[1] + b[2] + b[3]) & 255);
+    let at = Math.max(cycle, this.cycles) + us(25);
+    const drive = (lv) => { const c = at; this.inputs.push({ atCycle: c, fn: () => this.core.gpio(gpio, lv) }); };
+    drive(0); at += us(80); drive(1); at += us(80);
+    for (const byte of b) for (let k = 7; k >= 0; k--) { drive(0); at += us(50); drive(1); at += us(byte >> k & 1 ? 70 : 26); }
+    drive(0); at += us(50); drive(1);
+  }
   // ---------------------------------------------------------------- the run loop
   /// Advance the machine by up to `budget` cycles, delivering due inputs on the way. Returns the
   /// cycles run; 0 when stopped at a deadline (`atDeadline`) or halted.
@@ -360,6 +389,7 @@ export class LabDriver {
       let next = end;
       if (this.uartQ.length) next = Math.min(next, this.uartQ[0].atCycle);
       for (const i of this.inputs) next = Math.min(next, i.atCycle);
+      for (const g in this.dht) if (this.dht[g].armedUntil > cur) { next = Math.min(next, cur + this.usToCycles(20)); break; }
       if (this.deadlineCycle < next) next = this.deadlineCycle;
       if (next <= cur) {
         if (next === this.deadlineCycle && cur >= this.deadlineCycle) { this.atDeadline = true; this.deadlineCycle = Infinity; this.drain(); this.emit('deadline', { tUs: this.timeUs }); break; }
@@ -417,7 +447,7 @@ export class LabDriver {
     for (const e of this.core.labTake()) {
       const tUs = e.c !== undefined ? Math.round(e.c / this.cpuHz * 1e6) : this.timeUs;
       switch (e.t) {
-        case 'pin': { const st = this.pinState[e.gpio] = this.pinState[e.gpio] || { mode: 'out', level: 0, pull: 0, pwm: null }; st.level = e.level; this.emit('pin', { gpio: e.gpio, level: e.level, tUs }); break; }
+        case 'pin': { const st = this.pinState[e.gpio] = this.pinState[e.gpio] || { mode: 'out', level: 0, pull: 0, pwm: null }; st.level = e.level; if (this.dht[e.gpio]) this.dhtEdge(e.gpio, e.level, e.c ?? this.cycles); this.emit('pin', { gpio: e.gpio, level: e.level, tUs }); break; }
         case 'pinmode': {
           if (INTERNAL_PINS.has(e.gpio)) break;
           const st = this.pinState[e.gpio] = this.pinState[e.gpio] || { mode: 'in', level: 0, pull: 0, pwm: null };
@@ -469,7 +499,11 @@ except Exception as e:
 lab.board = ${pyLiteral(board)}
 lab.chip = ${pyLiteral(chip)}
 try:
-    lab.display = board_tqt.Display() if boards.HAS_DISPLAY.get(lab.board) else board_tqt.DummyDisplay()
+    if lab.board == "tdisplay_s3":
+        from lab import board_tds3
+        lab.display = board_tds3.Display()
+    else:
+        lab.display = board_tqt.Display() if boards.HAS_DISPLAY.get(lab.board) else board_tqt.DummyDisplay()
 except Exception as e:
     print("display init failed:", e)
     lab.display = board_tqt.DummyDisplay()

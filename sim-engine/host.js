@@ -74,6 +74,7 @@ export class DriverHost {
         case 'press': return reply(this.driver.pressButton(m.which, m.ms));
         case 'release': return reply(this.driver.releaseButton(m.which));
         case 'uart': this.driver.uartWrite(m.text); return reply(true);
+        case 'dhtSet': return reply(this.driver.dhtSet(m.gpio, m.data));
         case 'i2cRegister': return reply(this.driver.i2cRegister(m.bus, m.addr));
         case 'i2cReply': return reply(this.driver.i2cReply(m.bus, m.addr, m.bytes));
         case 'deadline': this.driver.setDeadline(m.tUs); return reply(true);
