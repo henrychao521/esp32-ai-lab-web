@@ -28,6 +28,7 @@ export function createSimulator(opts) {
   let selection = new Set();       // "partId" | "wire:3" | "board" | "bb"
   const undoStack = [], redoStack = [];
   let engine = null, running = false, pinState = {}, gridSnap = true, shortNets = [];
+  const extListeners = {}, EXT_EVENTS = ["console", "pin", "pinmode", "pwm", "state", "halt", "screen"];
   let lastEngineKind = opts.engine || "micropython-wasm";
   let engineBoard = null;
   let inputSent = {}, analogSent = {}, syncingIO = false, runGen = 0, bootInFlight = null;
@@ -659,6 +660,9 @@ export function createSimulator(opts) {
 
     // ---------- 執行 ----------
     get engine() { return engine; }, get vb() { return engine && engine._vb; },
+    /* 外部訂閱引擎事件（驗證腳本、教學錄影用）：換板子、載入別塊板子的範例會重建引擎，
+       掛在 sim.engine.on 的監聽會跟著舊引擎消失；sim.on 每次建新引擎都會自動接上（2026-11-20 影片對話回報） */
+    on(t, fn) { (extListeners[t] = extListeners[t] || new Set()).add(fn); return () => extListeners[t].delete(fn); },
     async attach(kind, engineKind) {
       /* 一次只做一個：兩個 attach 交錯會各建一個引擎、其中一個沒人釋放，畫面接到的可能是舊的那個 */
       const seq = ++api._attachSeq, prev = api._attachTail || Promise.resolve();
@@ -697,6 +701,7 @@ export function createSimulator(opts) {
       engine.on("console", (m) => { if (engine !== me) return; if (m.t === "start") bootQuiet = false; if (bootQuiet && m.t === "out") return; onEvent(m); });
       engine._setBootQuiet = (v) => { bootQuiet = v && engine.kind === "esp32sim"; };
       engine.on("screen", () => { screenDirty = true; applyState(); });
+      for (const t of EXT_EVENTS) engine.on(t, (...a) => { if (engine !== me) return; for (const fn of extListeners[t] || []) { try { fn(...a); } catch (e) { console.error(e); } } });
       onStatus({ engine: engine.kind, capabilities: engine.capabilities, engineKind: ek }); syncAttachments(); tick(); return engine;
     },
     async run(code, name) { while (api._attaching) await api._attaching; if (!engine) await api.attach(); powered = true; burned = new Set(); stoppedForShort = false; tick(); if (shortNets.length) { powered = false; tick(); toast("先修好短路再執行", "warn"); return { ok: false, msg: "short" }; } ensureDynLoop(); if (engine._setBootQuiet) engine._setBootQuiet(true); const gen = ++runGen; const r = await oneBoot(() => engine.boot({ program: code, name: name || "main.py", board: doc.board, fresh: engine.kind === "esp32sim" })); if (gen !== runGen || !powered) { emitStatus(); return { ok: false, msg: "stopped" }; } /* 開機中（真韌體約 2 秒）就按了停止：開機完成後程式不能照跑 */ /* 真韌體：▶＝通電＝重開機，否則上一支程式的腳位、PWM 通道、I2C 都留著（2026-11-09 真韌體全範例檢查抓到） */ pinState = engine.pins(); inputSent = {}; analogSent = {}; tick();   /* 新程式：上一支程式用過的腳回到「沒碰過」，輸入電位全部重送 */ if (r.ok) { running = true; emitStatus(); } else { powered = false; running = false; tick(); emitStatus(); } /* 沒跑起來（語法錯誤、開機失敗）就不算通電 */ return r; },

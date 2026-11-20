@@ -49,7 +49,7 @@
   },
   "potentiometer": {
    "name": "可變電阻", "summary": "旋鈕分壓器：轉動改變中間腳的電壓，程式用 ADC 讀 0～4095。",
-   "how": ["VCC 接 3V3、GND 接 GND（兩端互換只是方向相反）", "SIG（中間腳）接有 ADC 的腳位，程式 ADC(Pin(n), atten=ADC.ATTN_11DB)", "read() 得 0～4095，對應 0～3.3 V"],
+   "how": ["VCC 接 3V3、GND 接 GND（兩端互換只是方向相反）", "SIG（中間腳）接有 ADC 的腳位，程式 ADC(Pin(n), atten=ADC.ATTN_11DB)", "read() 得 0～4095，對應 0～3.3 V（模擬器等比例換算；實機兩端不完全等比例、約 3.1 V 就讀到 4095，所以實機數字會略有差距）"],
    "mistakes": [
     {"what": "VCC 接 5V", "why": "中間腳最高會到 5 V，超過 ESP32 腳位耐壓", "fix": "VCC 一律接 3V3"},
     {"what": "SIG 接到沒有 ADC 的腳", "why": "那支腳只能讀 0／1，讀不到連續值", "fix": "改接 ADC 腳位（本模擬器允許 G16～G48 當 ADC，實機要查板子）"},
