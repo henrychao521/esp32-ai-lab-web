@@ -561,7 +561,20 @@ export function createSimulator(opts) {
 
   /** 元件層接上引擎：每個第二批元件一個 attachPart；接線變了就通知它們重新登記腳位 */
   const ctx = {
-    gpioOf: (id, pin) => { const r = lastResult; if (!r) return null; const members = r.nets.nets[r.nets.find(id + ":" + pin)] || []; for (const m of members) { const g = /^board:(\d+)$/.exec(m); if (g) return Number(g[1]); } return null; },
+    gpioOf: (id, pin) => {
+      const r = lastResult; if (!r) return null;
+      const gpioIn = (members) => { for (const m of members) { const g = /^board:(\d+)$/.exec(m); if (g) return Number(g[1]); } return null; };
+      const members = r.nets.nets[r.nets.find(id + ":" + pin)] || [];
+      const direct = gpioIn(members); if (direct !== null) return direct;
+      /* 隔一顆電阻也算：訊號線串電阻、分壓（HC-SR04 的 ECHO 經 1k／2k 分壓再進 ESP32，2026-11-20）時模組仍要知道接在哪支腳 */
+      for (const m of members) {
+        const i = m.indexOf(":"), rid = m.slice(0, i), p = doc.parts[rid];
+        if (!p || p.type !== "resistor") continue;
+        const other = m.slice(i + 1) === "1" ? "2" : "1";
+        const g = gpioIn(r.nets.nets[r.nets.find(rid + ":" + other)] || []); if (g !== null) return g;
+      }
+      return null;
+    },
     powered: (id) => !!(lastResult?.parts?.[id]?.powered ?? true),
     level: (g) => (pinState[g] ? pinState[g].level : null),
     ui,

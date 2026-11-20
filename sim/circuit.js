@@ -245,7 +245,7 @@ function solveStep(circuit, io = {}, extraLinks = []) {
       // 模組：供電腳之間放一個負載（算得出有沒有供電），訊號腳高阻抗
       case "ssd1306": addR(a("3V3"), a("GND"), 330); addR(a("VIN"), a("GND"), 330); for (const q of ["DATA", "CLK"]) addR(a(q), -1, 1e6); break;
       case "lcd1602": addR(a("VCC"), a("GND"), 200); for (const q of ["SDA", "SCL"]) addR(a(q), -1, 1e6); break;
-      case "hc-sr04": addR(a("VCC"), a("GND"), 330); addR(a("TRIG"), -1, 1e6); { const pv = V0(a("VCC")) - V0(a("GND")); const lv = (u.echoLevel || 0) && pv > 2.5 ? Math.min(pv, VL) : 0; addV(a("ECHO"), -1, lv, 100, "mod:" + id); } break;
+      case "hc-sr04": addR(a("VCC"), a("GND"), 330); addR(a("TRIG"), -1, 1e6); { const pv = V0(a("VCC")) - V0(a("GND")); const lv = (u.echoLevel || 0) && pv > 2.5 ? pv : 0;   /* ECHO 高電位＝模組自己的供電（5 V 供電就是 5 V），不再夾到 3.3 V：真模組會把 5 V 灌進 ESP32 腳位（2026-11-20 影片對話回報） */ addV(a("ECHO"), -1, lv, 100, "mod:" + id); } break;
       case "dht22": addR(a("VCC"), a("GND"), 5000); addR(a("SDA"), -1, 1e6); break;
       case "neopixel-strip": addR(a("VCC"), a("GND"), 60); addR(a("DIN"), -1, 1e6); break;
       case "pir": addR(a("VCC"), a("GND"), 2000); { const pv = V0(a("VCC")) - V0(a("GND")); addV(a("OUT"), -1, u.motion && pv > 2.5 ? 3.3 : 0, 100, "mod:" + id); } break;
@@ -504,6 +504,11 @@ function solveStep(circuit, io = {}, extraLinks = []) {
       case "acsource": st.v = vp("+") - vp("-"); break;
       case "lm358": st.powered = vp("VCC") - vp("GND") > 2.5; st.out1 = vp("OUT1") - vp("GND"); st.out2 = vp("OUT2") - vp("GND"); break;
       case "gate": { const q = nonlin.find((x) => x.type === "gate" && x.part === id); st.y = !!(q && q.y); st.powered = vp("VCC") - vp("GND") > 2.5; break; }
+    }
+    if (p.type === "hc-sr04" && VL < 4 && vp("VCC") - vp("GND") > 3.6) {
+      /* ESP32 腳位高電位上限約 VDD＋0.3 V（3.6 V，Espressif 資料表 5.1／5.3 節）；5 V 供電的 HC-SR04 ECHO 直接接 GPIO 會超過 */
+      const echoNet = N.find(id + ":ECHO"), g = B.gpios.find((gg) => N.find("board:" + gg) === echoNet);
+      if (g !== undefined) warn("ECHO_5V", id, `${id} 的 ECHO 直接接 ${gpioName(circuit.board, g)}：5 V 訊號進 3.3 V 腳位`, `為什麼：HC-SR04 用 ${(vp("VCC") - vp("GND")).toFixed(1)} V 供電時，ECHO 回波腳也輸出同樣的電壓；ESP32 腳位最高只能承受約 3.6 V，長期接 5 V 會傷到腳位（模擬器照樣讀得到，實機可能壞掉）。`, "怎麼改：ECHO 先經 1 kΩ 再接腳位，腳位再經 2 kΩ 接 GND（分壓成約 3.3 V；沒有 2 kΩ 可用兩顆 1 kΩ 串聯）；或改用 3.3 V 也能用的超音波模組（例如 HC-SR04P）並接 3V3。", { net: echoNet });
     }
     if (st.powered === false && !io.unpowered && ["ssd1306", "lcd1602", "hc-sr04", "dht22", "neopixel-strip", "pir", "relay", "joystick"].includes(p.type)) {
       const hasAnyWire = PARTS[p.type].pins.some((pin) => (N.nets[N.find(id + ":" + pin)] || []).some((m) => !m.startsWith(id + ":") && !m.startsWith("bb:")));
