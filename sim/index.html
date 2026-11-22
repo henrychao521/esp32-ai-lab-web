@@ -191,6 +191,27 @@ html,body{touch-action:manipulation}
  dialog .hd,dialog>div:first-child{padding-right:48px!important}
  .sheet{max-height:72vh}
 }
+/* 超窄版面（≤ 340 CSS px）：手機開大字／老人模式時 Chrome 會把網頁放大，等於畫面只剩 200～300 px 寬（2026-11-22 老師實機回報）。
+   字大小照使用者設定不縮；改成工具列一排、其餘按鈕收進「更多」、畫布至少四成高、分頁可左右滑、說明框在畫面內可捲動 */
+@media (max-width:340px){
+ body{--bottom-m:36vh}
+ body.big-bottom{--bottom-m:60vh}
+ header{flex-wrap:nowrap;column-gap:4px;padding:3px 4px;padding-top:calc(3px + env(safe-area-inset-top))}
+ header .brk{display:none}
+ #btn-pal{order:1;padding:4px 6px;white-space:nowrap}#btn-run{order:2;padding:4px 8px;white-space:nowrap}#btn-pause{order:3;min-width:34px;padding:4px}
+ header .status{order:4;max-width:16px;padding:0}#status-text{display:none}
+ #btn-more{order:5;margin-left:auto;min-width:36px}
+ header button,header select{min-height:36px}
+ .bottom .tabs{overflow-x:auto;overflow-y:hidden;white-space:nowrap;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+ .bottom .tabs::-webkit-scrollbar{display:none}
+ .bottom .tabs button{flex:0 0 auto}
+ .sheet-body{grid-template-columns:1fr}
+ #tour{position:fixed;z-index:40;align-items:flex-start;padding:max(8px,env(safe-area-inset-top)) 8px 8px}
+ #tour .box{width:100%;max-height:calc(100dvh - 16px);overflow:auto;padding:12px 14px}
+ #tour .box>div:last-child{position:sticky;bottom:-12px;background:var(--panel);padding:8px 0 4px}
+ dialog{max-width:calc(100vw - 12px)!important;width:calc(100vw - 12px)!important;max-height:calc(100dvh - 16px);overflow:auto}
+ .side{max-height:70vh}
+}
 /* 抽屜／底部工作表共用（手機；桌機不顯示） */
 .m-only{display:none;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:1}
 .m-only b{flex:1}.m-only .grab{position:absolute;left:50%;top:4px;width:36px;height:4px;border-radius:2px;background:var(--line);transform:translateX(-50%)}
@@ -646,6 +667,22 @@ $("push-go").addEventListener("click", async () => {
 // ---------- 手機版面：主要動作列＋「更多」工作表、抽屜關閉機制（寬度 ≤ 900px） ----------
 (() => {
   const mq = window.matchMedia("(max-width: 900px)");
+  const mqE = window.matchMedia("(max-width: 340px)");   // 超窄（老人模式大字）：次要按鈕再收進「更多」
+  const ELDER = ["btn-push", "btn-reset", "btn-step", "btn-del", "btn-undo", "btn-redo", "btn-rotate", "btn-precise", "btn-clearall"];
+  const ELDER_LABEL = { "btn-push": "推到實機", "btn-reset": "重置板子", "btn-step": "單步（真韌體引擎）", "btn-del": "刪除所選", "btn-undo": "復原", "btn-redo": "重做", "btn-rotate": "旋轉", "btn-precise": "精準選取", "btn-clearall": "一鍵清空畫布" };
+  const elderHome = {};
+  function elderOn() {
+    if ($("more-elder")) return;
+    const box = document.createElement("div"); box.id = "more-elder"; box.style.display = "contents";
+    for (const id of ELDER) { const el = $(id); if (!el) continue; elderHome[id] = { parent: el.parentNode, next: el.nextSibling }; const w = document.createElement("div"); w.className = "more-item"; w.appendChild(el); const l = document.createElement("span"); l.className = "lbl"; l.textContent = ELDER_LABEL[id]; l.addEventListener("click", () => el.click()); w.appendChild(l); box.appendChild(w); }
+    $("more-body").prepend(box);
+  }
+  function elderOff() {
+    const box = $("more-elder"); if (!box) return;
+    for (const id of [...ELDER].reverse()) { const el = $(id); const h = elderHome[id]; if (!el || !h) continue; if (h.next && h.next.parentNode === h.parent) h.parent.insertBefore(el, h.next); else h.parent.appendChild(el); }
+    box.remove();
+  }
+  const applyE = () => (mq.matches && mqE.matches ? elderOn() : elderOff());
   const MORE = ["board", "engine", "power-ind", "speed", "firmware", "btn-hex", "btn-wiremode", "btn-route", "wire-color", "btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-labels", "btn-clear", "btn-teacher", "btn-help"];
   const home = {};   // id → { parent, next }：搬回桌機位置用
   const LABEL = { "btn-hex": "匯入 .hex（Arduino）", board: "板子", engine: "執行引擎", "power-ind": "電源指示（LED 與模組總電流，估）", speed: "模擬速度", firmware: "要執行的程式", "wire-color": "線色", "btn-wiremode": "接線模式", "btn-route": "整理走線", "btn-del": "刪除所選", "btn-undo": "復原", "btn-redo": "重做", "btn-rotate": "旋轉", "btn-selall": "全選", "btn-align-l": "靠左對齊", "btn-align-t": "靠上對齊", "btn-grid": "格線吸附", "btn-fit": "縮放到全部", "btn-examples": "範例電路", "btn-save": "儲存到瀏覽器", "btn-export": "匯出 KiCad／Wokwi", "btn-png": "匯出 PNG", "btn-import": "匯入", "btn-share": "分享網址", "btn-labels": "顯示全部元件名稱", "btn-clear": "清空畫布", "btn-teacher": "老師模式", "btn-help": "說明與快捷鍵" };
@@ -663,13 +700,13 @@ $("push-go").addEventListener("click", async () => {
     for (const id of [...MORE].reverse()) { const el = $(id); const h = home[id]; if (!el || !h) continue; if (h.next && h.next.parentNode === h.parent) h.parent.insertBefore(el, h.next); else h.parent.appendChild(el); if (["btn-selall", "btn-align-l", "btn-align-t", "btn-grid", "btn-fit", "btn-examples", "btn-save", "btn-export", "btn-png", "btn-import", "btn-share", "btn-clear", "btn-teacher"].includes(id)) el.classList.add("desk"); }
     $("more-body").innerHTML = ""; closeAll();
   }
-  const apply = () => { mq.matches ? toMobile() : toDesk(); if (window.sim) applyBoardUI(sim.doc.board); };
+  const apply = () => { if (!mq.matches) elderOff(); /* toDesk 會清空「更多」，先把超窄版收進去的按鈕搬回來 */ mq.matches ? toMobile() : toDesk(); applyE(); if (window.sim) applyBoardUI(sim.doc.board); };
   // 工作表／抽屜：開一個就關其他；scrim 點了關；標頭下滑關；瀏覽器返回鍵關
   const SHEETS = ["palette", "side", "sheet-more"];
   function openSheet(id) { for (const s of SHEETS) $(s).classList.toggle("open", s === id); $("scrim").classList.toggle("open", mq.matches); if (mq.matches && !(history.state && history.state.sheet)) history.pushState({ sheet: id }, ""); }
   function closeAll(fromPop) { for (const s of SHEETS) $(s).classList.remove("open"); $("scrim").classList.remove("open"); if (!fromPop && history.state && history.state.sheet) history.back(); }
   window.closeSheets = closeAll;
-  mq.addEventListener("change", apply); apply();   // 要在 SHEETS／closeAll 定義之後才能跑（桌機載入時 toDesk 會呼叫 closeAll）
+  mq.addEventListener("change", apply); mqE.addEventListener("change", applyE); apply();   // 要在 SHEETS／closeAll 定義之後才能跑（桌機載入時 toDesk 會呼叫 closeAll）
   $("scrim").addEventListener("click", () => closeAll());
   window.addEventListener("popstate", () => closeAll(true));
   document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => closeAll()));
